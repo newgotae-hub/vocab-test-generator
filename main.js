@@ -102,6 +102,39 @@ document.addEventListener('DOMContentLoaded', () => {
         link.remove();
         URL.revokeObjectURL(url);
     };
+    const base64ToBlob = (base64, mimeType) => {
+        const binary = atob(base64);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: mimeType });
+    };
+    const loadScript = (src) => new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`스크립트 로드 실패: ${src}`));
+        document.head.appendChild(script);
+    });
+    const ensureDocxLibrary = async () => {
+        if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
+        const sources = [
+            'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js',
+            'https://unpkg.com/docx@8.5.0/build/index.js'
+        ];
+        for (const src of sources) {
+            try {
+                await loadScript(src);
+                if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
+            } catch (_) {
+                // Try next source.
+            }
+        }
+        throw new Error('WORD 라이브러리를 불러오지 못했습니다. 네트워크 차단 또는 CDN 접근 제한을 확인해 주세요.');
+    };
 
     // --- Main Functions ---
 
@@ -258,10 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
             return;
         }
-        if (settings.outputFormat === 'WORD' && typeof window.docx === 'undefined') {
-            alert('WORD 생성을 위한 라이브러리를 불러오지 못했습니다.');
-            return;
-        }
+        if (settings.outputFormat === 'WORD') await ensureDocxLibrary();
         
         let sourceWords = [...state.selectedWords];
         if (settings.shouldShuffle) shuffleArray(sourceWords);
@@ -332,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createDocx = async (questions) => {
-        const { Packer, Document, Paragraph } = docx;
+        const docxLib = window.docx;
+        const { Packer, Document, Paragraph } = docxLib || {};
         if (!Packer || !Document || !Paragraph) {
             throw new Error('WORD 라이브러리 로드에 실패했습니다.');
         }
@@ -353,7 +384,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }],
         });
 
-        return Packer.toBlob(doc);
+        if (typeof Packer.toBlob === 'function') {
+            return Packer.toBlob(doc);
+        }
+        if (typeof Packer.toBase64String === 'function') {
+            const base64 = await Packer.toBase64String(doc);
+            return base64ToBlob(base64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        }
+        throw new Error('WORD 내보내기 함수를 찾을 수 없습니다.');
     };
 
     // --- Event Listeners ---
