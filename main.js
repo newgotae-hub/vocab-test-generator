@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.remove('hidden');
+            state.ui.tocSelectionCard.classList.remove('hidden');
         } else {
             showToast('해당 책의 단어 DB는 현재 준비 중입니다.', 'error');
             state.selectedBook = null;
@@ -389,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
         setSectionOpen('toc', true);
-        state.ui.subChapterSelectionCard.classList.add('compact');
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
     };
@@ -435,9 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const hasSelection = totalWords > 0;
-        const shouldShowSettings = isMobileViewport()
-            ? !!state.selectedChapter
-            : hasSelection;
+        const shouldShowSettings = hasSelection;
         setSectionOpen('settings', shouldShowSettings);
         state.ui.generateBtn.disabled = !hasSelection;
     };
