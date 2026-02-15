@@ -135,6 +135,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return firstToken.replace(/[()\[\],;:]+/g, '').trim() || '어휘 시험지';
     };
 
+    const buildExamTitleFromSelectedTocs = (tocLabels = []) => {
+        const titles = tocLabels
+            .map((toc) => extractExamTitleFromToc(toc))
+            .filter(Boolean)
+            .filter((value, idx, arr) => arr.indexOf(value) === idx);
+
+        if (titles.length === 0) return '어휘 시험지';
+        return titles.join(' / ');
+    };
+
     const normalizeSpacingText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 
     const normalizeFileName = (value) => {
@@ -391,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.numQuestions.max = String(totalWords);
 
         if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
-            const tocTitle = extractExamTitleFromToc(checkedTocs[0]);
+            const tocTitle = buildExamTitleFromSelectedTocs(checkedTocs);
             if (state.ui.examTitle) {
                 state.ui.examTitle.value = tocTitle;
             }
