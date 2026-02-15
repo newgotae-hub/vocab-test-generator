@@ -118,16 +118,19 @@ main {
 }
 
 .book-item img {
-    width: 100%;
+    width: 120px; /* Increased size */
+    height: auto;
+    max-height: 150px; /* Limit height to prevent overly large images */
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin: 0 auto 0.75rem auto; /* Center image and reduce bottom margin */
+    display: block; /* Ensure margin auto works */
     box-shadow: var(--shadow);
 }
 
 .book-item h3 {
     margin: 0;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.9rem; /* Slightly smaller text */
 }
 
 .book-item.active {
