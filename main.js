@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tocSummary: document.getElementById('toc-summary'),
             testTypeOptions: document.querySelector('.test-type-options'),
             numQuestions: document.getElementById('num-questions'),
+            numQuestionsHint: document.getElementById('num-questions-hint'),
             shuffleQuestions: document.getElementById('shuffle-questions'),
             generateBtn: document.getElementById('generate-test-papers'),
             examTitle: document.getElementById('exam-title'),
@@ -215,6 +216,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const normalizePdfWordText = (text) => normalizeSpacingText(text).replace(/\s+/g, '');
     const normalizeTitleSpacing = (value) => normalizeSpacingText(value).replace(/\s+/g, '');
 
+    const setNumQuestionsHint = (requestValue) => {
+        const hint = state.ui.numQuestionsHint;
+        if (!hint) return;
+
+        const maxWords = parseInt(state.ui.numQuestions.max, 10);
+        const requested = parseInt(requestValue, 10);
+        const isReducing = Number.isInteger(maxWords) && Number.isInteger(requested) && maxWords > 0 && requested < maxWords;
+
+        if (isReducing) {
+            hint.textContent = '문항 수에 맞게 단어가 자동 선정됩니다.';
+            hint.classList.remove('hidden');
+        } else {
+            hint.textContent = '';
+            hint.classList.add('hidden');
+        }
+    };
+
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -348,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setSectionOpen('toc', false);
         setSectionOpen('settings', false);
+        state.ui.subChapterSelectionCard?.classList.remove('compact');
         
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
@@ -366,7 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
         setSectionOpen('toc', true);
-        state.ui.subChapterSelectionCard.classList.add('hidden');
+        state.ui.subChapterSelectionCard.classList.add('compact');
+        state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
     };
 
@@ -399,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
         state.ui.numQuestions.value = String(totalWords);
         state.ui.numQuestions.max = String(totalWords);
+        setNumQuestionsHint(state.ui.numQuestions.value);
 
         if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
             const tocTitle = buildExamTitleFromSelectedTocs(checkedTocs);
@@ -423,8 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateTest = async () => {
         if (state.selectedWords.length === 0) return showToast('먼저 목차를 선택해 주세요.', 'error');
 
+        const requested = parseInt(state.ui.numQuestions.value, 10) || 0;
         const numQuestions = Math.min(
-            parseInt(state.ui.numQuestions.value, 10) || 0,
+            requested,
             state.selectedWords.length
         );
         if (numQuestions <= 0) return showToast('문항 수는 1 이상이어야 합니다.', 'error');
@@ -445,8 +467,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let sourceWords = [...state.selectedWords];
-        if (settings.shouldShuffle) shuffleArray(sourceWords);
-        const testItems = sourceWords.slice(0, settings.numQuestions);
+        let testItems = sourceWords;
+
+        if (settings.numQuestions < sourceWords.length) {
+            const candidateIndexes = [...Array(sourceWords.length).keys()];
+            shuffleArray(candidateIndexes);
+            const pickedIndexes = candidateIndexes.slice(0, settings.numQuestions).sort((a, b) => a - b);
+            testItems = pickedIndexes.map((idx) => sourceWords[idx]);
+        } else {
+            testItems = sourceWords;
+        }
+
+        if (settings.shouldShuffle) {
+            testItems = [...testItems];
+            shuffleArray(testItems);
+        }
 
         const questions = testItems.map((word, i) => {
             let type = settings.testType;
@@ -1072,13 +1107,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         state.ui.subChapterSelectionCard.addEventListener('click', (e) => {
+            if (state.ui.subChapterSelectionCard.classList.contains('compact')) {
+                state.ui.subChapterSelectionCard.classList.remove('compact');
+                return;
+            }
+
             const subChapterItem = e.target.closest('.sub-chapter-item');
             if(subChapterItem) selectSubChapter(subChapterItem.dataset.chapter);
         });
 
         state.ui.tocChecklist.addEventListener('change', updateUiState);
-        state.ui.selectAllToc.addEventListener('click', () => modifyAllTocs(true));
-        state.ui.deselectAllToc.addEventListener('click', () => modifyAllTocs(false));
+        if (state.ui.selectAllToc) {
+            state.ui.selectAllToc.addEventListener('click', () => modifyAllTocs(true));
+        }
+        if (state.ui.deselectAllToc) {
+            state.ui.deselectAllToc.addEventListener('click', () => modifyAllTocs(false));
+        }
 
         state.ui.testTypeOptions.addEventListener('click', (e) => {
             const typeOption = e.target.closest('.test-type-option');
@@ -1104,6 +1148,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (value > max) {
                 state.ui.numQuestions.value = String(max);
             }
+            setNumQuestionsHint(state.ui.numQuestions.value);
+        });
+
+        state.ui.numQuestions.addEventListener('input', () => {
+            setNumQuestionsHint(state.ui.numQuestions.value);
         });
     };
 

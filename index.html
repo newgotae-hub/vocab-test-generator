@@ -16,6 +16,9 @@
             <div class="logo">
                 <i class="logo-icon">📖</i> VocabGen
             </div>
+            <nav aria-label="섹션">
+                <a href="#" class="section-link" data-section="toc">목차</a>
+            </nav>
         </header>
 
         <main>
@@ -24,108 +27,108 @@
                 <div class="card book-select-card">
                     <h2>교재 선택</h2>
                     <p class="subtitle">단어시험지를 만들 교재를 선택하세요.</p>
-                                                                    <div id="book-library" class="book-library">
-                                                                    <div class="book-item" data-book="basic">
-                                                                        <img src="assets/images/베이직.jpg" alt="베이직 표지">
-                                                                    </div>
-                                                                    <div class="book-item" data-book="advanced">
-                                                                        <img src="assets/images/어드밴스드.jpg" alt="어드밴스드 표지">
-                                                                    </div>
-                                                                    <div class="book-item" data-book="etymology">
-                                                                        <img src="assets/images/어원편.jpg" alt="어원편 표지">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="right-column">
-                                                            <!-- Sub-Chapter Selection Card (For Etymology book) -->
-                                                            <div id="sub-chapter-selection-card" class="card hidden">
-                                                                <h2>챕터 선택</h2>
-                                                                <p class="subtitle">'어원편'의 학습할 챕터를 선택하세요.</p>
-                                                                <div class="sub-chapter-options">
-                                                                    <div class="sub-chapter-item" data-chapter="CH1">Chapter 1. 접두사</div>
-                                                                    <div class="sub-chapter-item" data-chapter="CH2">Chapter 2. 접미사</div>
-                                                                    <div class="sub-chapter-item" data-chapter="CH3">Chapter 3. 어근</div>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <!-- TOC Selection Card -->
-                                                            <div id="toc-selection-card" class="card hidden">
-                                                                <h2>목차 선택</h2>
-                                                                <p class="subtitle">시험 볼 범위를 목차에서 선택하세요.</p>
-                                                                <div id="toc-checklist" class="toc-checklist">
-                                                                    <!-- TOC items will be injected here by main.js -->
-                                                                </div>
-                                                                 <div class="toc-actions">
-                                                                    <button id="select-all-toc" class="button-link">전체 선택</button>
-                                                                    <button id="deselect-all-toc" class="button-link">전체 해제</button>
-                                                                </div>
-                                                                <p id="toc-summary" class="summary-text"></p>
-                                                            </div>
-                                            
-                                                            <!-- Test Configuration Card -->
-                                                            <div id="test-config-card" class="card hidden">
-                                                                <h2>시험지 설정</h2>
-                                                                <p class="subtitle">시험지 설정을 커스터마이즈 하세요.</p>
+                    <div id="book-library" class="book-library">
+                        <div class="book-item" data-book="basic">
+                            <img src="assets/images/베이직.jpg" alt="베이직 표지">
+                        </div>
+                        <div class="book-item" data-book="advanced">
+                            <img src="assets/images/어드밴스드.jpg" alt="어드밴스드 표지">
+                        </div>
+                        <div class="book-item" data-book="etymology">
+                            <img src="assets/images/어원편.jpg" alt="어원편 표지">
+                        </div>
+                    </div>
+                </div>
 
-                                                                <div class="config-group">
-                                                                    <h3>시험지 제목</h3>
-                                                                    <div class="input-group">
-                                                                        <input type="text" id="exam-title" class="text-input" value="어휘 시험지" maxlength="80">
-                                                                    </div>
-                                                                </div>
-                                           
-                                                            <div class="config-group">
-                                                                <h3>출력 형식</h3>
-                                                                <div class="output-format-options">
-                                                                                                    <label><input type="radio" name="output-format" value="WORD" checked> WORD (DOCX)</label>
-                                                                                                    <label><input type="radio" name="output-format" value="PDF"> PDF</label>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    
-                                                                                    <div class="config-group">
-                                                                                        <h3>시험 유형</h3>
-                                                                                        <div class="test-type-options">
-                                                                                            <div class="test-type-option active" data-type="KOR">
-                                                                                                <div class="label">한글 의미 쓰기</div>
-                                                                                            </div>
-                                                                                            <div class="test-type-option" data-type="ENG">
-                                                                                                <div class="label">영어 단어 쓰기</div>
-                                                                                            </div>
-                                                                                            <div class="test-type-option" data-type="MIXED">
-                                                                                                <div class="label">🔀 혼합</div>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>                                            
-                                                                <div class="form-grid">
-                                                                    <!-- Number of Questions -->
-                                                                    <div class="config-group">
-                                                                        <h3>문항 수</h3>
-                                                                        <div class="input-group">
-                                                                            <input type="number" id="num-questions" value="0" min="1" step="1">
-                                                                            <span>개</span>
-                                                                        </div>
-                                                                    </div>
-                                            
-                                                                    <!-- Options -->
-                                                                    <div class="config-group">
-                                                                        <h3>옵션</h3>
-                                                                         <div class="toggle-option">
-                                                                            <span>문제 순서 섞기</span>
-                                                                            <label class="switch">
-                                                                                <input type="checkbox" id="shuffle-questions">
-                                                                                <span class="slider"></span>
-                                                                            </label>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                            
-                                                                <button class="button-primary" id="generate-test-papers" disabled>
-                                                                    ⚡ 시험지 생성
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                <!-- Test Configuration Card -->
+                <div id="test-config-card" class="card hidden">
+                    <h2>시험지 설정</h2>
+                    <p class="subtitle">시험지 인쇄방식을 설정하세요.</p>
+
+                    <div class="config-group">
+                        <h3>시험지 제목</h3>
+                        <div class="input-group">
+                            <input type="text" id="exam-title" class="text-input" value="어휘 시험지" maxlength="80">
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>출력 형식</h3>
+                        <div class="output-format-options">
+                            <label><input type="radio" name="output-format" value="WORD" checked> WORD</label>
+                            <label><input type="radio" name="output-format" value="PDF"> PDF</label>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>시험 유형</h3>
+                        <div class="test-type-options">
+                            <div class="test-type-option active" data-type="KOR">
+                                <div class="label">한글 의미 쓰기</div>
+                            </div>
+                            <div class="test-type-option" data-type="ENG">
+                                <div class="label">영어 단어 쓰기</div>
+                            </div>
+                            <div class="test-type-option" data-type="MIXED">
+                                <div class="label">🔀 혼합</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <!-- Number of Questions -->
+                        <div class="config-group">
+                            <h3>문항 수</h3>
+                            <div class="input-group">
+                                <input type="number" id="num-questions" value="0" min="1" step="1">
+                                <span>개</span>
+                            </div>
+                            <p id="num-questions-hint" class="field-hint hidden" aria-live="polite"></p>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="config-group">
+                            <h3>순서</h3>
+                            <div class="toggle-option">
+                                <span>무작위</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="shuffle-questions">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="button-primary" id="generate-test-papers" disabled>
+                        ⚡ 시험지 생성
+                    </button>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <!-- Sub-Chapter Selection Card (For Etymology book) -->
+                <div id="sub-chapter-selection-card" class="card hidden">
+                    <h2>챕터 선택</h2>
+                    <p class="subtitle">'어원편'의 학습할 챕터를 선택하세요.</p>
+                    <div class="sub-chapter-options">
+                        <div class="sub-chapter-item" data-chapter="CH1">Chapter 1. 접두사</div>
+                        <div class="sub-chapter-item" data-chapter="CH2">Chapter 2. 접미사</div>
+                        <div class="sub-chapter-item" data-chapter="CH3">Chapter 3. 어근</div>
+                    </div>
+                </div>
+                
+                <!-- TOC Selection Card -->
+                <div id="toc-selection-card" class="card hidden">
+                    <div class="toc-title-row">
+                        <h2>목차 선택</h2>
+                        <p id="toc-summary" class="summary-text" aria-live="polite"></p>
+                    </div>
+                    <p class="subtitle">시험 볼 범위를 목차에서 선택하세요.</p>
+                    <div id="toc-checklist" class="toc-checklist">
+                        <!-- TOC items will be injected here by main.js -->
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 

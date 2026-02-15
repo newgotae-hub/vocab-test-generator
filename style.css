@@ -140,18 +140,6 @@ main {
     animation: popIn 220ms ease;
 }
 
-.card::before {
-    content: '';
-    position: absolute;
-    inset: 0.7rem 0.9rem auto 0.9rem;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(13, 107, 122, 0.35), transparent);
-}
-
-.book-select-card::before {
-    display: none;
-}
-
 .card h2 {
     margin: 0 0 0.4rem;
     font-size: 1.08rem;
@@ -162,6 +150,9 @@ main {
     margin: 0 0 1rem;
     color: var(--text-subtle);
     font-size: 0.9rem;
+    max-height: 3rem;
+    overflow: hidden;
+    transition: max-height 180ms ease, opacity 180ms ease, margin 180ms ease, padding 180ms ease;
 }
 
 .book-library {
@@ -204,6 +195,9 @@ main {
 .sub-chapter-options {
     display: grid;
     gap: 0.7rem;
+    max-height: 480px;
+    overflow: hidden;
+    transition: max-height 180ms ease, opacity 180ms ease, margin 180ms ease, padding 180ms ease;
 }
 
 .sub-chapter-item {
@@ -220,8 +214,29 @@ main {
     background: #f2fbfe;
 }
 
+#sub-chapter-selection-card.compact {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+#sub-chapter-selection-card.compact h2 {
+    margin-bottom: 0;
+}
+
+#sub-chapter-selection-card.compact .subtitle,
+#sub-chapter-selection-card.compact .sub-chapter-options {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border: 0;
+    transition: max-height 180ms ease, opacity 180ms ease, margin 180ms ease, padding 180ms ease;
+}
+
 .toc-checklist {
-    max-height: 300px;
+    max-height: 440px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     overflow: auto;
@@ -258,34 +273,25 @@ main {
     background: #edf1ff;
 }
 
-.toc-actions {
-    margin-top: 0.85rem;
+.toc-title-row {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
-}
-
-.button-link {
-    border: 0;
-    background: transparent;
-    padding: 0;
-    color: var(--brand);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.button-link:hover {
-    text-decoration: underline;
+    margin-bottom: 0;
 }
 
 #toc-summary {
-    margin: 0.75rem 0 0;
-    padding: 0.62rem 0.7rem;
-    border-radius: var(--radius-sm);
-    border: 1px dashed #c8d7f4;
-    background: var(--surface-soft);
+    margin: 0;
+    text-align: right;
     font-size: 0.88rem;
     color: var(--text-subtle);
+    font-weight: 500;
+    min-width: fit-content;
+    max-width: min(45%, 18rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .config-group {
@@ -378,6 +384,13 @@ main {
     background: #fff;
     font: inherit;
     color: var(--text);
+}
+
+.field-hint {
+    margin: 0.42rem 0 0;
+    color: var(--warn);
+    font-size: 0.82rem;
+    line-height: 1.35;
 }
 
 .text-input {
