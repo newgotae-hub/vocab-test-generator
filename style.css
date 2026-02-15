@@ -1,15 +1,89 @@
 :root {
   --background-color: #ffffff;
   --text-color: #000000;
+  --form-bg-color: #f9f9f9;
+  --form-border-color: #e0e0e0;
+  --input-border-color: #ccc;
+  --button-bg-color: #007bff;
+  --button-text-color: #ffffff;
 }
 
 body {
   background-color: var(--background-color);
   color: var(--text-color);
   transition: background-color 0.3s, color 0.3s;
+  font-family: sans-serif;
+  padding: 1em;
 }
 
 body.dark-mode {
   --background-color: #333333;
   --text-color: #ffffff;
+  --form-bg-color: #444444;
+  --form-border-color: #666666;
+  --input-border-color: #888;
+  --button-bg-color: #0056b3;
+}
+
+#contact-form-container {
+  margin-top: 2em;
+  padding: 1.5em;
+  background-color: var(--form-bg-color);
+  border: 1px solid var(--form-border-color);
+  border-radius: 8px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#contact-form-container h2 {
+  text-align: center;
+  margin-bottom: 1em;
+  color: var(--text-color);
+}
+
+#contact-form-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+#contact-form-container label {
+  margin-bottom: 0.5em;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+#contact-form-container input[type="text"],
+#contact-form-container input[type="email"],
+#contact-form-container textarea {
+  padding: 0.8em;
+  margin-bottom: 1em;
+  border: 1px solid var(--input-border-color);
+  border-radius: 4px;
+  background-color: var(--background-color); /* Inherit from body or specific form bg */
+  color: var(--text-color);
+}
+
+#contact-form-container textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+#contact-form-container button[type="submit"] {
+  padding: 0.8em 1.5em;
+  background-color: var(--button-bg-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+#contact-form-container button[type="submit"]:hover {
+  background-color: #0056b3; /* Darker shade for hover */
+}
+
+body.dark-mode #contact-form-container button[type="submit"]:hover {
+    background-color: #003e82; /* Darker shade for dark mode hover */
 }
