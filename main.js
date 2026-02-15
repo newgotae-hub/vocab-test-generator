@@ -1123,10 +1123,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const checkbox = item.querySelector('input[type="checkbox"]');
             if (!checkbox) return;
-            if (e.target === checkbox) return;
 
             e.preventDefault();
             e.stopPropagation();
+
+            if (e.target !== checkbox) {
+                checkbox.checked = !checkbox.checked;
+                updateUiState();
+                return;
+            }
+
             checkbox.checked = !checkbox.checked;
             updateUiState();
         });
