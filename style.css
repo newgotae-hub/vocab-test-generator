@@ -148,6 +148,10 @@ main {
     background: linear-gradient(90deg, transparent, rgba(13, 107, 122, 0.35), transparent);
 }
 
+.book-select-card::before {
+    display: none;
+}
+
 .card h2 {
     margin: 0 0 0.4rem;
     font-size: 1.08rem;
