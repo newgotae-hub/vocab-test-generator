@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 downloadBlob(docxBlob, 'vocab-test.docx');
             }
         } catch(e) {
-            alert('시험지 생성 중 오류가 발생했습니다.');
+            alert(`시험지 생성 중 오류가 발생했습니다: ${e.message || e}`);
             console.error(e);
         }
     };
@@ -296,7 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfDoc.registerFontkit(window.fontkit);
         let page = pdfDoc.addPage();
         let font;
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
         try {
             font = await pdfDoc.embedFont(state.koreanFont);
         } catch (fontError) {
@@ -318,45 +317,38 @@ document.addEventListener('DOMContentLoaded', () => {
             page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
             y -= size + (isAnswerSheet ? 2 : 8);
         };
-        const drawIndexedText = (index, text, size, isAnswerSheet = false) => {
-            if (y < margin) {
-                page = pdfDoc.addPage();
-                y = height - margin;
-                if (isAnswerSheet) {
-                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
-                    y -= 30;
-                }
-            }
-            const prefix = `${index + 1}. `;
-            page.drawText(prefix, { x: margin, y, font: latinFont, size, color: rgb(0, 0, 0) });
-            const prefixWidth = latinFont.widthOfTextAtSize(prefix, size);
-            page.drawText(String(text), { x: margin + prefixWidth, y, font, size, color: rgb(0, 0, 0) });
-            y -= size + (isAnswerSheet ? 2 : 8);
-        };
         
         drawText('어휘 시험지 (Vocabulary Test)', 24);
         y -= 20;
-        questions.forEach((item, index) => drawIndexedText(index, item.question, 12));
+        questions.forEach((item, index) => drawText(`${index + 1}. ${item.question}`, 12));
 
         page = pdfDoc.addPage();
         y = height - margin;
         drawText('정답지 (Answer Key)', 18);
         y -= 15;
-        questions.forEach((item, index) => drawIndexedText(index, item.answer, 10, true));
+        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 12, true));
 
         return pdfDoc.save();
     };
 
     const createDocx = async (questions) => {
-        const { Packer, Document, Paragraph, TextRun, PageBreak } = docx;
+        const { Packer, Document, Paragraph } = docx;
+        if (!Packer || !Document || !Paragraph) {
+            throw new Error('WORD 라이브러리 로드에 실패했습니다.');
+        }
+
+        const questionParagraphs = questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.question}` }));
+        const answerParagraphs = questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.answer}` }));
         const doc = new Document({
             sections: [{
                 children: [
-                    new Paragraph({ text: '어휘 시험지 (Vocabulary Test)', heading: 'Title' }),
-                    ...questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.question}` })),
-                    new Paragraph({ children: [new PageBreak()] }),
-                    new Paragraph({ text: '정답지 (Answer Key)', heading: 'Title' }),
-                    ...questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.answer}` })),
+                    new Paragraph({ text: '어휘 시험지 (Vocabulary Test)' }),
+                    new Paragraph({ text: '' }),
+                    ...questionParagraphs,
+                    new Paragraph({ text: '' }),
+                    new Paragraph({ text: '정답지 (Answer Key)' }),
+                    new Paragraph({ text: '' }),
+                    ...answerParagraphs,
                 ],
             }],
         });
