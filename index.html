@@ -17,8 +17,9 @@
                 <i class="logo-icon">📖</i> VocabGen
             </div>
             <nav>
-                <a href="#" class="active">Dashboard</a>
-                <a href="#">History</a>
+                <a href="#" class="section-link section-link--active" data-section="books">교재</a>
+                <a href="#" class="section-link" data-section="toc">목차</a>
+                <a href="#" class="section-link" data-section="settings">설정</a>
             </nav>
             <div class="version">v1.0.0</div>
         </header>
@@ -73,7 +74,14 @@
                                                             <div id="test-config-card" class="card hidden">
                                                                 <h2>시험지 설정</h2>
                                                                 <p class="subtitle">시험지 설정을 커스터마이즈 하세요.</p>
-                                            
+
+                                                                <div class="config-group">
+                                                                    <h3>시험지 제목</h3>
+                                                                    <div class="input-group">
+                                                                        <input type="text" id="exam-title" class="text-input" value="어휘 시험지" maxlength="80">
+                                                                    </div>
+                                                                </div>
+                                           
                                                                                     <div class="config-group">
                                                                                         <h3>출력 형식</h3>
                                                                                         <div class="output-format-options">
@@ -101,7 +109,7 @@
                                                                     <div class="config-group">
                                                                         <h3>문항 수</h3>
                                                                         <div class="input-group">
-                                                                            <input type="number" id="num-questions" value="80" min="1" step="1">
+                                                                            <input type="number" id="num-questions" value="0" min="1" step="1">
                                                                             <span>개</span>
                                                                         </div>
                                                                     </div>
@@ -112,7 +120,7 @@
                                                                          <div class="toggle-option">
                                                                             <span>문제 순서 섞기</span>
                                                                             <label class="switch">
-                                                                                <input type="checkbox" id="shuffle-questions" checked>
+                                                                                <input type="checkbox" id="shuffle-questions">
                                                                                 <span class="slider"></span>
                                                                             </label>
                                                                         </div>
@@ -126,6 +134,8 @@
                                                         </div>
         </main>
     </div>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true" class="toast-container" role="status"></div>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>

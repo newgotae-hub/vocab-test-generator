@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         allWords: [],
         wordsByToc: {},
+        isDataReady: false,
         koreanFont: null,
         selectedBook: null,
         selectedChapter: null,
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             subChapterSelectionCard: document.getElementById('sub-chapter-selection-card'),
             tocSelectionCard: document.getElementById('toc-selection-card'),
             testConfigCard: document.getElementById('test-config-card'),
+            sectionLinks: document.querySelectorAll('.section-link[data-section]'),
             tocChecklist: document.getElementById('toc-checklist'),
             selectAllToc: document.getElementById('select-all-toc'),
             deselectAllToc: document.getElementById('deselect-all-toc'),
@@ -45,7 +47,101 @@ document.addEventListener('DOMContentLoaded', () => {
             numQuestions: document.getElementById('num-questions'),
             shuffleQuestions: document.getElementById('shuffle-questions'),
             generateBtn: document.getElementById('generate-test-papers'),
+            examTitle: document.getElementById('exam-title'),
         }
+    };
+    const bookLibraryCard = state.ui.bookLibrary.closest('.card');
+
+    const getSectionCards = (section) => {
+        if (section === 'books') return [bookLibraryCard].filter(Boolean);
+        if (section === 'toc') return [state.ui.subChapterSelectionCard, state.ui.tocSelectionCard].filter(Boolean);
+        if (section === 'settings') return [state.ui.testConfigCard].filter(Boolean);
+        return [];
+    };
+
+    const setSectionOpen = (section, isOpen) => {
+        const cards = getSectionCards(section);
+        cards.forEach(card => card.classList.toggle('hidden', !isOpen));
+
+        const link = [...state.ui.sectionLinks].find(link => link?.dataset.section === section);
+        if (link) {
+            link.classList.toggle('section-link--active', isOpen);
+        }
+    };
+
+    const toggleSection = (section) => {
+        const cards = getSectionCards(section);
+        if (!cards.length) return;
+
+        const isCurrentlyOpen = cards.some(card => !card.classList.contains('hidden'));
+
+        if (section === 'toc' && !isCurrentlyOpen) {
+            if (state.selectedBook === 'etymology' && !state.selectedChapter) {
+                state.ui.subChapterSelectionCard.classList.remove('hidden');
+                state.ui.tocSelectionCard.classList.add('hidden');
+            } else if (state.selectedBook === 'etymology' && state.selectedChapter) {
+                state.ui.tocSelectionCard.classList.remove('hidden');
+                state.ui.subChapterSelectionCard.classList.add('hidden');
+            } else if (state.selectedChapter) {
+                state.ui.tocSelectionCard.classList.remove('hidden');
+                state.ui.subChapterSelectionCard.classList.add('hidden');
+            } else {
+                state.ui.subChapterSelectionCard.classList.remove('hidden');
+            }
+            setSectionOpen('toc', true);
+            return;
+        }
+
+        if (section === 'settings') {
+            setSectionOpen('settings', !isCurrentlyOpen);
+            return;
+        }
+
+        setSectionOpen(section, !isCurrentlyOpen);
+    };
+
+    const syncSectionNavFromCards = () => {
+        ['books', 'toc', 'settings'].forEach((section) => {
+            const cards = getSectionCards(section);
+            const isOpen = cards.some(card => !card.classList.contains('hidden'));
+            setSectionOpen(section, isOpen);
+        });
+    };
+
+    const normalizeBookKey = (bookName) => {
+        const value = String(bookName || '').trim().toLowerCase();
+        if (!value) return '';
+        if (value === 'etymology' || value === '어원편' || value === '어원 편' || value === '어원-편') return 'etymology';
+        if (value === 'basic' || value === '베이직' || value === '베이식') return 'basic';
+        if (value === 'advanced' || value === '어드밴스드' || value === '어드밴스') return 'advanced';
+        return value;
+    };
+
+    const getBookNameForOutput = (bookKey) => {
+        const normalized = normalizeBookKey(bookKey);
+        const bookNames = {
+            etymology: '어원편',
+            basic: '베이직',
+            advanced: '어드밴스드'
+        };
+        return bookNames[normalized] || '어원편';
+    };
+
+    const normalizeSpacingText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+    const normalizeFileName = (value) => {
+        const text = normalizeSpacingText(value || '어휘시험지')
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return text || '어휘시험지';
+    };
+
+    const toCompactSpacing = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+    const getExamTitle = () => {
+        const typed = normalizeSpacingText(state.ui.examTitle?.value);
+        return typed || '어휘 시험지';
     };
 
     const updatePdfOptionState = () => {
@@ -76,12 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const b1 = bytes[1];
         const b2 = bytes[2];
         const b3 = bytes[3];
-        // TrueType (00 01 00 00), OpenType (OTTO), TrueType Collection (ttcf)
         const isTtf = b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00;
         const isOtf = b0 === 0x4f && b1 === 0x54 && b2 === 0x54 && b3 === 0x4f;
         const isTtc = b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66;
         return isTtf || isOtf || isTtc;
     };
+
     const isLikelyHtmlBuffer = (buffer) => {
         if (!buffer || buffer.byteLength === 0) return false;
         const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 64));
@@ -89,8 +185,17 @@ document.addEventListener('DOMContentLoaded', () => {
         while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) {
             i += 1;
         }
-        return i < bytes.length && bytes[i] === 0x3c; // "<"
+        return i < bytes.length && bytes[i] === 0x3c;
     };
+    const extractPrimaryMeaning = (text) => {
+        const normalized = normalizeSpacingText(text);
+        const trimmed = String(normalized || '').trim();
+        if (!trimmed) return '';
+        const delimiterMatch = trimmed.match(/([^;,/]+)(?=[;,/]|$)/);
+        return normalizeSpacingText((delimiterMatch?.[1] || trimmed));
+    };
+    const normalizePdfWordText = (text) => normalizeSpacingText(text).replace(/\s+/g, '');
+    const normalizeTitleSpacing = (value) => normalizeSpacingText(value).replace(/\s+/g, '');
 
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
@@ -101,6 +206,24 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
+    };
+    const showToast = (message, type = 'info', duration = 2200) => {
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            console.info(message);
+            return;
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast--${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.add('is-visible'));
+        window.setTimeout(() => {
+            toast.classList.remove('is-visible');
+            window.setTimeout(() => toast.remove(), 190);
+        }, Math.max(900, duration));
     };
     const base64ToBlob = (base64, mimeType) => {
         const binary = atob(base64);
@@ -131,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const src of sources) {
             try {
                 await loadScript(src);
-                if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
+            if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
             } catch (_) {
                 // Try next source.
             }
@@ -177,47 +300,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
                 }
             }
+            state.isDataReady = true;
             updatePdfOptionState();
         } catch (error) {
             console.error(error);
-            alert(error.message);
+            state.isDataReady = true;
+            showToast('데이터 로드 중 오류가 발생했습니다.', 'error');
         }
     };
 
     const selectBook = (bookName) => {
-        state.selectedBook = bookName;
+        if (!state.isDataReady) {
+            return showToast('단어 데이터를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.', 'error');
+        }
+        if (state.allWords.length === 0) {
+            return showToast('단어 데이터가 없습니다. 데이터를 다시 로드해 주세요.', 'error');
+        }
+
+        const normalizedBook = normalizeBookKey(bookName);
+        state.selectedBook = normalizedBook;
         state.selectedChapter = null;
         state.selectedTocs.clear();
 
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.book === bookName);
+            item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
         });
 
-        // Hide all right-column cards initially
-        state.ui.subChapterSelectionCard.classList.add('hidden');
-        state.ui.tocSelectionCard.classList.add('hidden');
-        state.ui.testConfigCard.classList.add('hidden');
+        setSectionOpen('toc', false);
+        setSectionOpen('settings', false);
         
-        if (bookName === 'etymology') {
+        if (normalizedBook === 'etymology') {
+            setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.remove('hidden');
         } else {
-            // For 'basic' and 'advanced', do nothing as per user request.
-            alert('해당 책의 단어 DB는 현재 준비 중입니다.');
-            // Deselect the book visually
+            showToast('해당 책의 단어 DB는 현재 준비 중입니다.', 'error');
             state.selectedBook = null;
-            state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-                item.classList.remove('active');
-            });
+            state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => item.classList.remove('active'));
         }
     };
 
     const selectSubChapter = (chapterId) => {
         state.selectedChapter = chapterId;
         state.selectedTocs.clear();
-        
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
-        
+        setSectionOpen('toc', true);
         state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
     };
@@ -249,51 +376,44 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const totalWords = state.selectedWords.length;
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
+        state.ui.numQuestions.value = String(totalWords);
+        state.ui.numQuestions.max = String(totalWords);
 
         const hasSelection = totalWords > 0;
-        state.ui.testConfigCard.classList.toggle('hidden', !hasSelection);
+        setSectionOpen('settings', hasSelection);
         state.ui.generateBtn.disabled = !hasSelection;
     };
     
     const modifyAllTocs = (shouldSelect) => {
         if (!state.selectedChapter) return;
-        state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = shouldSelect;
-        });
+        state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = shouldSelect);
         updateUiState();
     };
 
     const generateTest = async () => {
-        const availableWords = state.selectedWords.length;
-        if (availableWords === 0) {
-            alert('먼저 목차를 선택해 주세요.');
-            return;
-        }
+        if (state.selectedWords.length === 0) return showToast('먼저 목차를 선택해 주세요.', 'error');
 
-        const rawNumQuestions = parseInt(state.ui.numQuestions.value, 10);
-        if (!Number.isInteger(rawNumQuestions) || rawNumQuestions <= 0) {
-            alert('문항 수는 1 이상의 정수여야 합니다.');
-            state.ui.numQuestions.value = '1';
-            return;
-        }
-
-        const validatedNumQuestions = Math.min(rawNumQuestions, availableWords);
-        if (validatedNumQuestions !== rawNumQuestions) {
-            alert(`선택된 단어 수(${availableWords})를 초과해 ${validatedNumQuestions}문항으로 조정했습니다.`);
-            state.ui.numQuestions.value = String(validatedNumQuestions);
-        }
+        const numQuestions = Math.min(
+            parseInt(state.ui.numQuestions.value, 10) || 0,
+            state.selectedWords.length
+        );
+        if (numQuestions <= 0) return showToast('문항 수는 1 이상이어야 합니다.', 'error');
+        const examTitle = getExamTitle();
 
         const settings = {
             outputFormat: document.querySelector('input[name="output-format"]:checked').value,
             testType: state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR',
-            numQuestions: validatedNumQuestions,
-            shouldShuffle: state.ui.shuffleQuestions.checked
+            numQuestions: numQuestions,
+            shouldShuffle: state.ui.shuffleQuestions.checked,
+            examTitle,
+            fileBaseName: normalizeFileName(examTitle),
+            bookName: getBookNameForOutput(state.selectedBook),
         };
 
-        if (settings.outputFormat === 'PDF' && !(PDFDocument && hasFontkit && state.koreanFont)) {
-            alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
-            return;
+        if (settings.outputFormat === 'PDF' && (!PDFDocument || !hasFontkit || !state.koreanFont)) {
+            return showToast('PDF 생성을 위한 라이브러리를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.', 'error');
         }
+
         let sourceWords = [...state.selectedWords];
         if (settings.shouldShuffle) shuffleArray(sourceWords);
         const testItems = sourceWords.slice(0, settings.numQuestions);
@@ -301,118 +421,585 @@ document.addEventListener('DOMContentLoaded', () => {
         const questions = testItems.map((word, i) => {
             let type = settings.testType;
             if (type === 'MIXED') type = i % 2 === 0 ? 'KOR' : 'ENG';
+            const questionMode = type === 'KOR' ? 'ENG' : 'KOR';
             return {
                 question: type === 'KOR' ? word.word : word.meaning,
                 answer: type === 'KOR' ? word.meaning : word.word,
+                questionMode,
             };
         });
 
-        alert(`'${settings.outputFormat}' 형식으로 시험지를 생성합니다...`);
+        const baseFileName = normalizeFileName(settings.fileBaseName || settings.examTitle);
+        showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
             if (settings.outputFormat === 'PDF') {
-                const pdfBytes = await createPdf(questions);
-                downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), 'vocab-test.pdf');
-            } else { // WORD
-                const { blob, filename } = await createDocx(questions);
-                downloadBlob(blob, filename);
+                const questionPdfBytes = await createPdf(questions, settings, false);
+                const answerPdfBytes = await createPdf(questions, settings, true);
+                downloadBlob(new Blob([questionPdfBytes], { type: 'application/pdf' }), `${baseFileName}.pdf`);
+                downloadBlob(new Blob([answerPdfBytes], { type: 'application/pdf' }), `${baseFileName}_답.pdf`);
+            } else {
+                const questionDocx = await createDocx(questions, settings, false);
+                const answerDocx = await createDocx(questions, settings, true);
+                downloadBlob(questionDocx.blob, `${baseFileName}.docx`);
+                downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
             }
         } catch(e) {
-            alert(`시험지 생성 중 오류가 발생했습니다: ${e.message || e}`);
+            showToast('시험지 생성 중 오류가 발생했습니다.', 'error');
             console.error(e);
         }
     };
     
-    const createPdf = async (questions) => {
+    const createPdf = async (questions, options = {}, isAnswerSheet = false) => {
+        if (!PDFDocument || !state.koreanFont || !hasFontkit) {
+            throw new Error('PDF 생성 환경을 준비할 수 없습니다.');
+        }
+
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(window.fontkit);
-        let page = pdfDoc.addPage();
+
         let font;
         try {
             font = await pdfDoc.embedFont(state.koreanFont);
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
         }
+
+        const pages = [];
+        let page = pdfDoc.addPage();
+        pages.push(page);
+
         const { width, height } = page.getSize();
-        const margin = 50;
-        const questionHeaderSize = 24;
-        const answerHeaderSize = 18;
-        const bodyFontSize = 12;
-        const lineHeight = 14;
-        const rowsPerColumn = 50;
-        const itemsPerPage = rowsPerColumn * 2;
-        const columnGap = 30;
-        const headerOffset = 14;
+        const margin = 40;
         const contentWidth = width - margin * 2;
+        const titleAreaRatio = 0.6;
+        const titleAreaWidth = contentWidth * titleAreaRatio;
+        const metaAreaWidth = contentWidth - titleAreaWidth - 10;
+        const metaAreaStartX = margin + titleAreaWidth + 10;
+        const questionHeaderSize = 20;
+        const answerHeaderSize = 14;
+        const sectionMetaSize = 8;
+        const bodyFontSize = 10.5;
+        const rowsPerColumn = 25;
+        const itemsPerPage = rowsPerColumn * 2;
+        const columnGap = 20;
         const columnWidth = (contentWidth - columnGap) / 2;
         const leftColumnX = margin;
         const rightColumnX = margin + columnWidth + columnGap;
+        const numberColumnWidth = 22;
+        const numberToTextGap = 0;
+        const sectionTopY = height - margin;
+        const sectionTitleY = sectionTopY - 30;
+        const dividerY = sectionTopY - 66;
+        const listBottomY = margin + 28;
+        const listTopY = dividerY - 16;
+        const lineHeight = (listTopY - listBottomY) / (rowsPerColumn - 1);
+        const rowBottomLimit = listBottomY;
+        const rowTextOffset = Math.min(6, lineHeight * 0.17);
+        const answerLineHeightScale = 0.88;
+        const pageNumberY = 16;
+        const bookMetaY = sectionTopY - 55;
+        const metaBlockTopY = sectionTopY - 32;
+        const metaFieldGap = 15;
+        const metaLabelLineGap = 6;
+        const scoreLabelDown = 16;
+        const nameLabelY = metaBlockTopY;
+        const scoreLabelLift = 2;
+        const scoreLabelY = nameLabelY - metaFieldGap - scoreLabelDown + scoreLabelLift;
+        const nameLineY = nameLabelY - metaLabelLineGap;
+        const nameLineStartX = metaAreaStartX + 34;
+        const metaLabelStartX = nameLineStartX + 2;
+        const totalNameLineEndX = width - margin - 4;
+        const scoreTextGap = 2;
+        const scoreTotalText = ` /${(options?.numQuestions || questions.length)}`;
+        const scoreValueFontSize = sectionMetaSize + 2;
+        const scoreValueText = scoreTotalText;
+        const scoreTextWidth = font.widthOfTextAtSize(scoreValueText, scoreValueFontSize);
+        const alignedScoreTextX = totalNameLineEndX - scoreTextWidth;
+        const scoreValueStartX = alignedScoreTextX;
+        const nameLineEndCandidate = scoreValueStartX - scoreTextGap;
+        const nameLineEndX = Math.min(totalNameLineEndX, Math.max(nameLineStartX, nameLineEndCandidate));
+        const frameColor = rgb(0.22, 0.22, 0.22);
+        const lineColor = rgb(0.78, 0.78, 0.78);
+        const mutedColor = rgb(0.25, 0.25, 0.25);
+        const pageBottom = margin + 4;
+        const pageTopFrame = height - margin + 2;
+        const pageBottomFrame = pageBottom;
+        const columnSeparatorX = margin + columnWidth + columnGap / 2;
 
-        const renderTwoColumnSection = (title, values, isAnswerSheet = false, forceNewPage = false) => {
-            const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
-            let pointer = 0;
-            let pageIndex = 0;
-            if (forceNewPage) {
-                page = pdfDoc.addPage();
+        const examTitle = normalizeTitleSpacing(options.examTitle || '어휘 시험지') || '어휘시험지';
+        const sectionTitle = toCompactSpacing(examTitle.trim());
+        const listValues = questions.map((item) => {
+            const rawText = isAnswerSheet ? item.answer : item.question;
+            const normalizedText = normalizePdfWordText(rawText);
+            if (!isAnswerSheet && item.questionMode === 'KOR') {
+                return extractPrimaryMeaning(normalizedText);
             }
-            while (pointer < values.length) {
-                if (pageIndex > 0) {
-                    page = pdfDoc.addPage();
-                }
-                let y = height - margin;
-                page.drawText(pageIndex === 0 ? title : `${title} (계속)`, {
-                    x: margin,
-                    y,
+            return normalizedText;
+        });
+        const numberTextDotSpacing = ' ';
+
+        const truncateToFit = (text, maxWidth, fontSize) => {
+            const suffix = '…';
+            let value = String(text);
+            if (font.widthOfTextAtSize(value, fontSize) <= maxWidth) return value;
+
+            while (value.length > 0) {
+                value = value.slice(0, -1);
+                if (value.length === 0) return suffix;
+                if (font.widthOfTextAtSize(value + suffix, fontSize) <= maxWidth) return `${value}${suffix}`;
+            }
+            return suffix;
+        };
+
+        const drawRegularText = (targetPage, text, options) => {
+            targetPage.drawText(text, options);
+        };
+
+        const drawStrongText = (targetPage, text, options) => {
+            targetPage.drawText(text, options);
+            targetPage.drawText(text, {
+                ...options,
+                x: (options.x || 0) + 0.45,
+            });
+        };
+
+        const decoratePage = (currentPage) => {
+            currentPage.drawRectangle({
+                x: margin - 6,
+                y: pageBottomFrame,
+                width: contentWidth + 12,
+                height: pageTopFrame - pageBottomFrame,
+                color: rgb(1, 1, 1),
+                borderColor: lineColor,
+                borderWidth: 0.6,
+            });
+
+            currentPage.drawLine({
+                start: { x: columnSeparatorX, y: dividerY - 8 },
+                end: { x: columnSeparatorX, y: listBottomY + 4 },
+                thickness: 0.7,
+                color: lineColor,
+            });
+
+            currentPage.drawLine({
+                start: { x: margin - 6, y: pageBottomFrame },
+                end: { x: width - margin + 6, y: pageBottomFrame },
+                thickness: 0.7,
+                color: lineColor,
+            });
+            currentPage.drawLine({
+                start: { x: margin - 6, y: pageTopFrame },
+                end: { x: width - margin + 6, y: pageTopFrame },
+                thickness: 0.7,
+                color: lineColor,
+            });
+        };
+
+        const drawSectionHeader = (currentPage, isAnswerSheet) => {
+            decoratePage(currentPage, isAnswerSheet);
+
+            const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
+            const renderedTitle = truncateToFit(
+                `${sectionTitle}${isAnswerSheet ? ' - 정답지' : ''}`,
+                titleAreaWidth,
+                headerSize
+            );
+
+            currentPage.drawLine({
+                start: { x: margin, y: dividerY },
+                end: { x: width - margin, y: dividerY },
+                thickness: 1,
+                color: frameColor,
+            });
+
+            drawStrongText(currentPage, renderedTitle, {
+                x: margin,
+                y: sectionTitleY,
+                font,
+                size: headerSize,
+                color: frameColor,
+            });
+
+            if (!isAnswerSheet) {
+                drawStrongText(currentPage, '이름:', {
+                    x: metaLabelStartX,
+                    y: nameLabelY,
                     font,
-                    size: headerSize,
-                    color: rgb(0, 0, 0)
+                    size: sectionMetaSize,
+                    color: mutedColor,
                 });
 
-                const lineStartY = y - headerSize - headerOffset;
-                const countThisPage = Math.min(values.length - pointer, itemsPerPage);
-                for (let i = 0; i < countThisPage; i += 1) {
-                    const row = i % rowsPerColumn;
-                    const col = Math.floor(i / rowsPerColumn);
-                    const itemText = `${pointer + i + 1}. ${values[pointer + i]}`;
-                    page.drawText(itemText, {
-                        x: col === 0 ? leftColumnX : rightColumnX,
-                        y: lineStartY - row * lineHeight,
-                        font,
-                        size: bodyFontSize,
-                        color: rgb(0, 0, 0)
-                    });
-                }
+                currentPage.drawLine({
+                    start: { x: nameLineStartX, y: nameLineY },
+                    end: { x: nameLineEndX, y: nameLineY },
+                    thickness: 0.8,
+                    color: rgb(0, 0, 0),
+                });
 
-                pointer += countThisPage;
-                pageIndex += 1;
+                const scoreLabel = '점수:';
+
+                drawStrongText(currentPage, scoreLabel, {
+                    x: metaLabelStartX,
+                    y: scoreLabelY,
+                    font,
+                    size: sectionMetaSize,
+                    color: mutedColor,
+                });
+
+                drawStrongText(currentPage, scoreValueText, {
+                    x: alignedScoreTextX,
+                    y: scoreLabelY,
+                    font,
+                    size: scoreValueFontSize,
+                    color: mutedColor,
+                });
             }
         };
 
-        renderTwoColumnSection('어휘 시험지 (Vocabulary Test)', questions.map((item) => item.question), false, false);
-        renderTwoColumnSection('정답지 (Answer Key)', questions.map((item) => item.answer), true, true);
+        const renderTwoColumnSection = (values, isAnswerSheet = false, forceNewPage = false) => {
+            let pointer = 0;
+
+            if (forceNewPage) {
+                page = pdfDoc.addPage();
+                pages.push(page);
+            }
+
+            while (pointer < values.length) {
+                if (pointer > 0) {
+                    page = pdfDoc.addPage();
+                    pages.push(page);
+                }
+
+                drawSectionHeader(page, isAnswerSheet);
+
+                const countThisPage = Math.min(values.length - pointer, itemsPerPage);
+                const leftColumnCount = Math.ceil(countThisPage / 2);
+                const rightColumnCount = Math.floor(countThisPage / 2);
+
+                for (let i = 0; i < countThisPage; i += 1) {
+                    const row = Math.floor(i / 2);
+                    const col = i % 2;
+                    const x = col === 1 ? rightColumnX : leftColumnX;
+                    const rowGap = isAnswerSheet ? lineHeight * answerLineHeightScale : lineHeight;
+                    const y = listTopY - row * rowGap;
+                    if (y < rowBottomLimit) break;
+
+                    const itemIndex = pointer + i;
+                    const numberText = `${itemIndex + 1}.`;
+                const itemText = `${numberTextDotSpacing}${String(values[itemIndex])}`;
+                    const itemY = y - rowTextOffset;
+
+                    drawRegularText(page, numberText, {
+                        x: x + 2,
+                        y: itemY,
+                        font,
+                        size: bodyFontSize,
+                        color: mutedColor
+                    });
+                    drawRegularText(page, truncateToFit(itemText, columnWidth - numberColumnWidth, bodyFontSize), {
+                        x: x + numberColumnWidth + numberToTextGap,
+                        y: itemY,
+                        font,
+                        size: bodyFontSize,
+                        color: frameColor,
+                    });
+
+                    const hasNextInColumn = col === 0
+                        ? row < leftColumnCount - 1
+                        : row < rightColumnCount - 1;
+
+                    if (hasNextInColumn && y > rowBottomLimit + rowGap * 0.3) {
+                        const currentLineY = y - rowGap / 2;
+                        if (currentLineY > rowBottomLimit + 2) {
+                            page.drawLine({
+                                start: { x: x, y: currentLineY },
+                                end: { x: x + columnWidth, y: currentLineY },
+                                thickness: 0.3,
+                                color: lineColor,
+                            });
+                        }
+                    }
+
+                }
+                pointer += countThisPage;
+            }
+        };
+
+        renderTwoColumnSection(listValues, isAnswerSheet, false);
+
+        const totalPageCount = pages.length;
+        const pageNumberFontSize = 9;
+        pages.forEach((currentPage, index) => {
+            const pageText = `p. ${index + 1}/${totalPageCount}`;
+            const pageTextWidth = font.widthOfTextAtSize(pageText, pageNumberFontSize);
+            currentPage.drawText(pageText, {
+                x: width - margin - pageTextWidth,
+                y: pageNumberY,
+                font,
+                size: pageNumberFontSize,
+                color: rgb(0, 0, 0),
+            });
+        });
 
         return pdfDoc.save();
     };
 
-    const createDocx = async (questions) => {
+    const createDocx = async (questions, options = {}, isAnswerSheet = false) => {
         await ensureDocxLibrary();
         const docxLib = window.docx;
-        const { Packer, Document, Paragraph } = docxLib || {};
-        if (!Packer || !Document || !Paragraph) {
+        const {
+            Packer,
+            Document,
+            Paragraph,
+            TextRun,
+            Table,
+            TableRow,
+            TableCell,
+            WidthType,
+        } = docxLib || {};
+        if (!Packer || !Document || !Paragraph || !Table || !TableRow || !TableCell || !WidthType) {
             throw new Error('WORD 라이브러리가 준비되지 않아 DOCX 생성이 불가능합니다.');
         }
 
-        const questionParagraphs = questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.question}` }));
-        const answerParagraphs = questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.answer}` }));
+        const examTitle = toCompactSpacing(options.examTitle || '어휘 시험지') || '어휘 시험지';
+        const compactTitle = toCompactSpacing(examTitle);
+        const sectionTitle = compactTitle;
+        const listValues = questions.map((item) => {
+            const rawText = isAnswerSheet ? item.answer : item.question;
+            const normalizedText = normalizeSpacingText(rawText);
+            if (!isAnswerSheet && item.questionMode === 'KOR') {
+                return extractPrimaryMeaning(normalizedText);
+            }
+            return normalizedText;
+        });
+        const exportBaseName = normalizeFileName(options.fileBaseName || options.examTitle || examTitle);
+        const totalCount = Math.max(0, (options?.numQuestions || questions.length) || 0);
+
+        const makeTextRun = (text, size, bold = false) => new TextRun({
+            text,
+            size: size * 2,
+            bold,
+        });
+
+        const makeUnderlinedSpaceRun = (size, length = 48) => new TextRun({
+            text: ' '.repeat(Math.max(0, length)),
+            size: size * 2,
+            underline: { type: 'single' },
+        });
+
+        const docxQuestionFontSize = 11;
+        const docxMetaFontSize = 9;
+        const docxTitleFontSize = 15;
+
+        const tableBorderStyleNone = {
+            top: { style: 'none', size: 0, color: 'auto', space: 0 },
+            left: { style: 'none', size: 0, color: 'auto', space: 0 },
+            bottom: { style: 'none', size: 0, color: 'auto', space: 0 },
+            right: { style: 'none', size: 0, color: 'auto', space: 0 },
+        };
+        const sectionTableWidth = { size: 100, type: WidthType.PERCENTAGE };
+        const headerColumnWidths = [6586, 2944];
+        const headerRowHeight = 557;
+        const questionTableRowHeight = 495;
+        const questionItemsPerColumn = 25;
+        const questionItemsPerPage = questionItemsPerColumn * 2;
+        const headerCellMargins = {
+            top: 80,
+            bottom: 80,
+            left: 120,
+            right: 120,
+        };
+        const headerBottomUnderline = {
+            top: { style: 'single', size: 12, color: '000000', space: 0 },
+            bottom: { style: 'single', size: 12, color: '000000', space: 0 },
+        };
+        const questionTableBorder = {
+            insideHorizontal: { style: 'single', size: 2, color: 'E6E6E6', space: 0 },
+            insideVertical: { style: 'single', size: 2, color: 'E6E6E6', space: 0 },
+            ...tableBorderStyleNone,
+        };
+
+        const makeListRowCell = (text) => {
+            const label = text ? `${text} ` : '';
+            return new TableCell({
+                width: { size: 4918, type: WidthType.DXA },
+                children: [
+                    new Paragraph({
+                        children: [
+                            makeTextRun(label, docxQuestionFontSize),
+                            text ? makeUnderlinedSpaceRun(docxQuestionFontSize, 48) : null,
+                        ].filter(Boolean),
+                        spacing: {
+                            after: 0,
+                            before: 0,
+                            line: 240,
+                            lineRule: 'auto',
+                        },
+                    }),
+                ],
+                verticalAlign: 'center',
+            });
+        };
+
+        const spacerParagraph = () => new Paragraph({
+            children: [makeTextRun(' ', 1)],
+            spacing: { before: 0, after: 120 },
+        });
+
+        const buildHeaderTable = () => {
+            const scoreLabel = '점수:';
+            const scoreSuffix = ` / ${totalCount}`;
+            return new Table({
+                width: sectionTableWidth,
+                columnWidths: headerColumnWidths,
+                indent: { size: 108, type: WidthType.DXA },
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                width: { size: 6663, type: WidthType.DXA },
+                                rowSpan: 2,
+                                children: [new Paragraph({
+                                    children: [makeTextRun(sectionTitle, docxTitleFontSize, false)],
+                                    alignment: 'center',
+                                    spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' },
+                                })],
+                                margins: headerCellMargins,
+                                verticalAlign: 'center',
+                                borders: headerBottomUnderline,
+                            }),
+                            new TableCell({
+                                width: { size: 2976, type: WidthType.DXA },
+                                children: [new Paragraph({
+                                    children: [makeTextRun('이름', docxMetaFontSize, false)],
+                                    alignment: 'left',
+                                    spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' },
+                                })],
+                                margins: headerCellMargins,
+                                verticalAlign: 'center',
+                                borders: {
+                                    top: { style: 'single', size: 12, color: '000000', space: 0 },
+                                },
+                            }),
+                        ],
+                        height: { value: headerRowHeight, rule: 'exact' },
+                    }),
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [new Table({
+                                    width: { size: 100, type: WidthType.PERCENTAGE },
+                                    columnWidths: [1700, 1276],
+                                    rows: [
+                                        new TableRow({
+                                            children: [
+                                                new TableCell({
+                                                    children: [new Paragraph({
+                                                        children: [makeTextRun(scoreLabel, docxMetaFontSize, false)],
+                                                        alignment: 'left',
+                                                        spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' },
+                                                    })],
+                                                    margins: { top: 0, bottom: 0, left: 0, right: 0 },
+                                                    verticalAlign: 'center',
+                                                }),
+                                                new TableCell({
+                                                    children: [new Paragraph({
+                                                        children: [makeTextRun(scoreSuffix, docxMetaFontSize, false)],
+                                                        alignment: 'right',
+                                                        spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' },
+                                                    })],
+                                                    margins: { top: 0, bottom: 0, left: 0, right: 0 },
+                                                    verticalAlign: 'center',
+                                                }),
+                                            ],
+                                        }),
+                                    ],
+                                    borders: tableBorderStyleNone,
+                                })],
+                                margins: headerCellMargins,
+                                verticalAlign: 'center',
+                                borders: headerBottomUnderline,
+                            }),
+                        ],
+                        height: { value: headerRowHeight, rule: 'exact' },
+                    }),
+                ],
+                borders: tableBorderStyleNone,
+            });
+        };
+
+        const buildQuestionTable = () => {
+            const tables = [];
+            const totalItems = listValues.length;
+            const effectiveItems = Math.max(totalItems, questionItemsPerColumn);
+            const totalPages = Math.ceil(effectiveItems / questionItemsPerPage);
+
+            const makeQuestionTable = (startIndex) => {
+                const rows = [];
+                for (let row = 0; row < questionItemsPerColumn; row += 1) {
+                    const leftIndex = startIndex + row;
+                    const rightIndex = startIndex + questionItemsPerColumn + row;
+                    const leftLabel = leftIndex < totalItems ? `${leftIndex + 1}. ${listValues[leftIndex]}` : '';
+                    const rightLabel = rightIndex < totalItems ? `${rightIndex + 1}. ${listValues[rightIndex]}` : '';
+
+                    rows.push(new TableRow({
+                        children: [
+                            makeListRowCell(leftLabel),
+                            makeListRowCell(rightLabel),
+                        ],
+                        height: { value: questionTableRowHeight, rule: 'exact' },
+                    }));
+                }
+
+                return new Table({
+                    width: sectionTableWidth,
+                    columnWidths: [4818, 4820],
+                    rows,
+                    borders: questionTableBorder,
+                });
+            };
+
+            for (let page = 0; page < totalPages; page += 1) {
+                const startIndex = page * questionItemsPerPage;
+                tables.push({
+                    index: page,
+                    table: makeQuestionTable(startIndex),
+                });
+            }
+
+            return tables.map(({ index, table }) => ({
+                pageBreak: index > 0,
+                table,
+            }));
+        };
+
         const doc = new Document({
             sections: [{
+                properties: {
+                    page: {
+                        size: {
+                            width: 11906,
+                            height: 16838,
+                        },
+                        margin: {
+                            top: 567,
+                            right: 1134,
+                            bottom: 567,
+                            left: 1134,
+                            header: 397,
+                            footer: 397,
+                        },
+                    },
+                    grid: { linePitch: 360 },
+                    columns: { space: 720 },
+                },
                 children: [
-                    new Paragraph({ text: '어휘 시험지 (Vocabulary Test)' }),
-                    new Paragraph({ text: '' }),
-                    ...questionParagraphs,
-                    new Paragraph({ text: '' }),
-                    new Paragraph({ text: '정답지 (Answer Key)' }),
-                    new Paragraph({ text: '' }),
-                    ...answerParagraphs,
+                    buildHeaderTable(),
+                    spacerParagraph(),
+                    ...buildQuestionTable().map(({ pageBreak, table }) => [
+                        ...(pageBreak ? [new Paragraph({ children: [new TextRun({ text: '' })], pageBreakBefore: true })] : []),
+                        table,
+                    ]).flat(),
                 ],
             }],
         });
@@ -420,14 +1007,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof Packer.toBlob === 'function') {
             return {
                 blob: await Packer.toBlob(doc),
-                filename: 'vocab-test.docx'
+                filename: isAnswerSheet ? `${exportBaseName}_답.docx` : `${exportBaseName}.docx`
             };
         }
         if (typeof Packer.toBase64String === 'function') {
             const base64 = await Packer.toBase64String(doc);
             return {
                 blob: base64ToBlob(base64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
-                filename: 'vocab-test.docx'
+                filename: isAnswerSheet ? `${exportBaseName}_답.docx` : `${exportBaseName}.docx`
             };
         }
         throw new Error('WORD 내보내기 함수를 찾을 수 없습니다.');
@@ -435,9 +1022,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
     const setupEventListeners = () => {
+        state.ui.sectionLinks.forEach((link) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.currentTarget.dataset.section;
+                if (!section) return;
+                toggleSection(section);
+            });
+        });
+
         state.ui.bookLibrary.addEventListener('click', (e) => {
             const bookItem = e.target.closest('.book-item');
-            if (bookItem) selectBook(bookItem.dataset.book);
+            if (!bookItem || !state.ui.bookLibrary.contains(bookItem)) return;
+            const rawBookKey = bookItem.dataset.book;
+            if (!rawBookKey) return;
+            selectBook(rawBookKey);
         });
         
         state.ui.subChapterSelectionCard.addEventListener('click', (e) => {
@@ -461,16 +1060,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.ui.numQuestions.addEventListener('change', () => {
             const value = parseInt(state.ui.numQuestions.value, 10);
+            const max = parseInt(state.ui.numQuestions.max, 10);
             if (!Number.isInteger(value) || value < 1) {
                 state.ui.numQuestions.value = '1';
+            } else if (value > max) {
+                state.ui.numQuestions.value = String(max);
             }
         });
     };
 
     // --- Initialization ---
     const init = () => {
-        updatePdfOptionState();
         loadData();
+        syncSectionNavFromCards();
         setupEventListeners();
     };
 
