@@ -2,9 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     let PDFDocument = null;
     let rgb = null;
+    let StandardFonts = null;
     const hasFontkit = typeof window.fontkit !== 'undefined';
     if (typeof window.PDFLib !== 'undefined') {
-        ({ PDFDocument, rgb } = window.PDFLib);
+        ({ PDFDocument, rgb, StandardFonts } = window.PDFLib);
         if (!hasFontkit) {
             console.warn('fontkit 라이브러리를 찾을 수 없어 PDF 한글 폰트 등록을 건너뜁니다.');
         }
@@ -295,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfDoc.registerFontkit(window.fontkit);
         let page = pdfDoc.addPage();
         let font;
+        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
         try {
             font = await pdfDoc.embedFont(state.koreanFont);
         } catch (fontError) {
@@ -316,16 +318,31 @@ document.addEventListener('DOMContentLoaded', () => {
             page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
             y -= size + (isAnswerSheet ? 2 : 8);
         };
+        const drawIndexedText = (index, text, size, isAnswerSheet = false) => {
+            if (y < margin) {
+                page = pdfDoc.addPage();
+                y = height - margin;
+                if (isAnswerSheet) {
+                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
+                    y -= 30;
+                }
+            }
+            const prefix = `${index + 1}. `;
+            page.drawText(prefix, { x: margin, y, font: latinFont, size, color: rgb(0, 0, 0) });
+            const prefixWidth = latinFont.widthOfTextAtSize(prefix, size);
+            page.drawText(String(text), { x: margin + prefixWidth, y, font, size, color: rgb(0, 0, 0) });
+            y -= size + (isAnswerSheet ? 2 : 8);
+        };
         
         drawText('어휘 시험지 (Vocabulary Test)', 24);
         y -= 20;
-        questions.forEach((item, index) => drawText(`${index + 1}. ${item.question}`, 12));
+        questions.forEach((item, index) => drawIndexedText(index, item.question, 12));
 
         page = pdfDoc.addPage();
         y = height - margin;
         drawText('정답지 (Answer Key)', 18);
         y -= 15;
-        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 10, true));
+        questions.forEach((item, index) => drawIndexedText(index, item.answer, 10, true));
 
         return pdfDoc.save();
     };
