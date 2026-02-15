@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    PDFDocument.registerFontkit(fontkit);
 
     // --- State ---
     const state = {
