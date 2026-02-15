@@ -389,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
+        state.ui.subChapterSelectionCard.classList.add('compact');
         setSectionOpen('toc', true);
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
