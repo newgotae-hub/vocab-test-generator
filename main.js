@@ -404,11 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!toc) return '';
             const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
             return `
-                <div class="toc-checklist-item">
+                <label class="toc-checklist-item">
                     <input type="checkbox" data-toc="${toc}">
                     <span class="label">${toc}</span>
                     <span class="badge">${wordCount}</span>
-                </div>
+                </label>
             `;
         }).join('');
     };
@@ -1128,25 +1128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         state.ui.tocChecklist.addEventListener('change', updateUiState);
-        state.ui.tocChecklist.addEventListener('click', (e) => {
-            const item = e.target.closest('.toc-checklist-item');
-            if (!item || !state.ui.tocChecklist.contains(item)) return;
-
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            if (!checkbox) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (e.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-                updateUiState();
-                return;
-            }
-
-            checkbox.checked = !checkbox.checked;
-            updateUiState();
-        });
         if (state.ui.selectAllToc) {
             state.ui.selectAllToc.addEventListener('click', () => modifyAllTocs(true));
         }
