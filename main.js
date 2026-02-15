@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(window.fontkit);
-        let page = pdfDoc.addPage();
+        let page;
         let font;
         try {
             font = await pdfDoc.embedFont(state.koreanFont);
@@ -333,30 +333,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const { width, height } = page.getSize();
         const margin = 50;
-        let y = height - margin;
+        const questionHeaderSize = 24;
+        const answerHeaderSize = 18;
+        const bodyFontSize = 12;
+        const lineHeight = 14;
+        const rowsPerColumn = 50;
+        const itemsPerPage = rowsPerColumn * 2;
+        const columnGap = 30;
+        const headerOffset = 14;
+        const contentWidth = width - margin * 2;
+        const columnWidth = (contentWidth - columnGap) / 2;
+        const leftColumnX = margin;
+        const rightColumnX = margin + columnWidth + columnGap;
 
-        const drawText = (text, size, isAnswerSheet = false) => {
-            if (y < margin) {
+        const renderTwoColumnSection = (title, values, isAnswerSheet = false) => {
+            const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
+            let pointer = 0;
+            let pageIndex = 0;
+            while (pointer < values.length) {
                 page = pdfDoc.addPage();
-                y = height - margin;
-                if(isAnswerSheet) {
-                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
-                    y -= 30;
-                }
-            }
-            page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
-            y -= size + (isAnswerSheet ? 2 : 8);
-        };
-        
-        drawText('어휘 시험지 (Vocabulary Test)', 24);
-        y -= 20;
-        questions.forEach((item, index) => drawText(`${index + 1}. ${item.question}`, 12));
+                let y = height - margin;
+                page.drawText(pageIndex === 0 ? title : `${title} (계속)`, {
+                    x: margin,
+                    y,
+                    font,
+                    size: headerSize,
+                    color: rgb(0, 0, 0)
+                });
 
-        page = pdfDoc.addPage();
-        y = height - margin;
-        drawText('정답지 (Answer Key)', 18);
-        y -= 15;
-        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 12, true));
+                const lineStartY = y - headerSize - headerOffset;
+                const countThisPage = Math.min(values.length - pointer, itemsPerPage);
+                for (let i = 0; i < countThisPage; i += 1) {
+                    const row = i % rowsPerColumn;
+                    const col = Math.floor(i / rowsPerColumn);
+                    const itemText = `${pointer + i + 1}. ${values[pointer + i]}`;
+                    page.drawText(itemText, {
+                        x: col === 0 ? leftColumnX : rightColumnX,
+                        y: lineStartY - row * lineHeight,
+                        font,
+                        size: bodyFontSize,
+                        color: rgb(0, 0, 0)
+                    });
+                }
+
+                pointer += countThisPage;
+                pageIndex += 1;
+            }
+        };
+
+        renderTwoColumnSection('어휘 시험지 (Vocabulary Test)', questions.map((item) => item.question), false);
+        renderTwoColumnSection('정답지 (Answer Key)', questions.map((item) => item.answer), true);
 
         return pdfDoc.save();
     };
