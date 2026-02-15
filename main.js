@@ -366,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
         setSectionOpen('toc', true);
-        state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
     };
 
