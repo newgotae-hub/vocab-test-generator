@@ -17,3 +17,18 @@ themeToggle.addEventListener('click', () => {
         localStorage.setItem('theme', 'dark-mode');
     }
 });
+
+// Guestbook feature
+const messageInput = document.getElementById('message-input');
+const submitMessage = document.getElementById('submit-message');
+const messageList = document.getElementById('message-list');
+
+submitMessage.addEventListener('click', () => {
+    const message = messageInput.value;
+    if (message) {
+        const listItem = document.createElement('li');
+        listItem.textContent = message;
+        messageList.appendChild(listItem);
+        messageInput.value = '';
+    }
+});
