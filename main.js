@@ -3,12 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let PDFDocument = null;
     let rgb = null;
     let StandardFonts = null;
-    const hasFontkit = typeof window.fontkit !== 'undefined';
     if (typeof window.PDFLib !== 'undefined') {
         ({ PDFDocument, rgb, StandardFonts } = window.PDFLib);
-        if (!hasFontkit) {
-            console.warn('fontkit 라이브러리를 찾을 수 없어 PDF 한글 폰트 등록을 건너뜁니다.');
-        }
     } else {
         console.warn('PDFLib 라이브러리를 찾을 수 없어 PDF 기능을 비활성화합니다.');
     }
@@ -17,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         allWords: [],
         wordsByToc: {},
-        koreanFont: null,
+        // koreanFont state is no longer needed
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
@@ -50,14 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updatePdfOptionState = () => {
         const pdfOption = document.querySelector('input[name="output-format"][value="PDF"]');
-        const wordOption = document.querySelector('input[name="output-format"][value="WORD"]');
-        if (!pdfOption || !wordOption) return;
-
-        const pdfAvailable = Boolean(PDFDocument && hasFontkit && state.koreanFont);
-        pdfOption.disabled = !pdfAvailable;
-        if (!pdfAvailable && pdfOption.checked) {
-            wordOption.checked = true;
-        }
+        // PDF can always be generated with the base font.
+        if (pdfOption) pdfOption.disabled = !PDFDocument;
     };
 
     // --- Utility Functions ---
@@ -67,29 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
             [array[i], array[j]] = [array[j], array[i]];
         }
         return array;
-    };
-
-    const isSupportedFontBuffer = (buffer) => {
-        if (!buffer || buffer.byteLength < 4) return false;
-        const bytes = new Uint8Array(buffer);
-        const b0 = bytes[0];
-        const b1 = bytes[1];
-        const b2 = bytes[2];
-        const b3 = bytes[3];
-        // TrueType (00 01 00 00), OpenType (OTTO), TrueType Collection (ttcf)
-        const isTtf = b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00;
-        const isOtf = b0 === 0x4f && b1 === 0x54 && b2 === 0x54 && b3 === 0x4f;
-        const isTtc = b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66;
-        return isTtf || isOtf || isTtc;
-    };
-    const isLikelyHtmlBuffer = (buffer) => {
-        if (!buffer || buffer.byteLength === 0) return false;
-        const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 64));
-        let i = 0;
-        while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) {
-            i += 1;
-        }
-        return i < bytes.length && bytes[i] === 0x3c; // "<"
     };
 
     const downloadBlob = (blob, filename) => {
@@ -123,24 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             });
-            if (PDFDocument) {
-                try {
-                    const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
-                    if (!fontResponse.ok) throw new Error('폰트 파일 없음');
-                    const fontContentType = (fontResponse.headers.get('content-type') || '').toLowerCase();
-                    const fontBytes = await fontResponse.arrayBuffer();
-                    if (fontContentType.includes('text/html') || isLikelyHtmlBuffer(fontBytes)) {
-                        throw new Error('폰트 파일 경로가 잘못되었거나 배포에 포함되지 않았습니다.');
-                    }
-                    if (!isSupportedFontBuffer(fontBytes)) {
-                        throw new Error('지원되지 않는 폰트 포맷');
-                    }
-                    state.koreanFont = fontBytes;
-                } catch (fontError) {
-                    state.koreanFont = null;
-                    console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
-                }
-            }
+            // Removed all font loading logic.
             updatePdfOptionState();
         } catch (error) {
             console.error(error);
@@ -157,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.toggle('active', item.dataset.book === bookName);
         });
 
-        // Hide all right-column cards initially
         state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.add('hidden');
         state.ui.testConfigCard.classList.add('hidden');
@@ -165,9 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookName === 'etymology') {
             state.ui.subChapterSelectionCard.classList.remove('hidden');
         } else {
-            // For 'basic' and 'advanced', do nothing as per user request.
             alert('해당 책의 단어 DB는 현재 준비 중입니다.');
-            // Deselect the book visually
             state.selectedBook = null;
             state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
                 item.classList.remove('active');
@@ -254,8 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
             shouldShuffle: state.ui.shuffleQuestions.checked
         };
 
-        if (settings.outputFormat === 'PDF' && !(PDFDocument && hasFontkit && state.koreanFont)) {
-            alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
+        if (settings.outputFormat === 'PDF' && !PDFDocument) {
+            alert('PDF 생성을 위한 라이브러리를 불러오지 못했습니다.');
             return;
         }
         if (settings.outputFormat === 'WORD' && typeof window.docx === 'undefined') {
@@ -293,56 +240,39 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
-        pdfDoc.registerFontkit(window.fontkit);
         let page = pdfDoc.addPage();
-        let font;
-        const latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        try {
-            font = await pdfDoc.embedFont(state.koreanFont);
-        } catch (fontError) {
-            throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
-        }
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
         const { width, height } = page.getSize();
         const margin = 50;
         let y = height - margin;
 
         const drawText = (text, size, isAnswerSheet = false) => {
-            if (y < margin) {
-                page = pdfDoc.addPage();
-                y = height - margin;
-                if(isAnswerSheet) {
-                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
-                    y -= 30;
-                }
-            }
-            page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
-            y -= size + (isAnswerSheet ? 2 : 8);
-        };
-        const drawIndexedText = (index, text, size, isAnswerSheet = false) => {
-            if (y < margin) {
+            if (y < margin - size) { // Check if there is enough space for the next line
                 page = pdfDoc.addPage();
                 y = height - margin;
                 if (isAnswerSheet) {
-                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
+                    page.drawText('Answer Key (Continued)', { x: margin, y, font, size: 14 });
                     y -= 30;
                 }
             }
-            const prefix = `${index + 1}. `;
-            page.drawText(prefix, { x: margin, y, font: latinFont, size, color: rgb(0, 0, 0) });
-            const prefixWidth = latinFont.widthOfTextAtSize(prefix, size);
-            page.drawText(String(text), { x: margin + prefixWidth, y, font, size, color: rgb(0, 0, 0) });
-            y -= size + (isAnswerSheet ? 2 : 8);
+            page.drawText(String(text), { x: margin, y, font, size, color: rgb(0, 0, 0) });
+            y -= size + (isAnswerSheet ? 5 : 10); // Adjust line spacing
         };
         
-        drawText('어휘 시험지 (Vocabulary Test)', 24);
+        drawText('Vocabulary Test', 24);
         y -= 20;
-        questions.forEach((item, index) => drawIndexedText(index, item.question, 12));
+        questions.forEach((item, index) => {
+            drawText(`${index + 1}. ${item.question}`, 12);
+        });
 
         page = pdfDoc.addPage();
         y = height - margin;
-        drawText('정답지 (Answer Key)', 18);
+        drawText('Answer Key', 18);
         y -= 15;
-        questions.forEach((item, index) => drawIndexedText(index, item.answer, 10, true));
+        questions.forEach((item, index) => {
+            drawText(`${index + 1}. ${item.answer}`, 10, true);
+        });
 
         return pdfDoc.save();
     };
