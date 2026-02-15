@@ -68,6 +68,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return array;
     };
 
+    const isSupportedFontBuffer = (buffer) => {
+        if (!buffer || buffer.byteLength < 4) return false;
+        const bytes = new Uint8Array(buffer);
+        const b0 = bytes[0];
+        const b1 = bytes[1];
+        const b2 = bytes[2];
+        const b3 = bytes[3];
+        // TrueType (00 01 00 00), OpenType (OTTO), TrueType Collection (ttcf)
+        const isTtf = b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00;
+        const isOtf = b0 === 0x4f && b1 === 0x54 && b2 === 0x54 && b3 === 0x4f;
+        const isTtc = b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66;
+        return isTtf || isOtf || isTtc;
+    };
+
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -103,8 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
                     if (!fontResponse.ok) throw new Error('폰트 파일 없음');
-                    state.koreanFont = await fontResponse.arrayBuffer();
+                    const fontBytes = await fontResponse.arrayBuffer();
+                    if (!isSupportedFontBuffer(fontBytes)) {
+                        throw new Error('지원되지 않는 폰트 포맷');
+                    }
+                    state.koreanFont = fontBytes;
                 } catch (fontError) {
+                    state.koreanFont = null;
                     console.warn('한글 폰트 로드 실패:', fontError);
                 }
             }
@@ -147,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedTocs.clear();
         
         renderTocChecklist(chapterId);
-        modifyAllTocs(true);
+        modifyAllTocs(false);
         
         state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
@@ -262,7 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(window.fontkit);
         let page = pdfDoc.addPage();
-        const font = await pdfDoc.embedFont(state.koreanFont);
+        let font;
+        try {
+            font = await pdfDoc.embedFont(state.koreanFont);
+        } catch (fontError) {
+            throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
+        }
         const { width, height } = page.getSize();
         const margin = 50;
         let y = height - margin;
