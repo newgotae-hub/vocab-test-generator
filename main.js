@@ -79,21 +79,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Book Selection
     const selectBook = (chapterId) => {
+        console.log(`[DEBUG] selectBook called with chapterId: ${chapterId}`);
         state.selectedChapter = chapterId;
         state.selectedWords = state.allWords.filter(word => word.chapter === chapterId);
 
         // Update UI
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.chapter === chapterId);
+            const isActive = item.dataset.chapter === chapterId;
+            item.classList.toggle('active', isActive);
+            console.log(`[DEBUG] Book item ${item.dataset.chapter} active status: ${isActive}`);
         });
 
         if (state.selectedWords.length > 0) {
             state.ui.generateBtn.disabled = false;
             const bookTitle = state.ui.bookLibrary.querySelector(`[data-chapter="${chapterId}"] h3`).textContent;
             showHint(`'${bookTitle}'의 ${state.selectedWords.length}개 단어로 시험지를 생성할 수 있습니다.`);
+            console.log(`[DEBUG] Generate button enabled. Hint: ${state.ui.generateHint.textContent}`);
         } else {
             state.ui.generateBtn.disabled = true;
             showHint(`선택된 책에 해당하는 단어가 없습니다.`);
+            console.log(`[DEBUG] Generate button disabled. Hint: ${state.ui.generateHint.textContent}`);
         }
     };
 
