@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.remove();
         URL.revokeObjectURL(url);
     };
+    const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const showToast = (message, type = 'info', duration = 2200) => {
         const container = document.getElementById('toast-container');
         if (!container) {
@@ -356,8 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const tocsInChapter = [...new Set(wordsInChapter.map(word => word.toc))];
-        state.ui.tocChecklist.innerHTML = tocsInChapter.sort().map(toc => {
+        const tocsInChapter = [...new Set(wordsInChapter.map(word => word.toc).filter(Boolean))];
+        state.ui.tocChecklist.innerHTML = tocsInChapter.map(toc => {
             if (!toc) return '';
             const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
             return `
@@ -436,11 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const questionPdfBytes = await createPdf(questions, settings, false);
                 const answerPdfBytes = await createPdf(questions, settings, true);
                 downloadBlob(new Blob([questionPdfBytes], { type: 'application/pdf' }), `${baseFileName}.pdf`);
+                await sleep(700);
                 downloadBlob(new Blob([answerPdfBytes], { type: 'application/pdf' }), `${baseFileName}_답.pdf`);
             } else {
                 const questionDocx = await createDocx(questions, settings, false);
                 const answerDocx = await createDocx(questions, settings, true);
                 downloadBlob(questionDocx.blob, `${baseFileName}.docx`);
+                await sleep(700);
                 downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
             }
         } catch(e) {
