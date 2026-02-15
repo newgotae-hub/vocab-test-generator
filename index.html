@@ -46,26 +46,37 @@
             </div>
 
             <div class="right-column">
+                <!-- TOC Selection Card -->
+                <div id="toc-selection-card" class="card hidden">
+                    <h2>목차 선택</h2>
+                    <p class="subtitle">시험 볼 범위를 목차에서 선택하세요.</p>
+                    <div id="toc-checklist" class="toc-checklist">
+                        <!-- TOC items will be injected here by main.js -->
+                    </div>
+                     <div class="toc-actions">
+                        <button id="select-all-toc" class="button-link">전체 선택</button>
+                        <button id="deselect-all-toc" class="button-link">전체 해제</button>
+                    </div>
+                    <p id="toc-summary" class="summary-text"></p>
+                </div>
+
                 <!-- Test Configuration Card -->
-                <div class="card">
-                    <h2>Test Configuration</h2>
+                <div id="test-config-card" class="card hidden">
+                    <h2>시험지 설정</h2>
                     <p class="subtitle">시험지 설정을 커스터마이즈 하세요.</p>
 
                     <!-- Translation Direction -->
                     <div class="config-group">
                         <h3>시험 유형</h3>
                         <div class="test-type-options">
-                            <div class="test-type-option" data-type="KOR">
+                            <div class="test-type-option active" data-type="KOR">
                                 <div class="label">한글 의미 쓰기</div>
-                                <div class="sublabel">문제: 영단어 / 정답: 한글 뜻</div>
                             </div>
                             <div class="test-type-option" data-type="ENG">
                                 <div class="label">영어 단어 쓰기</div>
-                                <div class="sublabel">문제: 한글 뜻 / 정답: 영단어</div>
                             </div>
                             <div class="test-type-option" data-type="MIXED">
-                                <div class="label">🔀</div>
-                                <div class="sublabel">혼합</div>
+                                <div class="label">🔀 혼합</div>
                             </div>
                         </div>
                     </div>
@@ -96,7 +107,6 @@
                     <button class="button-primary" id="generate-test-papers" disabled>
                         ⚡ 시험지 생성
                     </button>
-                    <p id="generate-hint">먼저 라이브러리에서 책을 선택해주세요.</p>
                 </div>
             </div>
         </main>

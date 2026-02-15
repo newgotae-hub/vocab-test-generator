@@ -5,110 +5,120 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     const state = {
         allWords: [],
-        selectedChapter: null,
-        selectedWords: [],
+        wordsByToc: {},
         koreanFont: null,
+        selectedChapter: null,
+        selectedTocs: new Set(),
+        get selectedWords() {
+            let words = [];
+            this.selectedTocs.forEach(toc => {
+                words.push(...(this.wordsByToc[toc] || []));
+            });
+            return words;
+        },
         ui: {
             bookLibrary: document.getElementById('book-library'),
+            tocSelectionCard: document.getElementById('toc-selection-card'),
+            testConfigCard: document.getElementById('test-config-card'),
+            tocChecklist: document.getElementById('toc-checklist'),
+            selectAllToc: document.getElementById('select-all-toc'),
+            deselectAllToc: document.getElementById('deselect-all-toc'),
+            tocSummary: document.getElementById('toc-summary'),
             testTypeOptions: document.querySelector('.test-type-options'),
             numQuestions: document.getElementById('num-questions'),
             shuffleQuestions: document.getElementById('shuffle-questions'),
             generateBtn: document.getElementById('generate-test-papers'),
-            generateHint: document.getElementById('generate-hint'),
         }
     };
 
-    // --- Utility Functions ---
-    const showHint = (text) => {
-        state.ui.generateHint.textContent = text;
-    };
+    // --- Main Functions ---
 
-    const downloadBlob = (blob, filename) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-    
-    const shuffleArray = (array) => {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    };
-
-
-    // --- Core Logic ---
-
-    // 1. Data Loading
-    const loadPrerequisites = async () => {
-        showHint('단어 데이터를 불러오는 중...');
+    const loadData = async () => {
         try {
-            // Load data
             const response = await fetch('data/root.csv');
-            if (!response.ok) throw new Error(`CSV 파일을 불러오는 데 실패했습니다.`);
+            if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
             const csvText = await response.text();
             Papa.parse(csvText, {
                 header: true,
                 skipEmptyLines: true,
                 complete: (results) => {
                     state.allWords = results.data;
-                    showHint('라이브러리에서 시험지를 만들 책을 선택해주세요.');
+                    // Group words by TOC for easier access
+                    state.wordsByToc = {};
+                    state.allWords.forEach(word => {
+                        if (!state.wordsByToc[word.toc]) state.wordsByToc[word.toc] = [];
+                        state.wordsByToc[word.toc].push(word);
+                    });
                 }
             });
-
-            // Load font
-            try {
-                const fontBytes = await fetch('assets/fonts/NotoSansKR-Regular.ttf').then(res => res.arrayBuffer());
-                state.koreanFont = fontBytes;
-            } catch (e) {
-                console.warn('한글 폰트를 찾을 수 없습니다. PDF 생성 시 한글이 깨질 수 있습니다.');
-            }
-
+            // Font can be loaded in parallel
+            fetch('assets/fonts/NotoSansKR-Regular.ttf')
+                .then(res => res.arrayBuffer())
+                .then(fontBytes => { state.koreanFont = fontBytes; });
         } catch (error) {
-            showHint(error.message);
             console.error(error);
+            alert(error.message);
         }
     };
 
-    // 2. Book Selection
     const selectBook = (chapterId) => {
-        console.log(`[DEBUG] selectBook called with chapterId: ${chapterId}`);
         state.selectedChapter = chapterId;
-        state.selectedWords = state.allWords.filter(word => word.chapter === chapterId);
+        state.selectedTocs.clear();
 
-        // Update UI
+        // Update active book UI
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-            const isActive = item.dataset.chapter === chapterId;
-            item.classList.toggle('active', isActive);
-            console.log(`[DEBUG] Book item ${item.dataset.chapter} active status: ${isActive}`);
+            item.classList.toggle('active', item.dataset.chapter === chapterId);
         });
 
-        if (state.selectedWords.length > 0) {
-            state.ui.generateBtn.disabled = false;
-            const bookTitle = state.ui.bookLibrary.querySelector(`[data-chapter="${chapterId}"] h3`).textContent;
-            showHint(`'${bookTitle}'의 ${state.selectedWords.length}개 단어로 시험지를 생성할 수 있습니다.`);
-            console.log(`[DEBUG] Generate button enabled. Hint: ${state.ui.generateHint.textContent}`);
-        } else {
-            state.ui.generateBtn.disabled = true;
-            showHint(`선택된 책에 해당하는 단어가 없습니다.`);
-            console.log(`[DEBUG] Generate button disabled. Hint: ${state.ui.generateHint.textContent}`);
-        }
+        renderTocChecklist(chapterId);
+        updateUiState();
     };
 
-    // 3. Test Generation
-    const generateTest = async () => {
-        if (state.selectedWords.length === 0) {
-            alert('먼저 책을 선택해주세요.');
-            return;
-        }
+    const renderTocChecklist = (chapterId) => {
+        const tocsInChapter = [...new Set(
+            state.allWords
+                .filter(word => word.chapter === chapterId)
+                .map(word => word.toc)
+        )];
+        
+        state.ui.tocChecklist.innerHTML = tocsInChapter.sort().map(toc => {
+            const wordCount = state.wordsByToc[toc]?.length || 0;
+            return `
+                <label class="toc-checklist-item">
+                    <input type="checkbox" data-toc="${toc}">
+                    <span class="label">${toc}</span>
+                    <span class="badge">${wordCount}</span>
+                </label>
+            `;
+        }).join('');
+    };
+    
+    const updateUiState = () => {
+        // 1. Update selected TOCs from DOM
+        const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
+        state.selectedTocs = new Set(checkedTocs);
 
-        // Gather settings
+        // 2. Show TOC card if a chapter is selected
+        state.ui.tocSelectionCard.classList.toggle('hidden', !state.selectedChapter);
+        
+        // 3. Update summary text
+        const totalWords = state.selectedWords.length;
+        state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
+
+        // 4. Show/hide and enable/disable config card and button
+        const hasSelection = totalWords > 0;
+        state.ui.testConfigCard.classList.toggle('hidden', !hasSelection);
+        state.ui.generateBtn.disabled = !hasSelection;
+    };
+    
+    const modifyAllTocs = (shouldSelect) => {
+        state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = shouldSelect;
+        });
+        updateUiState();
+    };
+
+    const generateTest = async () => {
         const settings = {
             testType: state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR',
             numQuestions: parseInt(state.ui.numQuestions.value, 10),
@@ -116,77 +126,54 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         let sourceWords = [...state.selectedWords];
-        if (settings.shouldShuffle) {
-            shuffleArray(sourceWords);
-        }
+        if (settings.shouldShuffle) shuffleArray(sourceWords);
         const testItems = sourceWords.slice(0, settings.numQuestions);
 
         const questions = testItems.map((word, i) => {
             let type = settings.testType;
-            if (type === 'MIXED') {
-                type = i % 2 === 0 ? 'KOR' : 'ENG';
-            }
+            if (type === 'MIXED') type = i % 2 === 0 ? 'KOR' : 'ENG';
             return {
                 question: type === 'KOR' ? word.word : word.meaning,
                 answer: type === 'KOR' ? word.meaning : word.word,
             };
         });
 
-        // Generate PDF
-        state.ui.generateBtn.disabled = true;
-        showHint('PDF 시험지를 생성하는 중...');
+        alert('시험지를 생성합니다...');
         try {
             const pdfBytes = await createPdf(questions);
             downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), 'vocab-test.pdf');
-            showHint('시험지 생성이 완료되었습니다!');
         } catch(e) {
-            showHint('시험지 생성 중 오류가 발생했습니다.');
+            alert('시험지 생성 중 오류가 발생했습니다.');
             console.error(e);
-        } finally {
-            state.ui.generateBtn.disabled = false;
         }
     };
-
+    
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage();
-        
-        const font = await pdfDoc.embedFont(state.koreanFont ? state.koreanFont : StandardFonts.Helvetica);
-
+        const font = await pdfDoc.embedFont(state.koreanFont || StandardFonts.Helvetica);
         const { width, height } = page.getSize();
         const margin = 50;
         let y = height - margin;
 
-        const drawText = (text, size, isBold = false) => {
+        const drawText = (text, size) => {
             if (y < margin) {
                 page = pdfDoc.addPage();
                 y = height - margin;
             }
-            page.drawText(text, {
-                x: margin,
-                y: y,
-                font: font,
-                size: size,
-                color: rgb(0, 0, 0),
-            });
-            y -= size + 5; // Line height
+            page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
+            y -= size + 8;
         };
         
         drawText('어휘 시험지 (Vocabulary Test)', 24);
         y -= 20;
+        questions.forEach((item, index) => drawText(`${index + 1}. ${item.question}`, 12));
 
-        questions.forEach((item, index) => {
-            drawText(`${index + 1}. ${item.question}`, 12);
-        });
-
-        // Add answer sheet on a new page
         page = pdfDoc.addPage();
         y = height - margin;
         drawText('정답지 (Answer Key)', 18);
         y -= 15;
-        questions.forEach((item, index) => {
-            drawText(`${index + 1}. ${item.answer}`, 10);
-        });
+        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 10));
 
         return pdfDoc.save();
     };
@@ -196,10 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const setupEventListeners = () => {
         state.ui.bookLibrary.addEventListener('click', (e) => {
             const bookItem = e.target.closest('.book-item');
-            if (bookItem) {
-                selectBook(bookItem.dataset.chapter);
-            }
+            if (bookItem) selectBook(bookItem.dataset.chapter);
         });
+
+        state.ui.tocChecklist.addEventListener('change', updateUiState);
+        state.ui.selectAllToc.addEventListener('click', () => modifyAllTocs(true));
+        state.ui.deselectAllToc.addEventListener('click', () => modifyAllTocs(false));
 
         state.ui.testTypeOptions.addEventListener('click', (e) => {
             const typeOption = e.target.closest('.test-type-option');
@@ -214,10 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     const init = () => {
-        loadPrerequisites();
+        loadData();
         setupEventListeners();
-        // Set a default active test type
-        state.ui.testTypeOptions.querySelector('.test-type-option[data-type="KOR"]').classList.add('active');
     };
 
     init();

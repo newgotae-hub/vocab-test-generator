@@ -138,6 +138,75 @@ main {
     box-shadow: 0 0 0 3px var(--primary-color-light);
 }
 
+/* TOC Checklist */
+.hidden {
+    display: none !important;
+}
+
+.toc-checklist {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.toc-checklist-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.toc-checklist-item:hover {
+    background-color: #f3f4f6;
+}
+
+.toc-checklist-item input {
+    margin-right: 0.75rem;
+}
+
+.toc-checklist-item .label {
+    flex-grow: 1;
+}
+
+.toc-checklist-item .badge {
+    background-color: #e5e7eb;
+    color: var(--text-secondary-color);
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.toc-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.button-link {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+}
+.button-link:hover {
+    text-decoration: underline;
+}
+
+.summary-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary-color);
+    background-color: var(--background-color);
+    padding: 0.75rem;
+    border-radius: 8px;
+}
+
 /* Test Configuration */
 .config-group {
     margin-bottom: 1.5rem;
