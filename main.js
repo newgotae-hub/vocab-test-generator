@@ -1117,6 +1117,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         state.ui.tocChecklist.addEventListener('change', updateUiState);
+        state.ui.tocChecklist.addEventListener('click', (e) => {
+            const item = e.target.closest('.toc-checklist-item');
+            if (!item || !state.ui.tocChecklist.contains(item)) return;
+
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (!checkbox) return;
+            if (e.target === checkbox) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            checkbox.checked = !checkbox.checked;
+            updateUiState();
+        });
         if (state.ui.selectAllToc) {
             state.ui.selectAllToc.addEventListener('click', () => modifyAllTocs(true));
         }
