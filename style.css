@@ -236,7 +236,7 @@ main {
 }
 
 .toc-checklist {
-    max-height: 440px;
+    max-height: 430px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     overflow: auto;
@@ -556,6 +556,17 @@ input:checked + .slider::before {
 }
 
 @media (max-width: 920px) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+
     main {
         grid-template-columns: 1fr;
     }
