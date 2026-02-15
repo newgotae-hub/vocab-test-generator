@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.ui.subChapterSelectionCard.classList.remove('hidden');
             }
             setSectionOpen('toc', true);
+            setSectionOpen('settings', true);
             return;
         }
 
