@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(window.fontkit);
-        let page;
+        let page = pdfDoc.addPage();
         let font;
         try {
             font = await pdfDoc.embedFont(state.koreanFont);
@@ -351,7 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let pointer = 0;
             let pageIndex = 0;
             while (pointer < values.length) {
-                page = pdfDoc.addPage();
+                if (pageIndex > 0) {
+                    page = pdfDoc.addPage();
+                }
                 let y = height - margin;
                 page.drawText(pageIndex === 0 ? title : `${title} (계속)`, {
                     x: margin,
