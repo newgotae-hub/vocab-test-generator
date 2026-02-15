@@ -389,6 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setSectionOpen('settings', false);
         }
         state.ui.subChapterSelectionCard?.classList.remove('compact');
+        const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
+        if (subChapterSubtitle) {
+            subChapterSubtitle.textContent = "'어원편'의 학습할 챕터를 선택하세요.";
+        }
         
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
@@ -401,12 +405,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const getSubChapterDisplayName = (chapterId) => {
+        if (!state.ui.subChapterSelectionCard) return chapterId || '';
+        const selected = state.ui.subChapterSelectionCard
+            .querySelector(`.sub-chapter-item[data-chapter="${chapterId}"]`);
+        if (!selected) return chapterId || '';
+
+        const label = String(selected.textContent || '').trim();
+        const match = label.match(/Chapter\s+\d+\.\s*(.+)$/i);
+        return (match?.[1] || label).trim();
+    };
+
     const selectSubChapter = (chapterId) => {
         state.selectedChapter = chapterId;
         state.selectedTocs.clear();
         state.ui.subChapterSelectionCard?.querySelectorAll('.sub-chapter-item').forEach(item => {
             item.classList.toggle('selected-item', item.dataset.chapter === chapterId);
         });
+        const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
+        if (subChapterSubtitle) {
+            const chapterName = getSubChapterDisplayName(chapterId);
+            subChapterSubtitle.textContent = chapterName ? `챕터 선택: ${chapterName}` : '챕터 선택';
+        }
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
