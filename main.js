@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     const bookLibraryCard = state.ui.bookLibrary.closest('.card');
+    const leftColumn = document.querySelector('.left-column');
+    const rightColumn = document.querySelector('.right-column');
 
     const getSectionCards = (section) => {
         if (section === 'books') return [bookLibraryCard].filter(Boolean);
@@ -61,6 +63,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return [];
     };
     const isMobileViewport = () => window.matchMedia('(max-width: 920px)').matches;
+
+    const ensureMobileSettingsAtBottom = () => {
+        const settingsCard = state.ui.testConfigCard;
+        if (!settingsCard) return;
+
+        if (isMobileViewport()) {
+            if (rightColumn && settingsCard.parentElement !== rightColumn) {
+                rightColumn.appendChild(settingsCard);
+            }
+            return;
+        }
+
+        if (leftColumn && settingsCard.parentElement !== leftColumn) {
+            leftColumn.appendChild(settingsCard);
+        }
+    };
 
     const setSectionOpen = (section, isOpen) => {
         const cards = getSectionCards(section);
@@ -573,13 +591,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const bookMetaY = sectionTopY - 55;
         const metaBlockTopY = sectionTopY - 32;
         const metaFieldGap = 15;
+        const metaFieldShift = 30;
         const metaLabelLineGap = 6;
         const scoreLabelDown = 16;
         const nameLabelY = metaBlockTopY;
         const scoreLabelLift = 2;
         const scoreLabelY = nameLabelY - metaFieldGap - scoreLabelDown + scoreLabelLift;
         const nameLineY = nameLabelY - metaLabelLineGap;
-        const nameLineStartX = metaAreaStartX + 34;
+        const nameLineStartX = metaAreaStartX + 34 + metaFieldShift;
         const metaLabelStartX = nameLineStartX + 2;
         const totalNameLineEndX = width - margin - 4;
         const scoreTextGap = 2;
@@ -1178,6 +1197,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization ---
     const init = () => {
         loadData();
+        ensureMobileSettingsAtBottom();
+        window.addEventListener('resize', () => {
+            ensureMobileSettingsAtBottom();
+        });
         syncSectionNavFromCards();
         setupEventListeners();
     };
