@@ -1,7 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
-    const { PDFDocument, rgb } = PDFLib;
-    PDFDocument.registerFontkit(fontkit);
+    let PDFDocument = null;
+    let rgb = null;
+    if (typeof window.PDFLib !== 'undefined') {
+        ({ PDFDocument, rgb } = window.PDFLib);
+        if (typeof window.fontkit !== 'undefined') {
+            PDFDocument.registerFontkit(window.fontkit);
+        } else {
+            console.warn('fontkit 라이브러리를 찾을 수 없어 PDF 한글 폰트 등록을 건너뜁니다.');
+        }
+    } else {
+        console.warn('PDFLib 라이브러리를 찾을 수 없어 PDF 기능을 비활성화합니다.');
+    }
 
     // --- State ---
     const state = {
@@ -43,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const wordOption = document.querySelector('input[name="output-format"][value="WORD"]');
         if (!pdfOption || !wordOption) return;
 
-        const pdfAvailable = Boolean(state.koreanFont);
+        const pdfAvailable = Boolean(PDFDocument && state.koreanFont);
         pdfOption.disabled = !pdfAvailable;
         if (!pdfAvailable && pdfOption.checked) {
             wordOption.checked = true;
@@ -57,6 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
             [array[i], array[j]] = [array[j], array[i]];
         }
         return array;
+    };
+
+    const downloadBlob = (blob, filename) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
     };
 
     // --- Main Functions ---
@@ -79,12 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             });
-            try {
-                const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
-                if (!fontResponse.ok) throw new Error('폰트 파일 없음');
-                state.koreanFont = await fontResponse.arrayBuffer();
-            } catch (fontError) {
-                console.warn('한글 폰트 로드 실패:', fontError);
+            if (PDFDocument) {
+                try {
+                    const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
+                    if (!fontResponse.ok) throw new Error('폰트 파일 없음');
+                    state.koreanFont = await fontResponse.arrayBuffer();
+                } catch (fontError) {
+                    console.warn('한글 폰트 로드 실패:', fontError);
+                }
             }
             updatePdfOptionState();
         } catch (error) {
@@ -199,8 +222,12 @@ document.addEventListener('DOMContentLoaded', () => {
             shouldShuffle: state.ui.shuffleQuestions.checked
         };
 
-        if (settings.outputFormat === 'PDF' && !state.koreanFont) {
+        if (settings.outputFormat === 'PDF' && !(PDFDocument && state.koreanFont)) {
             alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
+            return;
+        }
+        if (settings.outputFormat === 'WORD' && typeof window.docx === 'undefined') {
+            alert('WORD 생성을 위한 라이브러리를 불러오지 못했습니다.');
             return;
         }
         
