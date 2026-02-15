@@ -375,9 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.remove('hidden');
-            if (isMobileViewport()) {
-                setSectionOpen('settings', true);
-            }
         } else {
             showToast('해당 책의 단어 DB는 현재 준비 중입니다.', 'error');
             state.selectedBook = null;
@@ -395,9 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.subChapterSelectionCard.classList.add('compact');
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
-        if (isMobileViewport()) {
-            setSectionOpen('settings', true);
-        }
     };
 
     const renderTocChecklist = (chapterId) => {
@@ -442,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hasSelection = totalWords > 0;
         const shouldShowSettings = isMobileViewport()
-            ? (!state.ui.tocSelectionCard.classList.contains('hidden') || !state.ui.subChapterSelectionCard.classList.contains('hidden'))
+            ? !!state.selectedChapter
             : hasSelection;
         setSectionOpen('settings', shouldShowSettings);
         state.ui.generateBtn.disabled = !hasSelection;
