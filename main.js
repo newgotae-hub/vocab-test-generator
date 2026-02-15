@@ -365,7 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         setSectionOpen('toc', false);
-        setSectionOpen('settings', false);
         state.ui.subChapterSelectionCard?.classList.remove('compact');
         
         if (normalizedBook === 'etymology') {
