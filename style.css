@@ -222,6 +222,10 @@ main {
     border-radius: 8px;
 }
 
+.output-format-options label {
+    margin-right: 1.5rem;
+}
+
 /* Test Configuration */
 .config-group {
     margin-bottom: 1.5rem;

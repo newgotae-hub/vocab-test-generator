@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const { Packer, Document, Paragraph, TextRun, PageBreak } = docx;
 
     // --- State ---
     const state = {
@@ -88,11 +89,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookName === 'etymology') {
             state.ui.subChapterSelectionCard.classList.remove('hidden');
         } else {
-            const chapterMap = { 'basic': 'CH1', 'advanced': 'CH2' };
-            const chapterId = chapterMap[bookName];
-            if (chapterId) {
-                selectSubChapter(chapterId);
-            }
+            // For 'basic' and 'advanced', do nothing as per user request.
+            alert('해당 책의 단어 DB는 현재 준비 중입니다.');
+            // Deselect the book visually
+            state.selectedBook = null;
+            state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
+                item.classList.remove('active');
+            });
         }
     };
 
@@ -150,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const generateTest = async () => {
         const settings = {
+            outputFormat: document.querySelector('input[name="output-format"]:checked').value,
             testType: state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR',
             numQuestions: parseInt(state.ui.numQuestions.value, 10),
             shouldShuffle: state.ui.shuffleQuestions.checked
@@ -168,10 +172,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
-        alert('시험지를 생성합니다...');
+        alert(`'${settings.outputFormat}' 형식으로 시험지를 생성합니다...`);
         try {
-            const pdfBytes = await createPdf(questions);
-            downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), 'vocab-test.pdf');
+            if (settings.outputFormat === 'PDF') {
+                const pdfBytes = await createPdf(questions);
+                downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), 'vocab-test.pdf');
+            } else { // WORD
+                const docxBlob = await createDocx(questions);
+                downloadBlob(docxBlob, 'vocab-test.docx');
+            }
         } catch(e) {
             alert('시험지 생성 중 오류가 발생했습니다.');
             console.error(e);
@@ -210,6 +219,22 @@ document.addEventListener('DOMContentLoaded', () => {
         questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 10, true));
 
         return pdfDoc.save();
+    };
+
+    const createDocx = async (questions) => {
+        const doc = new Document({
+            sections: [{
+                children: [
+                    new Paragraph({ text: '어휘 시험지 (Vocabulary Test)', heading: 'Title' }),
+                    ...questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.question}` })),
+                    new Paragraph({ children: [new PageBreak()] }),
+                    new Paragraph({ text: '정답지 (Answer Key)', heading: 'Title' }),
+                    ...questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.answer}` })),
+                ],
+            }],
+        });
+
+        return Packer.toBlob(doc);
     };
 
     // --- Event Listeners ---
