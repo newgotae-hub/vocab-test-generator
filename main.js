@@ -369,10 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setSectionOpen('toc', false);
         if (isMobileViewport()) {
             setSectionOpen('settings', false);
-            state.ui.subChapterSelectionCard?.classList.add('compact');
-        } else {
-            state.ui.subChapterSelectionCard?.classList.remove('compact');
         }
+        state.ui.subChapterSelectionCard?.classList.remove('compact');
         
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
@@ -391,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
-        state.ui.subChapterSelectionCard.classList.add('compact');
         setSectionOpen('toc', true);
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
