@@ -81,6 +81,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isTtc = b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66;
         return isTtf || isOtf || isTtc;
     };
+    const isLikelyHtmlBuffer = (buffer) => {
+        if (!buffer || buffer.byteLength === 0) return false;
+        const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 64));
+        let i = 0;
+        while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) {
+            i += 1;
+        }
+        return i < bytes.length && bytes[i] === 0x3c; // "<"
+    };
 
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
@@ -117,14 +126,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
                     if (!fontResponse.ok) throw new Error('폰트 파일 없음');
+                    const fontContentType = (fontResponse.headers.get('content-type') || '').toLowerCase();
                     const fontBytes = await fontResponse.arrayBuffer();
+                    if (fontContentType.includes('text/html') || isLikelyHtmlBuffer(fontBytes)) {
+                        throw new Error('폰트 파일 경로가 잘못되었거나 배포에 포함되지 않았습니다.');
+                    }
                     if (!isSupportedFontBuffer(fontBytes)) {
                         throw new Error('지원되지 않는 폰트 포맷');
                     }
                     state.koreanFont = fontBytes;
                 } catch (fontError) {
                     state.koreanFont = null;
-                    console.warn('한글 폰트 로드 실패:', fontError);
+                    console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
                 }
             }
             updatePdfOptionState();
