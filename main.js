@@ -347,10 +347,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const leftColumnX = margin;
         const rightColumnX = margin + columnWidth + columnGap;
 
-        const renderTwoColumnSection = (title, values, isAnswerSheet = false) => {
+        const renderTwoColumnSection = (title, values, isAnswerSheet = false, forceNewPage = false) => {
             const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
             let pointer = 0;
             let pageIndex = 0;
+            if (forceNewPage) {
+                page = pdfDoc.addPage();
+            }
             while (pointer < values.length) {
                 if (pageIndex > 0) {
                     page = pdfDoc.addPage();
@@ -384,8 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        renderTwoColumnSection('어휘 시험지 (Vocabulary Test)', questions.map((item) => item.question), false);
-        renderTwoColumnSection('정답지 (Answer Key)', questions.map((item) => item.answer), true);
+        renderTwoColumnSection('어휘 시험지 (Vocabulary Test)', questions.map((item) => item.question), false, false);
+        renderTwoColumnSection('정답지 (Answer Key)', questions.map((item) => item.answer), true, true);
 
         return pdfDoc.save();
     };
