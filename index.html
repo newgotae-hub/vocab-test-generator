@@ -1,70 +1,176 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1010168647313500"
-     crossorigin="anonymous"></script>
-  <meta name="google-adsense-account" content="ca-pub-1010168647313500">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>어원편 시험지 생성기</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button id="themeBtn">Dark Mode</button>
+    <div id="app">
+        <header>
+            <h1>어원편 시험지 생성기 📚</h1>
+            <p>간편하게 어원편 단어 시험지를 만들어 보세요.</p>
+        </header>
 
-  <div id="contact-form-container">
-    <h2>Contact Us</h2>
-    <form action="https://formspree.io/f/mykdwnpk" method="POST">
-      <label for="name">Name:</label>
-      <input type="text" id="name" name="name" required>
+        <main>
+            <div id="wizard">
+                <!-- STEP 1: 교재 선택 -->
+                <div id="step1" class="step active">
+                    <div class="card">
+                        <h2>STEP 1: 교재 선택</h2>
+                        <div class="content">
+                            <p>시험지를 생성할 챕터를 선택하세요.</p>
+                            <div id="chapter-cover-selection" class="chapter-covers">
+                                <div class="chapter-cover-item" data-chapter="CH1">
+                                    <div class="cover-image-placeholder"></div>
+                                    <h3>어원편 CH1</h3>
+                                </div>
+                                <div class="chapter-cover-item" data-chapter="CH2">
+                                    <div class="cover-image-placeholder"></div>
+                                    <h3>어원편 CH2</h3>
+                                </div>
+                                <div class="chapter-cover-item" data-chapter="CH3">
+                                    <div class="cover-image-placeholder"></div>
+                                    <h3>어원편 CH3</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-      <label for="email">Email:</label>
-      <input type="email" id="email" name="email" required>
+                <!-- STEP 2: 범위 및 유형 선택 -->
+                <div id="step2" class="step">
+                    <div class="card">
+                        <h2>STEP 2: 시험 범위 및 유형 선택</h2>
+                        <div class="content">
+                            <div class="step2-container">
+                                <div class="left-panel">
+                                    <h3>시험 범위 (어원편)</h3>
+                                    <div id="chapter-selection" class="control-group">
+                                        <label>1. Chapter 선택</label>
+                                        <div class="button-group">
+                                            <button class="button-secondary" data-chapter="CH1">CH1</button>
+                                            <button class="button-secondary" data-chapter="CH2">CH2</button>
+                                            <button class="button-secondary" data-chapter="CH3">CH3</button>
+                                        </div>
+                                    </div>
+                                    <div id="toc-selection" class="control-group">
+                                        <label>2. 목차 선택</label>
+                                        <input type="text" id="toc-search" placeholder="목차 검색...">
+                                        <div class="toc-list-container">
+                                            <!-- 목차 리스트가 여기에 동적으로 추가됩니다. -->
+                                        </div>
+                                        <div class="toc-actions">
+                                            <button class="button-link" id="selectAllToc">전체 선택</button>
+                                            <button class="button-link" id="deselectAllToc">전체 해제</button>
+                                        </div>
+                                    </div>
+                                     <div id="selection-summary" class="summary">
+                                        <p>선택된 목차: <span id="selected-toc-count">0</span>개</p>
+                                        <p>총 단어 수: <span id="total-word-count">0</span>개</p>
+                                    </div>
+                                </div>
+                                <div class="right-panel">
+                                    <h3>출제 리스트 미리보기</h3>
+                                    <div id="preview-list" class="preview-container">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>목차</th>
+                                                    <th>단어</th>
+                                                    <th>의미</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- 미리보기 내용 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                     <h3>시험 유형</h3>
+                                    <div id="test-type-selection" class="control-group">
+                                        <div class="checkbox-group">
+                                            <label><input type="checkbox" name="test-type" value="KOR"> 한글 의미 쓰기</label>
+                                            <label><input type="checkbox" name="test-type" value="ENG"> 영어 단어 쓰기</label>
+                                        </div>
+                                        <div id="mix-options" style="display: none;">
+                                            <label>혼합 방식:</label>
+                                            <label><input type="radio" name="mix-type" value="alternate" checked> 교차형</label>
+                                            <label><input type="radio" name="mix-type" value="random"> 랜덤 혼합</label>
+                                        </div>
+                                    </div>
+                                    <div class="control-group">
+                                        <label for="num-questions">문항 수</label>
+                                        <input type="number" id="num-questions" value="80" min="1">
+                                    </div>
+                                    <div class="control-group">
+                                         <label class="switch">
+                                            <input type="checkbox" id="shuffle-questions">
+                                            <span class="slider round"></span>
+                                            순서 섞기
+                                        </label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="form-ab">
+                                            <span class="slider round"></span>
+                                            A/B형 생성
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                             <div class="navigation-buttons">
+                                <button class="button-secondary" id="backToStep1">이전</button>
+                                <button class="button-primary" id="goToStep3">다음</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-      <label for="message">Message:</label>
-      <textarea id="message" name="message" required></textarea>
+                <!-- STEP 3: 출력 -->
+                <div id="step3" class="step">
+                    <div class="card">
+                        <h2>STEP 3: 시험지 생성 및 다운로드</h2>
+                        <div class="content">
+                            <div class="control-group">
+                                <label>출력 형식</label>
+                                <label><input type="radio" name="output-format" value="PDF" checked> PDF</label>
+                                <label><input type="radio" name="output-format" value="DOCX"> WORD (DOCX)</label>
+                            </div>
+                            <div class="control-group" id="pdf-layout-option">
+                                <label>레이아웃</label>
+                                <label><input type="radio" name="layout" value="1-col" checked> 1단</label>
+                                <label><input type="radio" name="layout" value="2-col"> 2단</label>
+                            </div>
+                            <div class="download-buttons">
+                                <button class="button-primary" id="download-test">시험지 다운로드</button>
+                                <button class="button-primary" id="download-test-answers">시험지+정답 다운로드</button>
+                            </div>
+                             <div class="navigation-buttons">
+                                <button class="button-secondary" id="backToStep2">이전</button>
+                            </div>
+                            <div id="log-output" class="log">
+                                <p>로그 메시지가 여기에 표시됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
-      <button type="submit">Send</button>
-    </form>
-  </div>
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>데이터를 로드하는 중...</p>
+    </div>
 
-  <div id="disqus_thread"></div>
-<script>
-    /**
-     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT 
-     *  THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR 
-     *  PLATFORM OR CMS.
-     *  
-     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: 
-     *  https://disqus.com/admin/universalcode/#configuration-variables
-     */
-    
-    var disqus_config = function () {
-        // Replace PAGE_URL with your page's canonical URL variable
-        this.page.url = window.location.href;  
-        
-        // Replace PAGE_IDENTIFIER with your page's unique identifier variable
-        this.page.identifier = window.location.pathname; 
-    };
-    
-    
-    (function() {  // REQUIRED CONFIGURATION VARIABLE: EDIT THE SHORTNAME BELOW
-        var d = document, s = d.createElement('script');
-        
-        // IMPORTANT: Replace EXAMPLE with your forum shortname!
-        s.src = 'https://voca-test-generator.disqus.com/embed.js';
-        
-        s.setAttribute('data-timestamp', +new Date());
-        (d.head || d.body).appendChild(s);
-    })();
-</script>
-<noscript>
-    Please enable JavaScript to view the 
-    <a href="https://disqus.com/?ref_noscript" rel="nofollow">
-        comments powered by Disqus.
-    </a>
-</noscript>
-  <script defer type="text/javascript" src="/main.js"></script>
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+
+    <!-- Main Script -->
+    <script src="main.js"></script>
 </body>
 </html>
