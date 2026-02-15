@@ -516,11 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questions = testItems.map((word, i) => {
             let type = settings.testType;
-            if (type === 'MIXED') type = i % 2 === 0 ? 'KOR' : 'ENG';
-            const questionMode = type === 'KOR' ? 'ENG' : 'KOR';
+            if (type === 'MIXED') {
+                type = i % 2 === 0 ? 'MIXED_LEFT' : 'MIXED_RIGHT';
+            }
+            const isEnglishQuestion = type === 'KOR' || type === 'MIXED_LEFT';
+            const questionMode = isEnglishQuestion ? 'ENG' : 'KOR';
             return {
-                question: type === 'KOR' ? word.word : word.meaning,
-                answer: type === 'KOR' ? word.meaning : word.word,
+                question: isEnglishQuestion ? word.word : word.meaning,
+                answer: isEnglishQuestion ? word.meaning : word.word,
                 questionMode,
             };
         });
