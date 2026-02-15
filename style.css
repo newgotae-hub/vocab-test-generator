@@ -252,6 +252,7 @@ main {
     border-radius: 10px;
     border: 1px solid transparent;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .toc-checklist-item:hover {
@@ -262,6 +263,7 @@ main {
 .toc-checklist-item input {
     width: 1rem;
     height: 1rem;
+    touch-action: manipulation;
 }
 
 .toc-checklist-item .badge {

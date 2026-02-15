@@ -402,11 +402,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!toc) return '';
             const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
             return `
-                <label class="toc-checklist-item">
+                <div class="toc-checklist-item">
                     <input type="checkbox" data-toc="${toc}">
                     <span class="label">${toc}</span>
                     <span class="badge">${wordCount}</span>
-                </label>
+                </div>
             `;
         }).join('');
     };
