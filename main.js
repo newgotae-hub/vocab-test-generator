@@ -2,11 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     let PDFDocument = null;
     let rgb = null;
+    const hasFontkit = typeof window.fontkit !== 'undefined';
     if (typeof window.PDFLib !== 'undefined') {
         ({ PDFDocument, rgb } = window.PDFLib);
-        if (typeof window.fontkit !== 'undefined') {
-            PDFDocument.registerFontkit(window.fontkit);
-        } else {
+        if (!hasFontkit) {
             console.warn('fontkit 라이브러리를 찾을 수 없어 PDF 한글 폰트 등록을 건너뜁니다.');
         }
     } else {
@@ -53,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const wordOption = document.querySelector('input[name="output-format"][value="WORD"]');
         if (!pdfOption || !wordOption) return;
 
-        const pdfAvailable = Boolean(PDFDocument && state.koreanFont);
+        const pdfAvailable = Boolean(PDFDocument && hasFontkit && state.koreanFont);
         pdfOption.disabled = !pdfAvailable;
         if (!pdfAvailable && pdfOption.checked) {
             wordOption.checked = true;
@@ -222,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             shouldShuffle: state.ui.shuffleQuestions.checked
         };
 
-        if (settings.outputFormat === 'PDF' && !(PDFDocument && state.koreanFont)) {
+        if (settings.outputFormat === 'PDF' && !(PDFDocument && hasFontkit && state.koreanFont)) {
             alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
             return;
         }
@@ -261,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
+        pdfDoc.registerFontkit(window.fontkit);
         let page = pdfDoc.addPage();
         const font = await pdfDoc.embedFont(state.koreanFont);
         const { width, height } = page.getSize();
