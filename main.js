@@ -404,6 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectSubChapter = (chapterId) => {
         state.selectedChapter = chapterId;
         state.selectedTocs.clear();
+        state.ui.subChapterSelectionCard?.querySelectorAll('.sub-chapter-item').forEach(item => {
+            item.classList.toggle('selected-item', item.dataset.chapter === chapterId);
+        });
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
         state.isExamTitleCustomized = false;
@@ -437,6 +440,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateUiState = () => {
         const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
         state.selectedTocs = new Set(checkedTocs);
+        state.ui.tocChecklist.querySelectorAll('.toc-checklist-item').forEach(item => {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            item.classList.toggle('selected-item', !!checkbox?.checked);
+        });
         
         const totalWords = state.selectedWords.length;
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
