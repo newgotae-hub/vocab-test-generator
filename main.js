@@ -437,12 +437,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateUiState = () => {
         const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
         state.selectedTocs = new Set(checkedTocs);
-
-        state.ui.tocChecklist.querySelectorAll('.toc-checklist-item').forEach((item) => {
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            if (!checkbox) return;
-            item.classList.toggle('is-selected', checkbox.checked);
-        });
         
         const totalWords = state.selectedWords.length;
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
@@ -1120,13 +1114,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
     const setupEventListeners = () => {
-        const refreshOutputFormatState = () => {
-            document.querySelectorAll('.output-format-options label').forEach((label) => {
-                const radio = label.querySelector('input[name="output-format"]');
-                if (!radio) return;
-                label.classList.toggle('is-active', radio.checked);
-            });
-        };
         state.ui.sectionLinks.forEach((link) => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1134,10 +1121,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!section) return;
                 toggleSection(section);
             });
-        });
-
-        document.querySelectorAll('.output-format-options input[name="output-format"]').forEach((input) => {
-            input.addEventListener('change', refreshOutputFormatState);
         });
 
         state.ui.bookLibrary.addEventListener('click', (e) => {
@@ -1178,8 +1161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.ui.deselectAllToc) {
             state.ui.deselectAllToc.addEventListener('click', () => modifyAllTocs(false));
         }
-
-        refreshOutputFormatState();
 
         state.ui.testTypeOptions.addEventListener('click', (e) => {
             const typeOption = e.target.closest('.test-type-option');
