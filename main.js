@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (section === 'settings') return [state.ui.testConfigCard].filter(Boolean);
         return [];
     };
+    const isMobileViewport = () => window.matchMedia('(max-width: 920px)').matches;
 
     const setSectionOpen = (section, isOpen) => {
         const cards = getSectionCards(section);
@@ -366,11 +367,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         setSectionOpen('toc', false);
+        if (isMobileViewport()) {
+            setSectionOpen('settings', false);
+        }
         state.ui.subChapterSelectionCard?.classList.remove('compact');
         
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.remove('hidden');
+            if (isMobileViewport()) {
+                setSectionOpen('settings', true);
+            }
         } else {
             showToast('해당 책의 단어 DB는 현재 준비 중입니다.', 'error');
             state.selectedBook = null;
@@ -388,6 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.subChapterSelectionCard.classList.add('compact');
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
+        if (isMobileViewport()) {
+            setSectionOpen('settings', true);
+        }
     };
 
     const renderTocChecklist = (chapterId) => {
@@ -431,7 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const hasSelection = totalWords > 0;
-        setSectionOpen('settings', hasSelection);
+        const shouldShowSettings = isMobileViewport()
+            ? (!state.ui.tocSelectionCard.classList.contains('hidden') || !state.ui.subChapterSelectionCard.classList.contains('hidden'))
+            : hasSelection;
+        setSectionOpen('settings', shouldShowSettings);
         state.ui.generateBtn.disabled = !hasSelection;
     };
     
