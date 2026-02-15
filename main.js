@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const { PDFDocument, rgb } = PDFLib;
     PDFDocument.registerFontkit(fontkit);
 
     // --- State ---
@@ -12,18 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedChapter: null,
         selectedTocs: new Set(),
         get selectedWords() {
-            let words = [];
             if (!this.selectedChapter) return [];
-            
-            const chapterWords = this.allWords.filter(w => w.chapter === this.selectedChapter);
-            const tocsInChapter = [...new Set(chapterWords.map(w => w.toc))];
-            
-            const relevantTocs = this.selectedTocs.size > 0 ? this.selectedTocs : new Set(tocsInChapter);
+            if (this.selectedTocs.size === 0) return [];
 
-            relevantTocs.forEach(toc => {
-                if (this.wordsByToc[toc]) {
-                    words.push(...this.wordsByToc[toc].filter(w => w.chapter === this.selectedChapter));
-                }
+            const words = [];
+            this.selectedTocs.forEach(toc => {
+                if (!this.wordsByToc[toc]) return;
+                words.push(...this.wordsByToc[toc].filter(w => w.chapter === this.selectedChapter));
             });
             return words;
         },
@@ -43,6 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const updatePdfOptionState = () => {
+        const pdfOption = document.querySelector('input[name="output-format"][value="PDF"]');
+        const wordOption = document.querySelector('input[name="output-format"][value="WORD"]');
+        if (!pdfOption || !wordOption) return;
+
+        const pdfAvailable = Boolean(state.koreanFont);
+        pdfOption.disabled = !pdfAvailable;
+        if (!pdfAvailable && pdfOption.checked) {
+            wordOption.checked = true;
+        }
+    };
+
     // --- Utility Functions ---
     const shuffleArray = (array) => {
         for (let i = array.length - 1; i > 0; i--) {
@@ -58,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('data/root.csv');
             if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
-            const csvText = await response.text();
+            const csvText = (await response.text()).replace(/^\uFEFF/, '');
             Papa.parse(csvText, {
                 header: true,
                 skipEmptyLines: true,
@@ -72,9 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             });
-            fetch('assets/fonts/NotoSansKR-Regular.ttf')
-                .then(res => res.arrayBuffer())
-                .then(fontBytes => { state.koreanFont = fontBytes; });
+            try {
+                const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
+                if (!fontResponse.ok) throw new Error('폰트 파일 없음');
+                state.koreanFont = await fontResponse.arrayBuffer();
+            } catch (fontError) {
+                console.warn('한글 폰트 로드 실패:', fontError);
+            }
+            updatePdfOptionState();
         } catch (error) {
             console.error(error);
             alert(error.message);
@@ -113,10 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedTocs.clear();
         
         renderTocChecklist(chapterId);
+        modifyAllTocs(true);
         
         state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
-        updateUiState();
     };
 
     const renderTocChecklist = (chapterId) => {
@@ -161,12 +173,36 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const generateTest = async () => {
+        const availableWords = state.selectedWords.length;
+        if (availableWords === 0) {
+            alert('먼저 목차를 선택해 주세요.');
+            return;
+        }
+
+        const rawNumQuestions = parseInt(state.ui.numQuestions.value, 10);
+        if (!Number.isInteger(rawNumQuestions) || rawNumQuestions <= 0) {
+            alert('문항 수는 1 이상의 정수여야 합니다.');
+            state.ui.numQuestions.value = '1';
+            return;
+        }
+
+        const validatedNumQuestions = Math.min(rawNumQuestions, availableWords);
+        if (validatedNumQuestions !== rawNumQuestions) {
+            alert(`선택된 단어 수(${availableWords})를 초과해 ${validatedNumQuestions}문항으로 조정했습니다.`);
+            state.ui.numQuestions.value = String(validatedNumQuestions);
+        }
+
         const settings = {
             outputFormat: document.querySelector('input[name="output-format"]:checked').value,
             testType: state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR',
-            numQuestions: parseInt(state.ui.numQuestions.value, 10),
+            numQuestions: validatedNumQuestions,
             shouldShuffle: state.ui.shuffleQuestions.checked
         };
+
+        if (settings.outputFormat === 'PDF' && !state.koreanFont) {
+            alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
+            return;
+        }
         
         let sourceWords = [...state.selectedWords];
         if (settings.shouldShuffle) shuffleArray(sourceWords);
@@ -199,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
         let page = pdfDoc.addPage();
-        const font = await pdfDoc.embedFont(state.koreanFont || StandardFonts.Helvetica);
+        const font = await pdfDoc.embedFont(state.koreanFont);
         const { width, height } = page.getSize();
         const margin = 50;
         let y = height - margin;
@@ -272,10 +308,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         state.ui.generateBtn.addEventListener('click', generateTest);
+
+        state.ui.numQuestions.addEventListener('change', () => {
+            const value = parseInt(state.ui.numQuestions.value, 10);
+            if (!Number.isInteger(value) || value < 1) {
+                state.ui.numQuestions.value = '1';
+            }
+        });
     };
 
     // --- Initialization ---
     const init = () => {
+        updatePdfOptionState();
         loadData();
         setupEventListeners();
     };
