@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
-    const { Packer, Document, Paragraph, TextRun } = docx;
 
     // --- State ---
     const state = {
