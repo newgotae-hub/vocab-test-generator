@@ -31,20 +31,16 @@ const firebaseConfig = {
   measurementId: "G-KCFNMN0E96"
 };
 
-// Initialize Firebase
-const { initializeApp } = firebase;
-const { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } = firebase.firestore;
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase using the compat libraries
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 const messageList = document.getElementById('message-list');
 const messageInput = document.getElementById('message-input');
 const submitMessage = document.getElementById('submit-message');
 
 // Listen for real-time updates from Firestore
-const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
-onSnapshot(q, (snapshot) => {
+db.collection("messages").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
     messageList.innerHTML = ''; // Clear the list
     snapshot.forEach((doc) => {
         const message = doc.data();
@@ -63,9 +59,9 @@ submitMessage.addEventListener('click', async () => {
     submitMessage.textContent = 'Submitting...';
 
     try {
-        await addDoc(collection(db, "messages"), {
+        await db.collection("messages").add({
             text: messageText,
-            timestamp: serverTimestamp()
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         messageInput.value = '';
     } catch (error) {
