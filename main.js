@@ -7,17 +7,28 @@ document.addEventListener('DOMContentLoaded', () => {
         allWords: [],
         wordsByToc: {},
         koreanFont: null,
+        selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
         get selectedWords() {
             let words = [];
-            this.selectedTocs.forEach(toc => {
-                words.push(...(this.wordsByToc[toc] || []));
+            if (!this.selectedChapter) return [];
+            
+            const chapterWords = this.allWords.filter(w => w.chapter === this.selectedChapter);
+            const tocsInChapter = [...new Set(chapterWords.map(w => w.toc))];
+            
+            const relevantTocs = this.selectedTocs.size > 0 ? this.selectedTocs : new Set(tocsInChapter);
+
+            relevantTocs.forEach(toc => {
+                if (this.wordsByToc[toc]) {
+                    words.push(...this.wordsByToc[toc].filter(w => w.chapter === this.selectedChapter));
+                }
             });
             return words;
         },
         ui: {
             bookLibrary: document.getElementById('book-library'),
+            subChapterSelectionCard: document.getElementById('sub-chapter-selection-card'),
             tocSelectionCard: document.getElementById('toc-selection-card'),
             testConfigCard: document.getElementById('test-config-card'),
             tocChecklist: document.getElementById('toc-checklist'),
@@ -43,15 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 skipEmptyLines: true,
                 complete: (results) => {
                     state.allWords = results.data;
-                    // Group words by TOC for easier access
                     state.wordsByToc = {};
                     state.allWords.forEach(word => {
+                        if (!word.toc) return;
                         if (!state.wordsByToc[word.toc]) state.wordsByToc[word.toc] = [];
                         state.wordsByToc[word.toc].push(word);
                     });
                 }
             });
-            // Font can be loaded in parallel
             fetch('assets/fonts/NotoSansKR-Regular.ttf')
                 .then(res => res.arrayBuffer())
                 .then(fontBytes => { state.koreanFont = fontBytes; });
@@ -61,28 +71,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const selectBook = (chapterId) => {
-        state.selectedChapter = chapterId;
+    const selectBook = (bookName) => {
+        state.selectedBook = bookName;
+        state.selectedChapter = null;
         state.selectedTocs.clear();
 
-        // Update active book UI
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.chapter === chapterId);
+            item.classList.toggle('active', item.dataset.book === bookName);
         });
 
+        // Hide all right-column cards initially
+        state.ui.subChapterSelectionCard.classList.add('hidden');
+        state.ui.tocSelectionCard.classList.add('hidden');
+        state.ui.testConfigCard.classList.add('hidden');
+        
+        if (bookName === 'etymology') {
+            state.ui.subChapterSelectionCard.classList.remove('hidden');
+        } else {
+            const chapterMap = { 'basic': 'CH1', 'advanced': 'CH2' };
+            const chapterId = chapterMap[bookName];
+            if (chapterId) {
+                selectSubChapter(chapterId);
+            }
+        }
+    };
+
+    const selectSubChapter = (chapterId) => {
+        state.selectedChapter = chapterId;
+        state.selectedTocs.clear();
+        
         renderTocChecklist(chapterId);
+        
+        state.ui.subChapterSelectionCard.classList.add('hidden');
+        state.ui.tocSelectionCard.classList.remove('hidden');
         updateUiState();
     };
 
     const renderTocChecklist = (chapterId) => {
-        const tocsInChapter = [...new Set(
-            state.allWords
-                .filter(word => word.chapter === chapterId)
-                .map(word => word.toc)
-        )];
+        const wordsInChapter = state.allWords.filter(word => word.chapter === chapterId);
+        if (wordsInChapter.length === 0) {
+            state.ui.tocChecklist.innerHTML = '<p>이 챕터에는 데이터가 없습니다.</p>';
+            return;
+        }
         
+        const tocsInChapter = [...new Set(wordsInChapter.map(word => word.toc))];
         state.ui.tocChecklist.innerHTML = tocsInChapter.sort().map(toc => {
-            const wordCount = state.wordsByToc[toc]?.length || 0;
+            if (!toc) return '';
+            const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
             return `
                 <label class="toc-checklist-item">
                     <input type="checkbox" data-toc="${toc}">
@@ -94,24 +129,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const updateUiState = () => {
-        // 1. Update selected TOCs from DOM
         const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
         state.selectedTocs = new Set(checkedTocs);
-
-        // 2. Show TOC card if a chapter is selected
-        state.ui.tocSelectionCard.classList.toggle('hidden', !state.selectedChapter);
         
-        // 3. Update summary text
         const totalWords = state.selectedWords.length;
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
 
-        // 4. Show/hide and enable/disable config card and button
         const hasSelection = totalWords > 0;
         state.ui.testConfigCard.classList.toggle('hidden', !hasSelection);
         state.ui.generateBtn.disabled = !hasSelection;
     };
     
     const modifyAllTocs = (shouldSelect) => {
+        if (!state.selectedChapter) return;
         state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.checked = shouldSelect;
         });
@@ -150,19 +180,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const createPdf = async (questions) => {
         const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage();
+        let page = pdfDoc.addPage();
         const font = await pdfDoc.embedFont(state.koreanFont || StandardFonts.Helvetica);
         const { width, height } = page.getSize();
         const margin = 50;
         let y = height - margin;
 
-        const drawText = (text, size) => {
+        const drawText = (text, size, isAnswerSheet = false) => {
             if (y < margin) {
                 page = pdfDoc.addPage();
                 y = height - margin;
+                if(isAnswerSheet) {
+                    page.drawText('정답지 (계속)', { x: margin, y, font, size: 14 });
+                    y -= 30;
+                }
             }
             page.drawText(text, { x: margin, y, font, size, color: rgb(0, 0, 0) });
-            y -= size + 8;
+            y -= size + (isAnswerSheet ? 2 : 8);
         };
         
         drawText('어휘 시험지 (Vocabulary Test)', 24);
@@ -173,17 +207,21 @@ document.addEventListener('DOMContentLoaded', () => {
         y = height - margin;
         drawText('정답지 (Answer Key)', 18);
         y -= 15;
-        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 10));
+        questions.forEach((item, index) => drawText(`${index + 1}. ${item.answer}`, 10, true));
 
         return pdfDoc.save();
     };
-
 
     // --- Event Listeners ---
     const setupEventListeners = () => {
         state.ui.bookLibrary.addEventListener('click', (e) => {
             const bookItem = e.target.closest('.book-item');
-            if (bookItem) selectBook(bookItem.dataset.chapter);
+            if (bookItem) selectBook(bookItem.dataset.book);
+        });
+        
+        state.ui.subChapterSelectionCard.addEventListener('click', (e) => {
+            const subChapterItem = e.target.closest('.sub-chapter-item');
+            if(subChapterItem) selectSubChapter(subChapterItem.dataset.chapter);
         });
 
         state.ui.tocChecklist.addEventListener('change', updateUiState);
