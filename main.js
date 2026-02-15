@@ -1,3 +1,4 @@
+console.log('Script loaded. Version: 2');
 const themeToggle = document.getElementById('themeBtn');
 const body = document.body;
 
