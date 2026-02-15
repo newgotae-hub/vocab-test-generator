@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
+        isExamTitleCustomized: false,
         get selectedWords() {
             if (!this.selectedChapter) return [];
             if (this.selectedTocs.size === 0) return [];
@@ -125,6 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
             advanced: '어드밴스드'
         };
         return bookNames[normalized] || '어원편';
+    };
+
+    const extractExamTitleFromToc = (tocLabel = '') => {
+        const trimmed = normalizeSpacingText(tocLabel);
+        if (!trimmed) return '어휘 시험지';
+        const firstToken = trimmed.split(/\s+/)[0];
+        return firstToken.replace(/[()\[\],;:]+/g, '').trim() || '어휘 시험지';
     };
 
     const normalizeSpacingText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
@@ -322,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedBook = normalizedBook;
         state.selectedChapter = null;
         state.selectedTocs.clear();
+        state.isExamTitleCustomized = false;
 
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
             item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
@@ -345,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedTocs.clear();
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
+        state.isExamTitleCustomized = false;
         setSectionOpen('toc', true);
         state.ui.subChapterSelectionCard.classList.add('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
@@ -379,6 +389,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
         state.ui.numQuestions.value = String(totalWords);
         state.ui.numQuestions.max = String(totalWords);
+
+        if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
+            const tocTitle = extractExamTitleFromToc(checkedTocs[0]);
+            if (state.ui.examTitle) {
+                state.ui.examTitle.value = tocTitle;
+            }
+        } else if (!state.isExamTitleCustomized) {
+            state.ui.examTitle.value = '어휘 시험지';
+        }
 
         const hasSelection = totalWords > 0;
         setSectionOpen('settings', hasSelection);
@@ -1058,6 +1077,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 typeOption.classList.add('active');
             }
         });
+
+        if (state.ui.examTitle) {
+            state.ui.examTitle.addEventListener('input', () => {
+                state.isExamTitleCustomized = true;
+            });
+        }
 
         state.ui.generateBtn.addEventListener('click', generateTest);
 
