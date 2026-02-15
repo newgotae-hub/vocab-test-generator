@@ -560,14 +560,6 @@ input:checked + .slider::before {
         grid-template-columns: 1fr;
     }
 
-    .right-column {
-        order: -1;
-    }
-
-    .left-column {
-        order: 1;
-    }
-
     .book-library {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
