@@ -122,8 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const ensureDocxLibrary = async () => {
         if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
         const sources = [
+            'assets/docx/docx.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js',
             'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js',
-            'https://unpkg.com/docx@8.5.0/build/index.js'
+            'https://unpkg.com/docx@8.5.0/build/index.js',
+            'https://cdn.jsdelivr.net/npm/docx@8.5.0/dist/docx.umd.cjs'
         ];
         for (const src of sources) {
             try {
@@ -133,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Try next source.
             }
         }
-        throw new Error('WORD 라이브러리를 불러오지 못했습니다. 네트워크 차단 또는 CDN 접근 제한을 확인해 주세요.');
+        throw new Error(`WORD 라이브러리를 불러오지 못했습니다. 아래 경로에 DOCX 라이브러리를 배치/접근 가능하게 해 주세요: ${sources.join(', ')}`);
     };
 
     // --- Main Functions ---
@@ -291,8 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('PDF 생성을 위한 한글 폰트를 불러오지 못했습니다. WORD(DOCX) 형식으로 생성해 주세요.');
             return;
         }
-        if (settings.outputFormat === 'WORD') await ensureDocxLibrary();
-        
         let sourceWords = [...state.selectedWords];
         if (settings.shouldShuffle) shuffleArray(sourceWords);
         const testItems = sourceWords.slice(0, settings.numQuestions);
@@ -312,8 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pdfBytes = await createPdf(questions);
                 downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), 'vocab-test.pdf');
             } else { // WORD
-                const docxBlob = await createDocx(questions);
-                downloadBlob(docxBlob, 'vocab-test.docx');
+                const { blob, filename } = await createDocx(questions);
+                downloadBlob(blob, filename);
             }
         } catch(e) {
             alert(`시험지 생성 중 오류가 발생했습니다: ${e.message || e}`);
@@ -390,10 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createDocx = async (questions) => {
+        await ensureDocxLibrary();
         const docxLib = window.docx;
         const { Packer, Document, Paragraph } = docxLib || {};
         if (!Packer || !Document || !Paragraph) {
-            throw new Error('WORD 라이브러리 로드에 실패했습니다.');
+            throw new Error('WORD 라이브러리가 준비되지 않아 DOCX 생성이 불가능합니다.');
         }
 
         const questionParagraphs = questions.map((q, i) => new Paragraph({ text: `${i + 1}. ${q.question}` }));
@@ -413,11 +415,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (typeof Packer.toBlob === 'function') {
-            return Packer.toBlob(doc);
+            return {
+                blob: await Packer.toBlob(doc),
+                filename: 'vocab-test.docx'
+            };
         }
         if (typeof Packer.toBase64String === 'function') {
             const base64 = await Packer.toBase64String(doc);
-            return base64ToBlob(base64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            return {
+                blob: base64ToBlob(base64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                filename: 'vocab-test.docx'
+            };
         }
         throw new Error('WORD 내보내기 함수를 찾을 수 없습니다.');
     };
