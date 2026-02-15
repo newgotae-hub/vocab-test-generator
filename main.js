@@ -1,4 +1,4 @@
-const themeToggle = document.getElementById('theme-toggle');
+const themeToggle = document.getElementById('themeBtn');
 const body = document.body;
 
 // Check for saved theme preference
