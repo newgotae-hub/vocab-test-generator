@@ -436,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const hasSelection = totalWords > 0;
-        setSectionOpen('settings', hasSelection);
         state.ui.generateBtn.disabled = !hasSelection;
 
         if (shouldPreserveScroll) {
