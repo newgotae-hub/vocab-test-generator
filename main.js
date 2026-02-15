@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
-    const { Packer, Document, Paragraph, TextRun, PageBreak } = docx;
 
     // --- State ---
     const state = {
@@ -222,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createDocx = async (questions) => {
+        const { Packer, Document, Paragraph, TextRun, PageBreak } = docx;
         const doc = new Document({
             sections: [{
                 children: [
