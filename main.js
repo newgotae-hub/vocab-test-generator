@@ -61,8 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return [];
     };
 
-    const isMobileViewport = () => window.matchMedia('(max-width: 920px)').matches;
-
     const setSectionOpen = (section, isOpen) => {
         const cards = getSectionCards(section);
         cards.forEach(card => card.classList.toggle('hidden', !isOpen));
@@ -414,9 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const updateUiState = () => {
-        const shouldPreserveScroll = isMobileViewport();
-        const priorScrollY = shouldPreserveScroll ? window.scrollY : 0;
-
         const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
         state.selectedTocs = new Set(checkedTocs);
         
@@ -437,12 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hasSelection = totalWords > 0;
         state.ui.generateBtn.disabled = !hasSelection;
-
-        if (shouldPreserveScroll) {
-            window.requestAnimationFrame(() => {
-                window.scrollTo(0, priorScrollY);
-            });
-        }
     };
     
     const modifyAllTocs = (shouldSelect) => {
@@ -1136,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === checkbox) return;
 
             e.preventDefault();
+            e.stopPropagation();
             checkbox.checked = !checkbox.checked;
             updateUiState();
         });
