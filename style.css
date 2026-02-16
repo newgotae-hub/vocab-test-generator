@@ -188,15 +188,15 @@ main {
 
 .book-item.active {
     border-color: var(--brand);
-    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 9px 18px rgba(37, 99, 235, 0.16);
     border: 2px solid #2563EB;
-    transform: translateY(-4px);
+    transform: translateY(-3px);
 }
 
 .book-item.selected {
     border: 2px solid #2563EB;
-    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.25);
-    transform: translateY(-4px);
+    box-shadow: 0 9px 18px rgba(37, 99, 235, 0.16);
+    transform: translateY(-3px);
 }
 
 .book-item.selected::before,

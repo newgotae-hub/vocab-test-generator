@@ -389,9 +389,14 @@ document.addEventListener('DOMContentLoaded', () => {
             setSectionOpen('settings', false);
         }
         state.ui.subChapterSelectionCard?.classList.remove('compact');
+        const subChapterTitle = state.ui.subChapterSelectionCard?.querySelector('h2');
+        if (subChapterTitle) {
+            subChapterTitle.textContent = '챕터 선택';
+        }
         const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
         if (subChapterSubtitle) {
-            subChapterSubtitle.textContent = "'어원편'의 학습할 챕터를 선택하세요.";
+            const bookLabel = getBookNameForOutput(normalizedBook);
+            subChapterSubtitle.textContent = `${bookLabel}에서 공부할 챕터를 선택하세요.`;
         }
         
         if (normalizedBook === 'etymology') {
@@ -412,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selected) return chapterId || '';
 
         const label = String(selected.textContent || '').trim();
-        const match = label.match(/Chapter\s+\d+\.\s*(.+)$/i);
+        const match = label.match(/^Chapter\s+\d+\.\s*(.+)$/i);
         return (match?.[1] || label).trim();
     };
 
@@ -422,10 +427,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.subChapterSelectionCard?.querySelectorAll('.sub-chapter-item').forEach(item => {
             item.classList.toggle('selected-item', item.dataset.chapter === chapterId);
         });
+        const subChapterTitle = state.ui.subChapterSelectionCard?.querySelector('h2');
+        if (subChapterTitle) {
+            const chapterName = getSubChapterDisplayName(chapterId);
+            subChapterTitle.textContent = chapterName ? `챕터 선택: ${chapterName}` : '챕터 선택';
+        }
         const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
         if (subChapterSubtitle) {
-            const chapterName = getSubChapterDisplayName(chapterId);
-            subChapterSubtitle.textContent = chapterName ? `챕터 선택: ${chapterName}` : '챕터 선택';
+            const bookLabel = getBookNameForOutput(state.selectedBook);
+            subChapterSubtitle.textContent = `${bookLabel}에서 공부할 챕터를 선택하세요.`;
         }
         renderTocChecklist(chapterId);
         modifyAllTocs(false);
