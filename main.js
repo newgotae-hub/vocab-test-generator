@@ -175,6 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         return bookNames[normalized] || '어원편';
     };
+    const getBookPrefixForFile = (bookKey) => {
+        const normalized = normalizeBookKey(bookKey);
+        const prefixes = {
+            etymology: '어원편_',
+            basic: '베이직_',
+            advanced: '어드_',
+        };
+        return prefixes[normalized] || '';
+    };
 
     const extractExamTitleFromToc = (tocLabel = '') => {
         const trimmed = normalizeSpacingText(tocLabel);
@@ -827,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
-        const baseFileName = normalizeFileName(settings.fileBaseName || settings.examTitle);
+        const baseFileName = normalizeFileName(`${getBookPrefixForFile(state.selectedBook)}${settings.fileBaseName || settings.examTitle}`);
         showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
             if (settings.outputFormat === 'PDF') {
