@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadedBooks: new Set(),
         isDataReady: false,
         koreanFont: null,
+        koreanFontBold: null,
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
@@ -522,19 +523,30 @@ document.addEventListener('DOMContentLoaded', () => {
             applyBookData('etymology');
             if (PDFDocument) {
                 try {
-                    const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
-                    if (!fontResponse.ok) throw new Error('폰트 파일 없음');
-                    const fontContentType = (fontResponse.headers.get('content-type') || '').toLowerCase();
-                    const fontBytes = await fontResponse.arrayBuffer();
-                    if (fontContentType.includes('text/html') || isLikelyHtmlBuffer(fontBytes)) {
-                        throw new Error('폰트 파일 경로가 잘못되었거나 배포에 포함되지 않았습니다.');
+                    const loadPdfFontBuffer = async (path) => {
+                        const response = await fetch(path);
+                        if (!response.ok) throw new Error('폰트 파일 없음');
+                        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+                        const bytes = await response.arrayBuffer();
+                        if (contentType.includes('text/html') || isLikelyHtmlBuffer(bytes)) {
+                            throw new Error('폰트 파일 경로가 잘못되었거나 배포에 포함되지 않았습니다.');
+                        }
+                        if (!isSupportedFontBuffer(bytes)) {
+                            throw new Error('지원되지 않는 폰트 포맷');
+                        }
+                        return bytes;
+                    };
+
+                    state.koreanFont = await loadPdfFontBuffer('assets/fonts/NotoSansKR-Regular.ttf');
+                    try {
+                        state.koreanFontBold = await loadPdfFontBuffer('assets/fonts/NotoSansKR-Bold.otf');
+                    } catch (boldError) {
+                        state.koreanFontBold = state.koreanFont;
+                        console.warn('한글 Bold 폰트 로드 실패(Regular로 대체):', boldError.message || boldError);
                     }
-                    if (!isSupportedFontBuffer(fontBytes)) {
-                        throw new Error('지원되지 않는 폰트 포맷');
-                    }
-                    state.koreanFont = fontBytes;
                 } catch (fontError) {
                     state.koreanFont = null;
+                    state.koreanFontBold = null;
                     console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
                 }
             }
@@ -872,6 +884,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
         }
+        let fontBold = font;
+        if (state.koreanFontBold) {
+            try {
+                fontBold = await pdfDoc.embedFont(state.koreanFontBold);
+            } catch (_) {
+                fontBold = font;
+            }
+        }
         let latinTitleFont = font;
         if (StandardFonts?.Helvetica) {
             try {
@@ -889,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         const resolvePdfFont = (text) => {
-            if (hasKoreanText(text)) return font;
+            if (hasKoreanText(text)) return fontBold;
             if (latinTitleFont !== font && canRenderWithFont(latinTitleFont, text)) return latinTitleFont;
             return font;
         };
@@ -949,9 +969,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreValueStartX = alignedScoreTextX;
         const nameLineEndCandidate = scoreValueStartX - scoreTextGap;
         const nameLineEndX = Math.min(totalNameLineEndX, Math.max(nameLineStartX, nameLineEndCandidate));
-        const frameColor = rgb(0.22, 0.22, 0.22);
+        const frameColor = rgb(0, 0, 0);
         const lineColor = rgb(0.78, 0.78, 0.78);
-        const mutedColor = rgb(0.25, 0.25, 0.25);
+        const mutedColor = rgb(0, 0, 0);
         const pageBottom = margin + 4;
         const pageTopFrame = height - margin + 2;
         const pageBottomFrame = pageBottom;
