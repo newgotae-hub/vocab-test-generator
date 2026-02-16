@@ -425,9 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.loadedBooks.has(normalizedBook)) return;
 
         const csvMap = {
-            etymology: 'data/root.csv',
-            basic: 'data/DB-basic.csv',
-            advanced: 'data/DB-advanced.csv',
+            etymology: '/data/root.csv',
+            basic: '/data/DB-basic.csv',
+            advanced: '/data/DB-advanced.csv',
         };
         const csvPath = csvMap[normalizedBook];
         if (!csvPath) throw new Error(`지원되지 않는 교재입니다: ${bookKey}`);
@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ensureDocxLibrary = async () => {
         if (window.docx?.Packer && window.docx?.Document && window.docx?.Paragraph) return;
         const sources = [
-            'assets/docx/docx.umd.min.js',
+            '/assets/docx/docx.umd.min.js',
             'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js',
             'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js',
             'https://unpkg.com/docx@8.5.0/build/index.js',
@@ -538,9 +538,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         return bytes;
                     };
 
-                    state.koreanFont = await loadPdfFontBuffer('assets/fonts/NotoSansKR-Regular.ttf');
+                    state.koreanFont = await loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.ttf');
                     try {
-                        state.koreanFontBold = await loadPdfFontBuffer('assets/fonts/NotoSansKR-Bold.otf');
+                        state.koreanFontBold = await loadPdfFontBuffer('/assets/fonts/NotoSansKR-Bold.otf');
                     } catch (boldError) {
                         state.koreanFontBold = state.koreanFont;
                         console.warn('한글 Bold 폰트 로드 실패(Regular로 대체):', boldError.message || boldError);

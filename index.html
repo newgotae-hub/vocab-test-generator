@@ -3,161 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>수능평가원 VOCA</title>
-    <meta name="description" content="단어장을 구매하고, 무료로 시험지를 제작하세요!">
-    <meta property="og:title" content="수능평가원 VOCA 출시!">
-    <meta property="og:description" content="단어장을 구매하고, 무료로 시험지를 제작하세요!">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1010168647313500" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>VOCA Plus Dashboard</title>
+    <meta name="description" content="VOCA Plus 대시보드에서 시험 생성기와 학습 기능으로 이동하세요.">
+    <meta property="og:title" content="VOCA Plus Dashboard">
+    <meta property="og:description" content="시험 생성기, 연습 게임, 랭크 매치, 플래시카드, 통계를 한 곳에서 시작하세요.">
+    <link rel="stylesheet" href="/style.css">
     <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-page="dashboard">
     <div id="app">
         <header>
             <div class="logo">
-                <i class="logo-icon">📖</i> 수능평가원 VOCA
+                <i class="logo-icon">📖</i> VOCA Plus
             </div>
+            <nav aria-label="주요 메뉴">
+                <a href="/" data-route="/">대시보드</a>
+                <a href="/generator/" data-route="/generator/">시험 생성기</a>
+                <a href="/game/" data-route="/game/">연습 게임</a>
+                <a href="/ranked/" data-route="/ranked/">랭크 매치</a>
+                <a href="/cards/" data-route="/cards/">플래시카드</a>
+                <a href="/stats/" data-route="/stats/">학습 통계</a>
+            </nav>
         </header>
 
-        <main>
-            <div class="left-column">
-                <!-- Vocabulary Lists Card -->
-                <div class="card book-select-card">
-                    <h2>교재 선택</h2>
-                    <p class="subtitle">단어시험지를 만들 교재를 선택하세요.</p>
-                    <div id="book-library" class="book-library">
-                        <div class="book-item" data-book="basic">
-                            <img src="assets/images/베이직.jpg" alt="베이직 표지">
-                        </div>
-                        <div class="book-item" data-book="advanced">
-                            <img src="assets/images/어드밴스드.jpg" alt="어드밴스드 표지">
-                        </div>
-                        <div class="book-item" data-book="etymology">
-                            <img src="assets/images/어원편.jpg" alt="어원편 표지">
-                        </div>
-                    </div>
-                </div>
+        <main class="dashboard-main">
+            <section class="card dashboard-intro">
+                <h2>학습 대시보드</h2>
+                <p class="subtitle">원하는 학습 모드를 선택해 바로 시작하세요.</p>
+            </section>
 
-                <!-- Test Configuration Card -->
-                <div id="test-config-card" class="card hidden">
-                    <h2>시험지 설정</h2>
-                    <p class="subtitle">시험지 인쇄방식을 설정하세요.</p>
-
-                    <div class="config-group">
-                        <h3>시험지 제목</h3>
-                        <div class="input-group">
-                            <input type="text" id="exam-title" class="text-input" value="어휘 시험지" maxlength="80">
-                        </div>
-                    </div>
-
-                    <div class="config-group">
-                        <h3>출력 형식</h3>
-                        <div class="output-format-options">
-                            <label><input type="radio" name="output-format" value="WORD" checked> WORD</label>
-                            <label><input type="radio" name="output-format" value="PDF"> PDF</label>
-                        </div>
-                    </div>
-
-                    <div class="config-group">
-                        <h3>시험 유형</h3>
-                        <div class="test-type-options">
-                            <div class="test-type-option active" data-type="KOR">
-                                <div class="label">
-                                    <span class="label-main">영한시험</span>
-                                    <span class="label-sub">(영어→한글)</span>
-                                </div>
-                            </div>
-                            <div class="test-type-option" data-type="ENG">
-                                <div class="label">
-                                    <span class="label-main">한영시험</span>
-                                    <span class="label-sub">(한글→영어)</span>
-                                </div>
-                            </div>
-                            <div class="test-type-option" data-type="MIXED">
-                                <div class="label">
-                                    <span class="label-main">혼합시험</span>
-                                    <span class="label-sub">(영어↔한글)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <!-- Number of Questions -->
-                        <div class="config-group">
-                            <h3>문항 수</h3>
-                            <div class="input-group">
-                                <input type="number" id="num-questions" value="0" min="1" step="1">
-                                <span>개</span>
-                            </div>
-                            <p id="num-questions-hint" class="field-hint hidden" aria-live="polite"></p>
-                        </div>
-
-                        <!-- Options -->
-                        <div class="config-group">
-                            <h3>순서</h3>
-                            <div class="toggle-option">
-                                <span>무작위</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="shuffle-questions">
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="button-primary" id="generate-test-papers" disabled>
-                        ⚡ 시험지 생성
-                    </button>
-                </div>
-            </div>
-
-            <div class="right-column">
-                <!-- Sub-Chapter Selection Card (For Etymology book) -->
-                <div id="sub-chapter-selection-card" class="card hidden">
-                    <h2>챕터 선택</h2>
-                    <p class="subtitle">'어원편'의 학습할 챕터를 선택하세요.</p>
-                    <div class="sub-chapter-options">
-                        <div class="sub-chapter-item" data-chapter="CH1">Chapter 1. 접두사</div>
-                        <div class="sub-chapter-item" data-chapter="CH2">Chapter 2. 접미사</div>
-                        <div class="sub-chapter-item" data-chapter="CH3">Chapter 3. 어근</div>
-                    </div>
-                </div>
-                
-                <!-- TOC Selection Card -->
-                <div id="toc-selection-card" class="card hidden">
-                    <div class="toc-title-row">
-                        <h2>목차 선택</h2>
-                        <div id="include-derivatives-group" class="toc-derivatives hidden">
-                            <span class="toc-derivatives-label">파생어 포함</span>
-                            <label class="switch">
-                                <input type="checkbox" id="include-derivatives">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <p class="subtitle">시험 볼 범위를 목차에서 선택하세요.</p>
-                    <div id="toc-checklist" class="toc-checklist">
-                        <!-- TOC items will be injected here by main.js -->
-                    </div>
-                    <p id="toc-summary" class="summary-text" aria-live="polite"></p>
-                </div>
-            </div>
+            <section class="dashboard-grid" aria-label="학습 모드">
+                <a class="card dashboard-link" href="/generator/">
+                    <h3>Test Generator</h3>
+                    <p>교재 선택 후 WORD/PDF 시험지를 생성합니다.</p>
+                </a>
+                <a class="card dashboard-link" href="/game/">
+                    <h3>Practice Game</h3>
+                    <p>빠른 반복 학습을 위한 연습 모드입니다.</p>
+                </a>
+                <a class="card dashboard-link" href="/ranked/">
+                    <h3>Ranked Match</h3>
+                    <p>랭킹 기반 문제 풀이 모드(준비 중)입니다.</p>
+                </a>
+                <a class="card dashboard-link" href="/cards/">
+                    <h3>Flashcards</h3>
+                    <p>암기 중심 플래시카드 모드(준비 중)입니다.</p>
+                </a>
+                <a class="card dashboard-link" href="/stats/">
+                    <h3>Stats</h3>
+                    <p>학습 기록과 성과 지표 페이지(준비 중)입니다.</p>
+                </a>
+            </section>
         </main>
     </div>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true" class="toast-container" role="status"></div>
-    
-    <!-- Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-
-    <!-- Main Script -->
-    <script src="main.js"></script>
+    <script type="module" src="/src/app.js"></script>
 </body>
 </html>
