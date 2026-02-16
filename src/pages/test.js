@@ -228,7 +228,7 @@ const renderTocChecklist = (tocs) => {
     ui.tocChecklist.innerHTML = sortedTocs.map((toc) => {
         const isChecked = state.selectedTocs.has(toc);
         return `
-            <label class="toc-checklist-item">
+            <label class="toc-checklist-item ${isChecked ? 'selected-item' : ''}">
                 <input type="checkbox" data-toc="${escapeHtml(toc)}" ${isChecked ? 'checked' : ''}>
                 <span class="label">${escapeHtml(toc)}</span>
             </label>
@@ -339,7 +339,6 @@ const renderReviewList = () => {
 
 const clampQuestionCount = () => {
     const poolSize = state.scopePool.length;
-    const currentValue = Number.parseInt(ui.questionCountInput?.value || '0', 10) || 0;
 
     ui.questionCountInput.max = String(poolSize);
 
@@ -349,12 +348,8 @@ const clampQuestionCount = () => {
         return;
     }
 
-    const nextValue = currentValue > 0
-        ? Math.min(poolSize, Math.max(1, currentValue))
-        : poolSize;
-
-    ui.questionCountInput.value = String(nextValue);
-    state.questionCount = nextValue;
+    ui.questionCountInput.value = String(poolSize);
+    state.questionCount = poolSize;
 };
 
 const updateScopeSummary = () => {
@@ -496,7 +491,9 @@ const renderCurrentQuestion = () => {
         `;
     }).join('');
 
-    ui.nextBtn.textContent = index === questions.length - 1 ? '제출' : '다음';
+    if (ui.nextBtn) {
+        ui.nextBtn.classList.add('hidden');
+    }
 };
 
 const stopTimer = () => {
@@ -874,6 +871,14 @@ const bindEvents = () => {
         const choiceIndex = Number.parseInt(button.dataset.choiceIndex || '-1', 10);
         const choice = state.session.questions[state.session.index]?.choices?.[choiceIndex];
         markSessionAnswer(state.session.index, choice?.text || '');
+
+        const isLast = state.session.index >= state.session.questions.length - 1;
+        if (isLast) {
+            openConfirmView();
+            return;
+        }
+
+        state.session.index += 1;
         renderCurrentQuestion();
     });
 

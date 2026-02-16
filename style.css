@@ -683,6 +683,10 @@ input:checked + .slider::before {
     gap: 1rem;
 }
 
+#chapter-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .test-inline-actions {
     display: inline-flex;
     gap: 0.4rem;
