@@ -910,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         const resolvePdfFont = (text) => {
-            if (hasKoreanText(text)) return fontBold;
+            if (hasKoreanText(text)) return font;
             if (latinTitleFont !== font && canRenderWithFont(latinTitleFont, text)) return latinTitleFont;
             return font;
         };
