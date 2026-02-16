@@ -336,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.remove();
         URL.revokeObjectURL(url);
     };
+    const DOWNLOAD_GAP_MS = 700;
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const showToast = (message, type = 'info', duration = 2200) => {
         const container = document.getElementById('toast-container');
@@ -853,15 +854,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
-                const answerPdfBytes = await createPdf(questions, settings, true);
                 downloadBlob(new Blob([questionPdfBytes], { type: 'application/pdf' }), `${baseFileName}.pdf`);
-                await sleep(700);
+                await sleep(DOWNLOAD_GAP_MS);
+                const answerPdfBytes = await createPdf(questions, settings, true);
                 downloadBlob(new Blob([answerPdfBytes], { type: 'application/pdf' }), `${baseFileName}_답.pdf`);
             } else {
                 const questionDocx = await createDocx(questions, settings, false);
-                const answerDocx = await createDocx(questions, settings, true);
                 downloadBlob(questionDocx.blob, `${baseFileName}.docx`);
-                await sleep(700);
+                await sleep(DOWNLOAD_GAP_MS);
+                const answerDocx = await createDocx(questions, settings, true);
                 downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
             }
         } catch(e) {
