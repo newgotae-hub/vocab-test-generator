@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.remove();
         URL.revokeObjectURL(url);
     };
-    const DOWNLOAD_GAP_MS = 700;
+    const DOWNLOAD_GAP_MS = 800;
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const showToast = (message, type = 'info', duration = 2200) => {
         const container = document.getElementById('toast-container');
