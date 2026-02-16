@@ -674,6 +674,117 @@ input:checked + .slider::before {
     text-decoration: none;
 }
 
+.test-main {
+    display: block;
+}
+
+.test-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.test-inline-actions {
+    display: inline-flex;
+    gap: 0.4rem;
+}
+
+.test-mini-btn {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+}
+
+.test-mini-btn:hover {
+    background: var(--surface-soft);
+}
+
+#test-choice-list .toc-checklist-item {
+    align-items: flex-start;
+}
+
+.test-prompt {
+    margin: 0.25rem 0 0.95rem;
+    line-height: 1.5;
+    font-size: 1.03rem;
+}
+
+.test-actions {
+    margin-top: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.test-link-button {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.test-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin: 0.55rem 0 1rem;
+}
+
+.test-metric-item {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.68rem 0.75rem;
+    background: #fff;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.test-metric-item strong {
+    color: var(--text-subtle);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.test-code {
+    margin: 0.3rem 0 0.65rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.test-history-list,
+.test-review-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.test-history-item,
+.test-review-item {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.7rem;
+    background: #fff;
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+}
+
+.test-history-item strong {
+    font-size: 0.9rem;
+}
+
+.test-review-item p {
+    margin: 0;
+}
+
 @media (max-width: 1200px) {
     #app {
         width: min(1100px, 100% - 1.5rem);
@@ -685,6 +796,14 @@ input:checked + .slider::before {
     }
 
     .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .test-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .test-metrics {
         grid-template-columns: 1fr;
     }
 }

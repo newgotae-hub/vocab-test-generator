@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOCA Plus - Online Test</title>
+    <meta name="description" content="10지선다 자동채점 온라인 시험">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body data-page="test">
+    <div id="app">
+        <header>
+            <div class="logo">
+                <i class="logo-icon">📖</i> VOCA Plus
+            </div>
+            <nav aria-label="주요 메뉴">
+                <a href="/" data-route="/">대시보드</a>
+                <a href="/generator/" data-route="/generator/">시험 생성기</a>
+                <a href="/test/" data-route="/test/">Online Test</a>
+                <a href="/game/" data-route="/game/">연습 게임</a>
+                <a href="/ranked/" data-route="/ranked/">랭크 매치</a>
+                <a href="/cards/" data-route="/cards/">플래시카드</a>
+                <a href="/stats/" data-route="/stats/">학습 통계</a>
+            </nav>
+        </header>
+
+        <main class="test-main">
+            <div class="test-stack">
+                <section id="test-setup-view" class="card">
+                    <h2>시험 설정</h2>
+                    <p class="subtitle">10지선다 자동채점 시험을 시작합니다.</p>
+
+                    <div class="config-group">
+                        <h3>교재 선택</h3>
+                        <div id="book-options" class="test-type-options">
+                            <div class="test-type-option active" data-book="etymology">
+                                <div class="label">
+                                    <span class="label-main">어원편</span>
+                                    <span class="label-sub">etymology</span>
+                                </div>
+                            </div>
+                            <div class="test-type-option" data-book="basic">
+                                <div class="label">
+                                    <span class="label-main">베이직</span>
+                                    <span class="label-sub">basic</span>
+                                </div>
+                            </div>
+                            <div class="test-type-option" data-book="advanced">
+                                <div class="label">
+                                    <span class="label-main">어드밴스드</span>
+                                    <span class="label-sub">advanced</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="chapter-group" class="config-group hidden">
+                        <h3>챕터 선택 (어원편)</h3>
+                        <div id="chapter-options" class="sub-chapter-options"></div>
+                    </div>
+
+                    <div class="config-group">
+                        <div class="toc-title-row">
+                            <h3>범위 선택</h3>
+                            <div class="test-inline-actions">
+                                <button type="button" id="toc-select-all" class="test-mini-btn">전체 선택</button>
+                                <button type="button" id="toc-clear-all" class="test-mini-btn">전체 해제</button>
+                            </div>
+                        </div>
+                        <div id="test-toc-checklist" class="toc-checklist"></div>
+                        <p id="test-scope-summary" class="summary-text" aria-live="polite"></p>
+                    </div>
+
+                    <div id="include-derivatives-group" class="config-group hidden">
+                        <h3>파생어 옵션</h3>
+                        <div class="toggle-option">
+                            <span>파생어 포함</span>
+                            <label class="switch">
+                                <input type="checkbox" id="include-derivatives-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>시험 유형</h3>
+                        <div id="exam-type-options" class="test-type-options">
+                            <div class="test-type-option active" data-exam-type="E2K">
+                                <div class="label">
+                                    <span class="label-main">ENG → KOR</span>
+                                    <span class="label-sub">영어 → 한국어</span>
+                                </div>
+                            </div>
+                            <div class="test-type-option" data-exam-type="K2E">
+                                <div class="label">
+                                    <span class="label-main">KOR → ENG</span>
+                                    <span class="label-sub">한국어 → 영어</span>
+                                </div>
+                            </div>
+                            <div class="test-type-option" data-exam-type="MIXED">
+                                <div class="label">
+                                    <span class="label-main">MIXED</span>
+                                    <span class="label-sub">혼합</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="config-group">
+                            <h3>문항 수</h3>
+                            <div class="input-group">
+                                <input type="number" id="test-question-count" value="0" min="1" step="1">
+                                <span>개</span>
+                            </div>
+                        </div>
+                        <div class="config-group">
+                            <h3>총 시간</h3>
+                            <div class="input-group">
+                                <input type="number" id="test-time-limit" value="20" min="1" step="1">
+                                <span>분</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>문항 순서</h3>
+                        <div class="toggle-option">
+                            <span>무작위 출제</span>
+                            <label class="switch">
+                                <input type="checkbox" id="test-shuffle-toggle" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="button" class="button-primary" id="test-start-btn" disabled>시험 시작</button>
+                </section>
+
+                <section id="test-history-setup" class="card">
+                    <h2>Recent tests (last 10)</h2>
+                    <div id="recent-tests-setup" class="test-history-list"></div>
+                </section>
+
+                <section id="test-run-view" class="card hidden">
+                    <div class="toc-title-row">
+                        <h2 id="test-progress">1 / 1</h2>
+                        <div id="test-remaining-time" class="version">00:00</div>
+                    </div>
+                    <p id="test-direction-label" class="subtitle"></p>
+                    <h3 id="test-question-prompt" class="test-prompt"></h3>
+                    <div id="test-choice-list" class="toc-checklist"></div>
+                    <div class="test-actions">
+                        <button type="button" class="button-primary" id="test-next-btn">다음</button>
+                    </div>
+                </section>
+
+                <section id="test-confirm-view" class="card hidden">
+                    <h2>제출 확인</h2>
+                    <p id="confirm-unanswered-text" class="subtitle"></p>
+                    <div class="test-actions">
+                        <button type="button" class="button-primary" id="confirm-jump-btn">첫 미응답으로 이동</button>
+                        <button type="button" class="button-primary" id="confirm-submit-btn">제출 확정</button>
+                        <button type="button" class="button-primary" id="confirm-cancel-btn">시험으로 돌아가기</button>
+                    </div>
+                </section>
+
+                <section id="test-result-view" class="card hidden">
+                    <h2>채점 결과</h2>
+                    <p id="result-headline" class="subtitle"></p>
+                    <div id="result-metrics" class="test-metrics"></div>
+
+                    <div class="config-group">
+                        <h3>인증코드</h3>
+                        <p id="verification-code" class="test-code"></p>
+                        <div class="test-actions">
+                            <button type="button" class="button-primary" id="copy-code-btn">Copy Verification Code</button>
+                            <button type="button" class="button-primary" id="copy-summary-btn">Copy Result Summary Text</button>
+                        </div>
+                        <textarea id="result-summary-text" class="text-input" rows="8" readonly></textarea>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>정답 리뷰</h3>
+                        <div class="output-format-options">
+                            <label><input type="radio" name="review-filter" value="wrong" checked> 오답만</label>
+                            <label><input type="radio" name="review-filter" value="all"> 전체</label>
+                        </div>
+                        <div id="result-review-list" class="test-review-list"></div>
+                    </div>
+
+                    <div class="test-actions">
+                        <button type="button" class="button-primary" id="retry-wrong-btn">Retry wrong only</button>
+                        <button type="button" class="button-primary" id="retry-scope-btn">Retry same scope</button>
+                        <a class="button-primary test-link-button" href="/cards/">/cards/ 이동</a>
+                        <a class="button-primary test-link-button" href="/generator/">/generator/ 이동</a>
+                    </div>
+                </section>
+
+                <section id="test-history-result" class="card hidden">
+                    <h2>Recent tests (last 10)</h2>
+                    <div id="recent-tests-result" class="test-history-list"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true" class="toast-container" role="status"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script type="module" src="/src/app.js"></script>
+    <script type="module" src="/src/pages/test.js"></script>
+</body>
+</html>
