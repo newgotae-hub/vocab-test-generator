@@ -432,8 +432,8 @@ const loadScopeControls = async ({ resetSelection = false } = {}) => {
         renderChapterOptions(chapters);
 
         const tocs = await getTocsForChapter(state.chapterId);
-        if (resetSelection || state.selectedTocs.size === 0) {
-            state.selectedTocs = new Set(tocs);
+        if (resetSelection) {
+            state.selectedTocs = new Set();
         } else {
             const nextSelection = new Set();
             tocs.forEach((toc) => {
@@ -446,8 +446,8 @@ const loadScopeControls = async ({ resetSelection = false } = {}) => {
     } else {
         state.chapterId = '';
         const dayTocs = await getDayTocs(state.bookKey);
-        if (resetSelection || state.selectedTocs.size === 0) {
-            state.selectedTocs = new Set(dayTocs);
+        if (resetSelection) {
+            state.selectedTocs = new Set();
         } else {
             const nextSelection = new Set();
             dayTocs.forEach((toc) => {
@@ -480,14 +480,19 @@ const renderCurrentQuestion = () => {
     ui.questionPrompt.textContent = question.prompt;
 
     const selectedAnswer = normalizeSpacingText(answers[index]);
+    ui.choiceList.classList.add('test-choice-grid');
     ui.choiceList.innerHTML = question.choices.map((choice, idx) => {
         const choiceText = normalizeSpacingText(choice.text);
-        const checked = selectedAnswer && selectedAnswer === choiceText;
+        const isSelected = selectedAnswer && selectedAnswer === choiceText;
         return `
-            <label class="toc-checklist-item">
-                <input type="radio" name="test-choice" data-choice-index="${idx}" ${checked ? 'checked' : ''}>
-                <span class="label">${idx + 1}. ${escapeHtml(choiceText)}</span>
-            </label>
+            <button
+                type="button"
+                class="test-choice-card ${isSelected ? 'is-selected' : ''}"
+                data-choice-index="${idx}"
+                aria-pressed="${isSelected ? 'true' : 'false'}"
+            >
+                <span class="test-choice-text">${escapeHtml(choiceText)}</span>
+            </button>
         `;
     }).join('');
 
@@ -863,12 +868,13 @@ const bindEvents = () => {
         startTestFromSetup();
     });
 
-    ui.choiceList?.addEventListener('change', (event) => {
-        const input = event.target.closest('input[type="radio"][name="test-choice"]');
-        if (!input || !state.session) return;
-        const choiceIndex = Number.parseInt(input.dataset.choiceIndex || '-1', 10);
+    ui.choiceList?.addEventListener('click', (event) => {
+        const button = event.target.closest('.test-choice-card[data-choice-index]');
+        if (!button || !state.session) return;
+        const choiceIndex = Number.parseInt(button.dataset.choiceIndex || '-1', 10);
         const choice = state.session.questions[state.session.index]?.choices?.[choiceIndex];
         markSessionAnswer(state.session.index, choice?.text || '');
+        renderCurrentQuestion();
     });
 
     ui.nextBtn?.addEventListener('click', () => {

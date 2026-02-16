@@ -708,6 +708,47 @@ input:checked + .slider::before {
     align-items: flex-start;
 }
 
+.test-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    border: 0;
+    background: transparent;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+}
+
+.test-choice-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+    text-align: left;
+    padding: 0.78rem 0.82rem;
+    cursor: pointer;
+    font: inherit;
+    min-height: 56px;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.test-choice-card:hover {
+    border-color: rgba(30, 58, 138, 0.32);
+    background: #f3f7ff;
+}
+
+.test-choice-card.is-selected {
+    border-color: #2563EB;
+    background: #eaf2ff;
+    box-shadow: 0 8px 18px -14px rgba(37, 99, 235, 0.45);
+}
+
+.test-choice-text {
+    display: block;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
 .test-prompt {
     margin: 0.25rem 0 0.95rem;
     line-height: 1.5;
@@ -804,6 +845,10 @@ input:checked + .slider::before {
     }
 
     .test-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .test-choice-grid {
         grid-template-columns: 1fr;
     }
 }
