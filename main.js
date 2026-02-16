@@ -17,22 +17,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         allWords: [],
         wordsByToc: {},
+        bookDataByKey: {
+            etymology: [],
+            basic: [],
+            advanced: [],
+        },
+        wordsByTocByKey: {
+            etymology: {},
+            basic: {},
+            advanced: {},
+        },
+        loadedBooks: new Set(),
         isDataReady: false,
         koreanFont: null,
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
+        includeDerivatives: false,
+        emptyWordWarningShown: false,
         isExamTitleCustomized: false,
         get selectedWords() {
-            if (!this.selectedChapter) return [];
             if (this.selectedTocs.size === 0) return [];
 
-            const words = [];
+            const sourceEntries = [];
             this.selectedTocs.forEach(toc => {
-                if (!this.wordsByToc[toc]) return;
-                words.push(...this.wordsByToc[toc].filter(w => w.chapter === this.selectedChapter));
+                const tocWords = this.wordsByToc[toc];
+                if (!tocWords) return;
+                if (this.selectedBook === 'etymology') {
+                    if (!this.selectedChapter) return;
+                    sourceEntries.push(...tocWords.filter(w => w.chapter === this.selectedChapter));
+                    return;
+                }
+                sourceEntries.push(...tocWords);
             });
-            return words;
+            return buildQuestionPool(sourceEntries);
         },
         ui: {
             bookLibrary: document.getElementById('book-library'),
@@ -50,6 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
             shuffleQuestions: document.getElementById('shuffle-questions'),
             generateBtn: document.getElementById('generate-test-papers'),
             examTitle: document.getElementById('exam-title'),
+            includeDerivatives: document.getElementById('include-derivatives'),
+            includeDerivativesGroup: document.getElementById('include-derivatives-group'),
         }
     };
     const bookLibraryCard = state.ui.bookLibrary.closest('.card');
@@ -97,6 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCurrentlyOpen = cards.some(card => !card.classList.contains('hidden'));
 
         if (section === 'toc' && !isCurrentlyOpen) {
+            if (state.selectedBook && state.selectedBook !== 'etymology') {
+                state.ui.subChapterSelectionCard.classList.add('hidden');
+                state.ui.tocSelectionCard.classList.remove('hidden');
+                setSectionOpen('toc', true);
+                setSectionOpen('settings', true);
+                return;
+            }
             if (state.selectedBook === 'etymology' && !state.selectedChapter) {
                 state.ui.subChapterSelectionCard.classList.remove('hidden');
                 state.ui.tocSelectionCard.classList.add('hidden');
@@ -152,11 +179,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const extractExamTitleFromToc = (tocLabel = '') => {
         const trimmed = normalizeSpacingText(tocLabel);
         if (!trimmed) return '어휘 시험지';
+        const dayMatch = trimmed.match(/day\s*0?(\d{1,2})/i);
+        if (dayMatch) return `Day ${parseInt(dayMatch[1], 10)}`;
         const firstToken = trimmed.split(/\s+/)[0];
         return firstToken.replace(/[()\[\],;:]+/g, '').trim() || '어휘 시험지';
     };
 
     const buildExamTitleFromSelectedTocs = (tocLabels = []) => {
+        const dayNumbers = tocLabels
+            .map((toc) => {
+                const match = normalizeSpacingText(toc).match(/DAY\s*0?(\d{1,2})/i);
+                return match ? parseInt(match[1], 10) : NaN;
+            })
+            .filter((value) => Number.isInteger(value));
+
+        if (dayNumbers.length > 0 && dayNumbers.length === tocLabels.length) {
+            const sortedUniqueDays = [...new Set(dayNumbers)].sort((a, b) => a - b);
+            const isConsecutive = sortedUniqueDays.every((day, index) => (
+                index === 0 || day === sortedUniqueDays[index - 1] + 1
+            ));
+            const toDayLabel = (day) => `Day ${day}`;
+            if (isConsecutive && sortedUniqueDays.length >= 2) {
+                return `${toDayLabel(sortedUniqueDays[0])} ~ ${toDayLabel(sortedUniqueDays[sortedUniqueDays.length - 1])}`;
+            }
+            if (sortedUniqueDays.length === 1) {
+                return toDayLabel(sortedUniqueDays[0]);
+            }
+        }
+
         const titles = tocLabels
             .map((toc) => extractExamTitleFromToc(toc))
             .filter(Boolean)
@@ -234,7 +284,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return normalizeSpacingText((delimiterMatch?.[1] || trimmed));
     };
     const normalizePdfWordText = (text) => normalizeSpacingText(text).replace(/\s+/g, '');
-    const normalizeTitleSpacing = (value) => normalizeSpacingText(value).replace(/\s+/g, '');
+    const hasKoreanText = (value) => /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ''));
+    const formatPdfExamTitle = (value) => {
+        const normalized = normalizeSpacingText(value || '어휘 시험지') || '어휘 시험지';
+        const dayRangeMatch = normalized.match(/^day\s*0?(\d{1,2})\s*~\s*day\s*0?(\d{1,2})$/i)
+            || normalized.match(/^day\s*0?(\d{1,2})\s*~\s*0?(\d{1,2})$/i);
+        if (dayRangeMatch) {
+            return `Day ${parseInt(dayRangeMatch[1], 10)}~${parseInt(dayRangeMatch[2], 10)}`;
+        }
+        const singleDayMatch = normalized.match(/^day\s*0?(\d{1,2})$/i);
+        if (singleDayMatch) {
+            return `Day ${parseInt(singleDayMatch[1], 10)}`;
+        }
+        return normalized;
+    };
 
     const setNumQuestionsHint = (requestValue) => {
         const hint = state.ui.numQuestionsHint;
@@ -291,6 +354,129 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return new Blob([bytes], { type: mimeType });
     };
+    const parseCsvRows = (csvText) => new Promise((resolve, reject) => {
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data || []),
+            error: (error) => reject(error),
+        });
+    });
+    const getCsvField = (row, key) => {
+        if (!row || typeof row !== 'object') return '';
+        return row[key] ?? row[`﻿${key}`] ?? '';
+    };
+    const buildWordsByToc = (rows) => {
+        const wordsByToc = {};
+        (rows || []).forEach((word) => {
+            const toc = normalizeSpacingText(word?.toc);
+            if (!toc) return;
+            if (!wordsByToc[toc]) wordsByToc[toc] = [];
+            wordsByToc[toc].push(word);
+        });
+        return wordsByToc;
+    };
+    const cacheBookData = (bookKey, rows) => {
+        state.bookDataByKey[bookKey] = Array.isArray(rows) ? rows : [];
+        state.wordsByTocByKey[bookKey] = buildWordsByToc(state.bookDataByKey[bookKey]);
+        state.loadedBooks.add(bookKey);
+    };
+    const applyBookData = (bookKey) => {
+        state.allWords = state.bookDataByKey[bookKey] || [];
+        state.wordsByToc = state.wordsByTocByKey[bookKey] || {};
+    };
+    const buildDayLabel = (index) => `DAY ${String(Math.floor(index / 50) + 1).padStart(2, '0')}`;
+    const mapDayRowsToWords = (rows) => (rows || []).map((row, index) => {
+        const dayNumber = Math.floor(index / 50) + 1;
+        if (dayNumber > 30) return null;
+
+        const derivatives = [];
+        for (let i = 1; i <= 6; i += 1) {
+            const derivedWord = normalizeSpacingText(getCsvField(row, `파생어${i}`));
+            if (!derivedWord) continue;
+            derivatives.push({
+                word: derivedWord,
+                meaning: normalizeSpacingText(getCsvField(row, `파생어${i} 뜻`)),
+            });
+        }
+
+        return {
+            chapter: 'DAY',
+            toc: buildDayLabel(index),
+            word: normalizeSpacingText(getCsvField(row, '단어')),
+            meaning: normalizeSpacingText(getCsvField(row, '의미')),
+            derivatives,
+        };
+    }).filter(Boolean);
+    const ensureBookDataLoaded = async (bookKey) => {
+        const normalizedBook = normalizeBookKey(bookKey);
+        if (!normalizedBook) throw new Error('잘못된 교재 키입니다.');
+        if (state.loadedBooks.has(normalizedBook)) return;
+
+        const csvMap = {
+            etymology: 'data/root.csv',
+            basic: 'data/DB-basic.csv',
+            advanced: 'data/DB-advanced.csv',
+        };
+        const csvPath = csvMap[normalizedBook];
+        if (!csvPath) throw new Error(`지원되지 않는 교재입니다: ${bookKey}`);
+
+        const response = await fetch(csvPath);
+        if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
+        const csvText = (await response.text()).replace(/^\uFEFF/, '');
+        const parsedRows = await parseCsvRows(csvText);
+
+        if (normalizedBook === 'etymology') {
+            const rows = parsedRows.map((row) => ({
+                chapter: normalizeSpacingText(row.chapter),
+                toc: normalizeSpacingText(row.toc),
+                word: normalizeSpacingText(row.word),
+                meaning: normalizeSpacingText(row.meaning),
+            }));
+            cacheBookData(normalizedBook, rows);
+            return;
+        }
+
+        cacheBookData(normalizedBook, mapDayRowsToWords(parsedRows));
+    };
+    const buildQuestionPool = (entries) => {
+        const pool = [];
+        let hasEmptyWord = false;
+
+        (entries || []).forEach((entry) => {
+            const baseWord = normalizeSpacingText(entry?.word);
+            const baseMeaning = normalizeSpacingText(entry?.meaning);
+            if (!baseWord) {
+                hasEmptyWord = true;
+                return;
+            }
+            pool.push({
+                word: baseWord,
+                meaning: baseMeaning,
+                chapter: entry?.chapter,
+                toc: entry?.toc,
+            });
+
+            if (state.selectedBook === 'etymology' || !state.includeDerivatives) return;
+            (entry?.derivatives || []).forEach((derivative) => {
+                const derivativeWord = normalizeSpacingText(derivative?.word);
+                if (!derivativeWord) return;
+                pool.push({
+                    word: derivativeWord,
+                    meaning: normalizeSpacingText(derivative?.meaning),
+                    chapter: entry?.chapter,
+                    toc: entry?.toc,
+                });
+            });
+        });
+
+        if (hasEmptyWord && !state.emptyWordWarningShown) {
+            state.emptyWordWarningShown = true;
+            showToast('빈 단어 행은 제외하고 출제합니다.', 'info');
+        }
+
+        return pool;
+    };
     const loadScript = (src) => new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
@@ -323,22 +509,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadData = async () => {
         try {
-            const response = await fetch('data/root.csv');
-            if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
-            const csvText = (await response.text()).replace(/^\uFEFF/, '');
-            Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    state.allWords = results.data;
-                    state.wordsByToc = {};
-                    state.allWords.forEach(word => {
-                        if (!word.toc) return;
-                        if (!state.wordsByToc[word.toc]) state.wordsByToc[word.toc] = [];
-                        state.wordsByToc[word.toc].push(word);
-                    });
-                }
-            });
+            await ensureBookDataLoaded('etymology');
+            applyBookData('etymology');
             if (PDFDocument) {
                 try {
                     const fontResponse = await fetch('assets/fonts/NotoSansKR-Regular.ttf');
@@ -366,19 +538,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const selectBook = (bookName) => {
+    const selectBook = async (bookName) => {
         if (!state.isDataReady) {
             return showToast('단어 데이터를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.', 'error');
         }
-        if (state.allWords.length === 0) {
+        const normalizedBook = normalizeBookKey(bookName);
+        if (!['etymology', 'basic', 'advanced'].includes(normalizedBook)) {
+            return showToast('지원되지 않는 교재입니다.', 'error');
+        }
+        try {
+            await ensureBookDataLoaded(normalizedBook);
+        } catch (error) {
+            console.error(error);
+            return showToast('교재 데이터를 불러오지 못했습니다.', 'error');
+        }
+        if ((state.bookDataByKey[normalizedBook] || []).length === 0) {
             return showToast('단어 데이터가 없습니다. 데이터를 다시 로드해 주세요.', 'error');
         }
 
-        const normalizedBook = normalizeBookKey(bookName);
+        applyBookData(normalizedBook);
         state.selectedBook = normalizedBook;
         state.selectedChapter = null;
         state.selectedTocs.clear();
+        state.includeDerivatives = false;
+        state.emptyWordWarningShown = false;
         state.isExamTitleCustomized = false;
+        if (state.ui.includeDerivatives) {
+            state.ui.includeDerivatives.checked = false;
+        }
+        if (state.ui.includeDerivativesGroup) {
+            state.ui.includeDerivativesGroup.classList.toggle('hidden', normalizedBook === 'etymology');
+        }
+        state.ui.tocSelectionCard?.classList.toggle('day-mode', normalizedBook !== 'etymology');
+
+        const mixedTypeOption = state.ui.testTypeOptions
+            ?.querySelector('.test-type-option[data-type="MIXED"]');
+        if (mixedTypeOption) {
+            mixedTypeOption.classList.remove('hidden');
+        }
+        if (state.ui.testTypeOptions) {
+            state.ui.testTypeOptions.dataset.twoOptions = 'false';
+        }
 
         state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
             item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
@@ -404,10 +604,12 @@ document.addEventListener('DOMContentLoaded', () => {
             state.ui.subChapterSelectionCard.classList.remove('hidden');
             state.ui.tocSelectionCard.classList.remove('hidden');
         } else {
-            showToast('해당 책의 단어 DB는 현재 준비 중입니다.', 'error');
-            state.selectedBook = null;
-            state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => item.classList.remove('active'));
+            setSectionOpen('toc', true);
+            state.ui.subChapterSelectionCard.classList.add('hidden');
+            state.ui.tocSelectionCard.classList.remove('hidden');
+            renderTocChecklist();
         }
+        updateUiState();
     };
 
     const getSubChapterDisplayName = (chapterId) => {
@@ -447,6 +649,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderTocChecklist = (chapterId) => {
+        if (state.selectedBook && state.selectedBook !== 'etymology') {
+            const dayLabels = Array.from({ length: 30 }, (_, idx) => `DAY ${String(idx + 1).padStart(2, '0')}`);
+            state.ui.tocChecklist.innerHTML = dayLabels.map((dayLabel) => {
+                const dayEntries = state.wordsByToc[dayLabel] || [];
+                const baseCount = dayEntries.filter((entry) => normalizeSpacingText(entry?.word)).length;
+                const derivativeCount = dayEntries.reduce((count, entry) => {
+                    const baseWord = normalizeSpacingText(entry?.word);
+                    if (!baseWord) return count;
+                    const derivatives = (entry?.derivatives || []).filter((derivative) => (
+                        Boolean(normalizeSpacingText(derivative?.word))
+                    ));
+                    return count + derivatives.length;
+                }, 0);
+                const wordCount = state.includeDerivatives ? (baseCount + derivativeCount) : baseCount;
+                const isChecked = state.selectedTocs.has(dayLabel) ? 'checked' : '';
+                return `
+                    <label class="toc-checklist-item">
+                        <input type="checkbox" data-toc="${dayLabel}" ${isChecked}>
+                        <span class="label">${dayLabel}</span>
+                        <span class="badge">${wordCount}</span>
+                    </label>
+                `;
+            }).join('');
+            return;
+        }
+
         const wordsInChapter = state.allWords.filter(word => word.chapter === chapterId);
         if (wordsInChapter.length === 0) {
             state.ui.tocChecklist.innerHTML = '<p>이 챕터에는 데이터가 없습니다.</p>';
@@ -457,9 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.tocChecklist.innerHTML = tocsInChapter.map(toc => {
             if (!toc) return '';
             const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
+            const isChecked = state.selectedTocs.has(toc) ? 'checked' : '';
             return `
                 <label class="toc-checklist-item">
-                    <input type="checkbox" data-toc="${toc}">
+                    <input type="checkbox" data-toc="${toc}" ${isChecked}>
                     <span class="label">${toc}</span>
                     <span class="badge">${wordCount}</span>
                 </label>
@@ -476,7 +705,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const totalWords = state.selectedWords.length;
-        state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
+        if (state.selectedBook && state.selectedBook !== 'etymology') {
+            const selectedBaseEntries = [];
+            state.selectedTocs.forEach((toc) => {
+                if (!state.wordsByToc[toc]) return;
+                selectedBaseEntries.push(...state.wordsByToc[toc]);
+            });
+
+            let baseCount = 0;
+            let derivativeCount = 0;
+            selectedBaseEntries.forEach((entry) => {
+                const baseWord = normalizeSpacingText(entry?.word);
+                if (!baseWord) return;
+                baseCount += 1;
+                (entry?.derivatives || []).forEach((derivative) => {
+                    const derivativeWord = normalizeSpacingText(derivative?.word);
+                    if (!derivativeWord) return;
+                    derivativeCount += 1;
+                });
+            });
+
+            if (state.includeDerivatives) {
+                state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 원형: ${baseCount}개 + 파생어: ${derivativeCount}개 / 총 단어: ${totalWords}개`;
+            } else {
+                state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${baseCount}개`;
+            }
+        } else {
+            state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
+        }
         state.ui.numQuestions.value = String(totalWords);
         state.ui.numQuestions.max = String(totalWords);
         setNumQuestionsHint(state.ui.numQuestions.value);
@@ -497,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const modifyAllTocs = (shouldSelect) => {
-        if (!state.selectedChapter) return;
+        if (state.selectedBook === 'etymology' && !state.selectedChapter) return;
         state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = shouldSelect);
         updateUiState();
     };
@@ -511,11 +767,21 @@ document.addEventListener('DOMContentLoaded', () => {
             state.selectedWords.length
         );
         if (numQuestions <= 0) return showToast('문항 수는 1 이상이어야 합니다.', 'error');
-        const examTitle = getExamTitle();
+        let examTitle = getExamTitle();
+        if (state.selectedBook && state.selectedBook !== 'etymology') {
+            const dayOnlyPattern = /^day(?:\s*\/\s*day)*$/i;
+            if (dayOnlyPattern.test(examTitle) && state.selectedTocs.size > 0) {
+                examTitle = buildExamTitleFromSelectedTocs([...state.selectedTocs]);
+                if (!state.isExamTitleCustomized && state.ui.examTitle) {
+                    state.ui.examTitle.value = examTitle;
+                }
+            }
+        }
+        const activeTestType = state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR';
 
         const settings = {
             outputFormat: document.querySelector('input[name="output-format"]:checked').value,
-            testType: state.ui.testTypeOptions.querySelector('.active')?.dataset.type || 'KOR',
+            testType: activeTestType,
             numQuestions: numQuestions,
             shouldShuffle: state.ui.shuffleQuestions.checked,
             examTitle,
@@ -594,6 +860,27 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
         }
+        let latinTitleFont = font;
+        if (StandardFonts?.Helvetica) {
+            try {
+                latinTitleFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            } catch (_) {
+                latinTitleFont = font;
+            }
+        }
+        const canRenderWithFont = (targetFont, text) => {
+            try {
+                targetFont.widthOfTextAtSize(String(text || ''), 10);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        };
+        const resolvePdfFont = (text) => {
+            if (hasKoreanText(text)) return font;
+            if (latinTitleFont !== font && canRenderWithFont(latinTitleFont, text)) return latinTitleFont;
+            return font;
+        };
 
         const pages = [];
         let page = pdfDoc.addPage();
@@ -642,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const metaLabelStartX = nameLineStartX + 2;
         const totalNameLineEndX = width - margin - 4;
         const scoreTextGap = 2;
-        const scoreTotalText = ` /${(options?.numQuestions || questions.length)}`;
+        const scoreTotalText = ` / ${(options?.numQuestions || questions.length)}`;
         const scoreValueFontSize = sectionMetaSize + 2;
         const scoreValueText = scoreTotalText;
         const scoreTextWidth = font.widthOfTextAtSize(scoreValueText, scoreValueFontSize);
@@ -658,8 +945,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageBottomFrame = pageBottom;
         const columnSeparatorX = margin + columnWidth + columnGap / 2;
 
-        const examTitle = normalizeTitleSpacing(options.examTitle || '어휘 시험지') || '어휘시험지';
-        const sectionTitle = toCompactSpacing(examTitle.trim());
+        const examTitle = toCompactSpacing(options.examTitle || '어휘 시험지') || '어휘 시험지';
+        const sectionTitle = examTitle;
         const listValues = questions.map((item) => {
             const rawText = isAnswerSheet ? item.answer : item.question;
             const normalizedText = normalizePdfWordText(rawText);
@@ -670,29 +957,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const numberTextDotSpacing = ' ';
 
-        const truncateToFit = (text, maxWidth, fontSize) => {
+        const truncateToFit = (text, maxWidth, fontSize, targetFont = font) => {
             const suffix = '…';
             let value = String(text);
-            if (font.widthOfTextAtSize(value, fontSize) <= maxWidth) return value;
+            if (targetFont.widthOfTextAtSize(value, fontSize) <= maxWidth) return value;
 
             while (value.length > 0) {
                 value = value.slice(0, -1);
                 if (value.length === 0) return suffix;
-                if (font.widthOfTextAtSize(value + suffix, fontSize) <= maxWidth) return `${value}${suffix}`;
+                if (targetFont.widthOfTextAtSize(value + suffix, fontSize) <= maxWidth) return `${value}${suffix}`;
             }
             return suffix;
         };
 
-        const drawRegularText = (targetPage, text, options) => {
-            targetPage.drawText(text, options);
+        const drawRegularText = (targetPage, text, options = {}, drawOptions = {}) => {
+            const { boostKorean = true } = drawOptions;
+            const resolvedFont = options.font || resolvePdfFont(text);
+            try {
+                targetPage.drawText(text, {
+                    ...options,
+                    font: resolvedFont,
+                });
+            } catch (_) {
+                targetPage.drawText(text, {
+                    ...options,
+                    font,
+                });
+            }
+            const shouldBoostKorean = boostKorean && resolvedFont === font && hasKoreanText(text);
+            if (shouldBoostKorean) {
+                targetPage.drawText(text, {
+                    ...options,
+                    font: resolvedFont,
+                    x: (options.x || 0) + 0.18,
+                });
+            }
         };
 
-        const drawStrongText = (targetPage, text, options) => {
-            targetPage.drawText(text, options);
-            targetPage.drawText(text, {
+        const drawStrongText = (targetPage, text, options = {}) => {
+            drawRegularText(targetPage, text, options, { boostKorean: false });
+            drawRegularText(targetPage, text, {
                 ...options,
                 x: (options.x || 0) + 0.45,
-            });
+            }, { boostKorean: false });
         };
 
         const decoratePage = (currentPage) => {
@@ -731,10 +1038,13 @@ document.addEventListener('DOMContentLoaded', () => {
             decoratePage(currentPage, isAnswerSheet);
 
             const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
+            const fullTitle = sectionTitle;
+            const titleFont = resolvePdfFont(fullTitle);
             const renderedTitle = truncateToFit(
-                `${sectionTitle}${isAnswerSheet ? ' - 정답지' : ''}`,
+                fullTitle,
                 titleAreaWidth,
-                headerSize
+                headerSize,
+                titleFont
             );
 
             currentPage.drawLine({
@@ -747,18 +1057,18 @@ document.addEventListener('DOMContentLoaded', () => {
             drawStrongText(currentPage, renderedTitle, {
                 x: margin,
                 y: sectionTitleY,
-                font,
+                font: titleFont,
                 size: headerSize,
                 color: frameColor,
             });
 
             if (!isAnswerSheet) {
-                drawStrongText(currentPage, '이름:', {
+                drawRegularText(currentPage, '이름:', {
                     x: metaLabelStartX,
                     y: nameLabelY,
                     font,
                     size: sectionMetaSize,
-                    color: mutedColor,
+                    color: rgb(0, 0, 0),
                 });
 
                 currentPage.drawLine({
@@ -770,20 +1080,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const scoreLabel = '점수:';
 
-                drawStrongText(currentPage, scoreLabel, {
+                drawRegularText(currentPage, scoreLabel, {
                     x: metaLabelStartX,
                     y: scoreLabelY,
                     font,
                     size: sectionMetaSize,
-                    color: mutedColor,
+                    color: rgb(0, 0, 0),
                 });
 
-                drawStrongText(currentPage, scoreValueText, {
+                drawRegularText(currentPage, scoreValueText, {
                     x: alignedScoreTextX,
                     y: scoreLabelY,
                     font,
                     size: scoreValueFontSize,
-                    color: mutedColor,
+                    color: rgb(0, 0, 0),
                 });
             }
         };
@@ -824,14 +1134,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     drawRegularText(page, numberText, {
                         x: x + 2,
                         y: itemY,
-                        font,
                         size: bodyFontSize,
                         color: mutedColor
                     });
                     drawRegularText(page, truncateToFit(itemText, columnWidth - numberColumnWidth, bodyFontSize), {
                         x: x + numberColumnWidth + numberToTextGap,
                         y: itemY,
-                        font,
                         size: bodyFontSize,
                         color: frameColor,
                     });
@@ -862,12 +1170,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalPageCount = pages.length;
         const pageNumberFontSize = 9;
         pages.forEach((currentPage, index) => {
-            const pageText = `p. ${index + 1}/${totalPageCount}`;
+            const pageText = `${index + 1}/${totalPageCount}`;
             const pageTextWidth = font.widthOfTextAtSize(pageText, pageNumberFontSize);
             currentPage.drawText(pageText, {
                 x: width - margin - pageTextWidth,
                 y: pageNumberY,
-                font,
+                font: resolvePdfFont(pageText),
                 size: pageNumberFontSize,
                 color: rgb(0, 0, 0),
             });
@@ -1065,12 +1373,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalItems = listValues.length;
             const effectiveItems = Math.max(totalItems, questionItemsPerColumn);
             const totalPages = Math.ceil(effectiveItems / questionItemsPerPage);
+            const isMixedLayout = options?.testType === 'MIXED';
 
             const makeQuestionTable = (startIndex) => {
                 const rows = [];
                 for (let row = 0; row < questionItemsPerColumn; row += 1) {
-                    const leftIndex = startIndex + row;
-                    const rightIndex = startIndex + questionItemsPerColumn + row;
+                    const leftIndex = isMixedLayout
+                        ? (startIndex + row * 2)
+                        : (startIndex + row);
+                    const rightIndex = isMixedLayout
+                        ? (leftIndex + 1)
+                        : (startIndex + questionItemsPerColumn + row);
                     const leftLabel = leftIndex < totalItems ? `${leftIndex + 1}. ${listValues[leftIndex]}` : '';
                     const rightLabel = rightIndex < totalItems ? `${rightIndex + 1}. ${listValues[rightIndex]}` : '';
 
@@ -1168,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!bookItem || !state.ui.bookLibrary.contains(bookItem)) return;
             const rawBookKey = bookItem.dataset.book;
             if (!rawBookKey) return;
-            selectBook(rawBookKey);
+            void selectBook(rawBookKey);
         });
         
         state.ui.subChapterSelectionCard.addEventListener('click', (e) => {
@@ -1204,11 +1517,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.ui.testTypeOptions.addEventListener('click', (e) => {
             const typeOption = e.target.closest('.test-type-option');
-            if (typeOption) {
+            if (typeOption && !typeOption.classList.contains('hidden')) {
                 state.ui.testTypeOptions.querySelectorAll('.test-type-option').forEach(opt => opt.classList.remove('active'));
                 typeOption.classList.add('active');
             }
         });
+        if (state.ui.includeDerivatives) {
+            state.ui.includeDerivatives.addEventListener('change', (e) => {
+                state.includeDerivatives = Boolean(e.target.checked);
+                if (state.selectedBook && state.selectedBook !== 'etymology') {
+                    renderTocChecklist();
+                }
+                updateUiState();
+            });
+        }
 
         if (state.ui.examTitle) {
             state.ui.examTitle.addEventListener('input', () => {

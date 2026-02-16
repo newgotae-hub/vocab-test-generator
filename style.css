@@ -275,9 +275,14 @@ main {
     max-height: 430px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 0.45rem;
     background: #fff;
+}
+
+#toc-selection-card.day-mode .toc-checklist {
+    max-height: min(620px, 68vh);
 }
 
 .toc-checklist-item {
@@ -321,17 +326,25 @@ main {
     margin-bottom: 0;
 }
 
+.toc-derivatives {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.toc-derivatives-label {
+    font-size: 0.88rem;
+    color: var(--text-subtle);
+    font-weight: 600;
+}
+
 #toc-summary {
-    margin: 0;
-    text-align: right;
+    margin: 0.65rem 0 0;
+    text-align: left;
     font-size: 0.88rem;
     color: var(--text-subtle);
     font-weight: 500;
-    min-width: fit-content;
-    max-width: min(45%, 18rem);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-height: 1.2em;
 }
 
 .config-group {
@@ -379,6 +392,10 @@ main {
     gap: 0.72rem;
 }
 
+.test-type-options[data-two-options="true"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .test-type-option {
     border: 1px solid var(--line);
     background: #fff;
@@ -390,8 +407,22 @@ main {
 }
 
 .test-type-option .label {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.14rem;
+    line-height: 1.2;
+}
+
+.test-type-option .label-main {
     font-size: 0.9rem;
     font-weight: 600;
+}
+
+.test-type-option .label-sub {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-subtle);
 }
 
 .test-type-option.active {
