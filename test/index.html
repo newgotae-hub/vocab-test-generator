@@ -37,13 +37,7 @@
                     <div class="config-group">
                         <h3>교재 선택</h3>
                         <div id="book-options" class="test-type-options">
-                            <div class="test-type-option active" data-book="etymology">
-                                <div class="label">
-                                    <span class="label-main">어원편</span>
-                                    <span class="label-sub">etymology</span>
-                                </div>
-                            </div>
-                            <div class="test-type-option" data-book="basic">
+                            <div class="test-type-option active" data-book="basic">
                                 <div class="label">
                                     <span class="label-main">베이직</span>
                                     <span class="label-sub">basic</span>
@@ -53,6 +47,12 @@
                                 <div class="label">
                                     <span class="label-main">어드밴스드</span>
                                     <span class="label-sub">advanced</span>
+                                </div>
+                            </div>
+                            <div class="test-type-option" data-book="etymology">
+                                <div class="label">
+                                    <span class="label-main">어원편</span>
+                                    <span class="label-sub">etymology</span>
                                 </div>
                             </div>
                         </div>
@@ -121,7 +121,7 @@
                         <div class="config-group">
                             <h3>총 시간</h3>
                             <div class="input-group">
-                                <input type="number" id="test-time-limit" value="20" min="1" step="1">
+                                <input type="number" id="test-time-limit" value="0" min="0" step="0.5" readonly>
                                 <span>분</span>
                             </div>
                         </div>

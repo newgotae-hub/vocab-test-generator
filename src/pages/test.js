@@ -13,13 +13,13 @@ const HISTORY_KEY = 'voca_plus_test_history_v1';
 const HISTORY_LIMIT = 10;
 
 const state = {
-    bookKey: 'etymology',
+    bookKey: 'basic',
     chapterId: '',
     selectedTocs: new Set(),
     includeDerivatives: false,
     examType: 'E2K',
     questionCount: 0,
-    timeLimitMinutes: 20,
+    timeLimitMinutes: 0,
     shuffleQuestions: true,
 
     scopePool: [],
@@ -86,6 +86,12 @@ const ui = {
 };
 
 const normalizeSpacingText = (value) => normalizeText(value);
+
+const CHAPTER_LABELS = {
+    CH1: 'Chapter 1. 접두사',
+    CH2: 'Chapter 2. 접미사',
+    CH3: 'Chapter 3. 어근',
+};
 
 const dayLabelToNumber = (label) => {
     const match = normalizeSpacingText(label).match(/^DAY\s*0?(\d{1,2})$/i);
@@ -217,7 +223,8 @@ const renderChapterOptions = (chapterIds) => {
 
     ui.chapterOptions.innerHTML = chapterIds.map((chapterId) => {
         const isSelected = chapterId === state.chapterId;
-        return `<div class="sub-chapter-item ${isSelected ? 'selected-item' : ''}" data-chapter="${escapeHtml(chapterId)}">${escapeHtml(chapterId)}</div>`;
+        const chapterLabel = CHAPTER_LABELS[chapterId] || chapterId.replace(/^CH\\s*(\\d+)$/i, 'Chapter $1');
+        return `<div class="sub-chapter-item ${isSelected ? 'selected-item' : ''}" data-chapter="${escapeHtml(chapterId)}">${escapeHtml(chapterLabel)}</div>`;
     }).join('');
 };
 
@@ -352,6 +359,18 @@ const clampQuestionCount = () => {
     state.questionCount = poolSize;
 };
 
+const toAutoMinutesText = (minutes) => {
+    const rounded = Math.round(minutes * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+};
+
+const syncTimeLimitFromQuestionCount = () => {
+    const seconds = state.questionCount * 30;
+    const minutes = seconds / 60;
+    state.timeLimitMinutes = minutes;
+    ui.timeLimitInput.value = toAutoMinutesText(minutes);
+};
+
 const updateScopeSummary = () => {
     const selectedCount = state.selectedTocs.size;
     const scopeSize = state.scopePool.length;
@@ -382,6 +401,7 @@ const refreshPools = async () => {
         });
 
         clampQuestionCount();
+        syncTimeLimitFromQuestionCount();
         updateScopeSummary();
     } catch (error) {
         console.error(error);
@@ -389,6 +409,7 @@ const refreshPools = async () => {
         state.scopePool = [];
         state.bookPool = [];
         clampQuestionCount();
+        syncTimeLimitFromQuestionCount();
         updateScopeSummary();
     } finally {
         state.isUpdatingScope = false;
@@ -718,12 +739,9 @@ const startTestFromSetup = () => {
         return;
     }
 
-    state.questionCount = Math.min(
-        state.scopePool.length,
-        Math.max(1, Number.parseInt(ui.questionCountInput.value, 10) || state.scopePool.length),
-    );
-
-    state.timeLimitMinutes = Math.max(1, Number.parseInt(ui.timeLimitInput.value, 10) || 20);
+    state.questionCount = state.scopePool.length;
+    ui.questionCountInput.value = String(state.questionCount);
+    syncTimeLimitFromQuestionCount();
     state.shuffleQuestions = Boolean(ui.shuffleToggle.checked);
 
     beginTestWithPool(state.scopePool, state.questionCount);
@@ -853,12 +871,16 @@ const bindEvents = () => {
 
     ui.questionCountInput?.addEventListener('change', () => {
         clampQuestionCount();
+        syncTimeLimitFromQuestionCount();
     });
 
-    ui.timeLimitInput?.addEventListener('change', () => {
-        const next = Math.max(1, Number.parseInt(ui.timeLimitInput.value, 10) || 20);
-        ui.timeLimitInput.value = String(next);
-        state.timeLimitMinutes = next;
+    ui.questionCountInput?.addEventListener('input', () => {
+        clampQuestionCount();
+        syncTimeLimitFromQuestionCount();
+    });
+
+    ui.timeLimitInput?.addEventListener('input', () => {
+        syncTimeLimitFromQuestionCount();
     });
 
     ui.startBtn?.addEventListener('click', () => {

@@ -250,6 +250,12 @@ main {
     background: #eaf1ff;
 }
 
+.sub-chapter-item.selected-item {
+    background: #eaf2ff;
+    border-color: #2563EB;
+    box-shadow: 0 8px 18px -14px rgba(37, 99, 235, 0.45);
+}
+
 #sub-chapter-selection-card.compact {
     padding-top: 0.6rem;
     padding-bottom: 0.6rem;
@@ -299,6 +305,12 @@ main {
 .toc-checklist-item:hover {
     border-color: rgba(30, 58, 138, 0.2);
     background: #edf3ff;
+}
+
+.toc-checklist-item.selected-item {
+    border-color: #2563EB;
+    background: #eaf2ff;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
 }
 
 .toc-checklist-item input {
