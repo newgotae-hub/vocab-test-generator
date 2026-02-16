@@ -246,9 +246,10 @@ export const getScopePool = async ({
     let scopedEntries = [];
 
     if (normalizedBookKey === 'etymology') {
+        if (selectedTocSet.size === 0) return [];
         scopedEntries = dataset.rows.filter((entry) => {
             if (normalizedChapterId && normalizeSpacingText(entry.chapter) !== normalizedChapterId) return false;
-            if (selectedTocSet.size > 0 && !selectedTocSet.has(normalizeSpacingText(entry.toc))) return false;
+            if (!selectedTocSet.has(normalizeSpacingText(entry.toc))) return false;
             return true;
         });
     } else {

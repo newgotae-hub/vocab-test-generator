@@ -57,8 +57,9 @@ export const buildQuestionSet = ({
         deduped.push(entry);
     });
 
-    const orderedCandidates = shuffleQuestions ? shuffle(deduped) : [...deduped];
     const targetCount = Math.max(1, Number.parseInt(questionCount, 10) || deduped.length);
+    const shouldRandomSample = targetCount < deduped.length;
+    const orderedCandidates = (shuffleQuestions || shouldRandomSample) ? shuffle(deduped) : [...deduped];
 
     const questions = [];
 

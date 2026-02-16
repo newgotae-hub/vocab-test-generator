@@ -44,8 +44,6 @@ const ui = {
     chapterGroup: document.getElementById('chapter-group'),
     chapterOptions: document.getElementById('chapter-options'),
     tocChecklist: document.getElementById('test-toc-checklist'),
-    tocSelectAllBtn: document.getElementById('toc-select-all'),
-    tocClearAllBtn: document.getElementById('toc-clear-all'),
     scopeSummary: document.getElementById('test-scope-summary'),
 
     includeDerivativesGroup: document.getElementById('include-derivatives-group'),
@@ -344,8 +342,9 @@ const renderReviewList = () => {
     }).join('');
 };
 
-const clampQuestionCount = () => {
+const clampQuestionCount = ({ forceToPool = false } = {}) => {
     const poolSize = state.scopePool.length;
+    const currentValue = Number.parseInt(ui.questionCountInput?.value || '0', 10) || 0;
 
     ui.questionCountInput.max = String(poolSize);
 
@@ -355,8 +354,14 @@ const clampQuestionCount = () => {
         return;
     }
 
-    ui.questionCountInput.value = String(poolSize);
-    state.questionCount = poolSize;
+    const fallbackValue = state.questionCount > 0 ? state.questionCount : poolSize;
+    const inputValue = currentValue > 0 ? currentValue : fallbackValue;
+    const nextValue = forceToPool
+        ? poolSize
+        : Math.min(poolSize, Math.max(1, inputValue));
+
+    ui.questionCountInput.value = String(nextValue);
+    state.questionCount = nextValue;
 };
 
 const toAutoMinutesText = (minutes) => {
@@ -400,7 +405,7 @@ const refreshPools = async () => {
             includeDerivatives: state.includeDerivatives,
         });
 
-        clampQuestionCount();
+        clampQuestionCount({ forceToPool: true });
         syncTimeLimitFromQuestionCount();
         updateScopeSummary();
     } catch (error) {
@@ -408,28 +413,13 @@ const refreshPools = async () => {
         showToast('데이터를 불러오지 못했습니다.', 'error');
         state.scopePool = [];
         state.bookPool = [];
-        clampQuestionCount();
+        clampQuestionCount({ forceToPool: true });
         syncTimeLimitFromQuestionCount();
         updateScopeSummary();
     } finally {
         state.isUpdatingScope = false;
         updateStartButtonState();
     }
-};
-
-const selectAllCurrentTocs = () => {
-    ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-        checkbox.checked = true;
-        const toc = normalizeSpacingText(checkbox.dataset.toc);
-        if (toc) state.selectedTocs.add(toc);
-    });
-};
-
-const clearAllCurrentTocs = () => {
-    ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-        checkbox.checked = false;
-    });
-    state.selectedTocs.clear();
 };
 
 const loadScopeControls = async ({ resetSelection = false } = {}) => {
@@ -739,7 +729,10 @@ const startTestFromSetup = () => {
         return;
     }
 
-    state.questionCount = state.scopePool.length;
+    state.questionCount = Math.min(
+        state.scopePool.length,
+        Math.max(1, Number.parseInt(ui.questionCountInput.value, 10) || state.scopePool.length),
+    );
     ui.questionCountInput.value = String(state.questionCount);
     syncTimeLimitFromQuestionCount();
     state.shuffleQuestions = Boolean(ui.shuffleToggle.checked);
@@ -828,6 +821,9 @@ const bindEvents = () => {
 
         state.chapterId = chapterId;
         state.selectedTocs.clear();
+        ui.chapterOptions.querySelectorAll('.sub-chapter-item[data-chapter]').forEach((node) => {
+            node.classList.toggle('selected-item', node === item);
+        });
         await loadScopeControls({ resetSelection: true });
     });
 
@@ -843,17 +839,8 @@ const bindEvents = () => {
         } else {
             state.selectedTocs.delete(toc);
         }
+        checkbox.closest('.toc-checklist-item')?.classList.toggle('selected-item', checkbox.checked);
 
-        await refreshPools();
-    });
-
-    ui.tocSelectAllBtn?.addEventListener('click', async () => {
-        selectAllCurrentTocs();
-        await refreshPools();
-    });
-
-    ui.tocClearAllBtn?.addEventListener('click', async () => {
-        clearAllCurrentTocs();
         await refreshPools();
     });
 
