@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const normalized = normalizeSpacingText(text);
         const trimmed = String(normalized || '').trim();
         if (!trimmed) return '';
-        const delimiterMatch = trimmed.match(/([^;,/]+)(?=[;,/]|$)/);
+        const delimiterMatch = trimmed.match(/([^,;/]+)(?=[,;/]|$)/);
         return normalizeSpacingText((delimiterMatch?.[1] || trimmed));
     };
     const normalizePdfWordText = (text) => normalizeSpacingText(text).replace(/\s+/g, '');
@@ -602,7 +602,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (normalizedBook === 'etymology') {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.remove('hidden');
-            state.ui.tocSelectionCard.classList.remove('hidden');
+            state.ui.tocSelectionCard.classList.add('hidden');
+            if (state.ui.tocSummary) {
+                state.ui.tocSummary.textContent = '';
+            }
         } else {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.add('hidden');
