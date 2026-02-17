@@ -86,9 +86,9 @@ const ui = {
 const normalizeSpacingText = (value) => normalizeText(value);
 
 const CHAPTER_LABELS = {
-    CH1: 'Chapter 1. 접두사',
-    CH2: 'Chapter 2. 접미사',
-    CH3: 'Chapter 3. 어근',
+    CH1: '접두사',
+    CH2: '접미사',
+    CH3: '어근',
 };
 
 const dayLabelToNumber = (label) => {
@@ -221,8 +221,17 @@ const renderChapterOptions = (chapterIds) => {
 
     ui.chapterOptions.innerHTML = chapterIds.map((chapterId) => {
         const isSelected = chapterId === state.chapterId;
-        const chapterLabel = CHAPTER_LABELS[chapterId] || chapterId.replace(/^CH\\s*(\\d+)$/i, 'Chapter $1');
-        return `<div class="sub-chapter-item ${isSelected ? 'selected-item' : ''}" data-chapter="${escapeHtml(chapterId)}">${escapeHtml(chapterLabel)}</div>`;
+        const chapterLabel = CHAPTER_LABELS[chapterId] || chapterId;
+        const chapterNumberMatch = normalizeSpacingText(chapterId).match(/^CH\\s*(\\d+)$/i);
+        const chapterSubLabel = chapterNumberMatch ? `Chapter ${chapterNumberMatch[1]}` : chapterId;
+        return `
+            <div class="test-type-option ${isSelected ? 'active' : ''}" data-chapter="${escapeHtml(chapterId)}">
+                <div class="label">
+                    <span class="label-main">${escapeHtml(chapterLabel)}</span>
+                    <span class="label-sub">${escapeHtml(chapterSubLabel)}</span>
+                </div>
+            </div>
+        `;
     }).join('');
 };
 
@@ -813,7 +822,7 @@ const bindEvents = () => {
     });
 
     ui.chapterOptions?.addEventListener('click', async (event) => {
-        const item = event.target.closest('.sub-chapter-item[data-chapter]');
+        const item = event.target.closest('.test-type-option[data-chapter], .sub-chapter-item[data-chapter]');
         if (!item) return;
 
         const chapterId = normalizeSpacingText(item.dataset.chapter);
@@ -821,8 +830,9 @@ const bindEvents = () => {
 
         state.chapterId = chapterId;
         state.selectedTocs.clear();
+        setActiveOption(ui.chapterOptions, '.test-type-option[data-chapter]', state.chapterId, 'chapter');
         ui.chapterOptions.querySelectorAll('.sub-chapter-item[data-chapter]').forEach((node) => {
-            node.classList.toggle('selected-item', node === item);
+            node.classList.toggle('selected-item', normalizeSpacingText(node.dataset.chapter) === state.chapterId);
         });
         await loadScopeControls({ resetSelection: true });
     });
