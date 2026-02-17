@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VOCA Plus - Online Test</title>
     <meta name="description" content="10지선다 자동채점 온라인 시험">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1010168647313500" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/style.css">
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,11 +15,10 @@
 <body data-page="test">
     <div id="app">
         <header>
-            <div class="logo">
+            <a class="logo" href="/" aria-label="대시보드로 이동">
                 <i class="logo-icon">📖</i> VOCA Plus
-            </div>
+            </a>
             <nav aria-label="주요 메뉴">
-                <a href="/" data-route="/">대시보드</a>
                 <a href="/generator/" data-route="/generator/">시험 생성기</a>
                 <a href="/test/" data-route="/test/">Online Test</a>
                 <a href="/game/" data-route="/game/">연습 게임</a>
@@ -31,8 +31,8 @@
         <main class="test-main">
             <div class="test-stack">
                 <section id="test-setup-view" class="card">
-                    <h2>시험 설정</h2>
-                    <p class="subtitle">10지선다 자동채점 시험을 시작합니다.</p>
+                    <h2>Online Test</h2>
+                    <p class="subtitle">교재와 시험범위를 선택하세요.</p>
 
                     <div class="config-group">
                         <h3>교재 선택</h3>
@@ -58,75 +58,81 @@
                         </div>
                     </div>
 
-                    <div id="chapter-group" class="config-group hidden">
-                        <h3>챕터 선택 (어원편)</h3>
-                        <div id="chapter-options" class="sub-chapter-options"></div>
-                    </div>
-
-                    <div class="config-group">
-                        <h3>범위 선택</h3>
-                        <div id="test-toc-checklist" class="toc-checklist"></div>
-                        <p id="test-scope-summary" class="summary-text" aria-live="polite"></p>
-                    </div>
-
-                    <div id="include-derivatives-group" class="config-group hidden">
-                        <h3>파생어 옵션</h3>
-                        <div class="toggle-option">
-                            <span>파생어 포함</span>
-                            <label class="switch">
-                                <input type="checkbox" id="include-derivatives-toggle">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="config-group">
-                        <h3>시험 유형</h3>
-                        <div id="exam-type-options" class="test-type-options">
-                            <div class="test-type-option active" data-exam-type="E2K">
-                                <div class="label">
-                                    <span class="label-main">ENG → KOR</span>
-                                    <span class="label-sub">영어 → 한국어</span>
+                    <div class="test-setup-layout">
+                        <div class="test-setup-scope-column">
+                            <div class="config-group test-scope-group">
+                                <div class="test-scope-toolbar">
+                                    <h3>범위 선택</h3>
+                                    <div id="include-derivatives-group" class="toggle-option test-scope-derivatives hidden">
+                                        <span>파생어 포함</span>
+                                        <label class="switch">
+                                            <input type="checkbox" id="include-derivatives-toggle">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="test-type-option" data-exam-type="K2E">
-                                <div class="label">
-                                    <span class="label-main">KOR → ENG</span>
-                                    <span class="label-sub">한국어 → 영어</span>
-                                </div>
-                            </div>
-                            <div class="test-type-option" data-exam-type="MIXED">
-                                <div class="label">
-                                    <span class="label-main">MIXED</span>
-                                    <span class="label-sub">혼합</span>
-                                </div>
+                                <p id="test-scope-summary" class="summary-text" aria-live="polite"></p>
+                                <div id="test-toc-checklist" class="toc-checklist"></div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-grid test-setup-inline">
-                        <div class="config-group">
-                            <h3>문항 수</h3>
-                            <div class="input-group">
-                                <input type="number" id="test-question-count" value="0" min="1" step="1">
-                                <span>개</span>
-                            </div>
-                        </div>
-                        <div class="config-group">
-                            <h3>총 시간</h3>
-                            <div class="input-group">
-                                <input type="number" id="test-time-limit" value="0" min="0" step="0.5" readonly>
-                                <span>분</span>
-                            </div>
-                        </div>
-                        <div class="config-group">
-                            <h3>문항 순서</h3>
-                            <div class="toggle-option">
-                                <span>무작위 출제</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="test-shuffle-toggle" checked>
-                                    <span class="slider"></span>
-                                </label>
+                        <div class="test-setup-controls-column">
+                            <div class="test-controls-cluster">
+                                <div id="chapter-group" class="config-group hidden">
+                                    <h3>챕터 선택 (어원편)</h3>
+                                    <div id="chapter-options" class="test-type-options chapter-type-options"></div>
+                                </div>
+
+                                <div class="config-group">
+                                    <h3>시험 유형</h3>
+                                    <div id="exam-type-options" class="test-type-options">
+                                        <div class="test-type-option active" data-exam-type="E2K">
+                                            <div class="label">
+                                                <span class="label-main">ENG → KOR</span>
+                                                <span class="label-sub">영어 → 한국어</span>
+                                            </div>
+                                        </div>
+                                        <div class="test-type-option" data-exam-type="K2E">
+                                            <div class="label">
+                                                <span class="label-main">KOR → ENG</span>
+                                                <span class="label-sub">한국어 → 영어</span>
+                                            </div>
+                                        </div>
+                                        <div class="test-type-option" data-exam-type="MIXED">
+                                            <div class="label">
+                                                <span class="label-main">MIXED</span>
+                                                <span class="label-sub">혼합</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid test-setup-inline">
+                                    <div class="config-group">
+                                        <h3>문항 수</h3>
+                                        <div class="input-group">
+                                            <input type="number" id="test-question-count" value="0" min="1" step="1">
+                                            <span>개</span>
+                                        </div>
+                                    </div>
+                                    <div class="config-group">
+                                        <h3>시험 시간</h3>
+                                        <div class="input-group">
+                                            <input type="number" id="test-time-limit" value="0" min="0" step="0.5" readonly>
+                                            <span>분</span>
+                                        </div>
+                                    </div>
+                                    <div class="config-group test-inline-shuffle">
+                                        <h3>문항 순서</h3>
+                                        <div class="toggle-option">
+                                            <span>무작위 출제</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="test-shuffle-toggle" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
