@@ -61,7 +61,7 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-16">
-                <button class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
+                <button type="button" onclick="location.href='#book-showcase'" class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
                     특징 살펴보기 <iconify-icon icon="solar:arrow-right-linear" width="20"></iconify-icon>
                 </button>
                 <button class="flex items-center justify-center gap-2 bg-white text-slate-600 border border-slate-200 text-base font-medium px-8 py-3 rounded-full hover:bg-slate-50 transition-all">
@@ -70,11 +70,15 @@
             </div>
 
             <!-- Book Visual Representation -->
-            <div class="relative w-full max-w-4xl mt-8">
+            <div id="book-showcase" class="relative w-full max-w-4xl mt-8 scroll-mt-24">
+                <div class="mx-auto w-[92%] md:w-[86%] flex items-center justify-between px-8 md:px-20 mb-3">
+                    <span class="text-[10px] md:text-sm text-slate-700 tracking-tight font-semibold">수능평가원VOCA - BASIC</span>
+                    <span class="text-[10px] md:text-sm text-slate-700 tracking-tight font-semibold">수능평가원VOCA - ADVANCED</span>
+                </div>
                 <div class="aspect-[16/9] md:aspect-[2/1] overflow-hidden bg-white border-white border rounded-2xl relative">
                     <img src="/assets/images/cover-mockup-white.png" alt="평가원기출 VOCA 표지 목업" class="h-full w-auto mx-auto object-contain">
                 </div>
-                <p class="text-center text-slate-400 text-xs mt-6 tracking-tight">기초부터 심화까지, 수능에 최적화된 라인업</p>
+                <p class="text-center text-slate-400 text-base mt-6 tracking-tight">기초부터 심화까지, 수능에 최적화된 라인업</p>
             </div>
         </div>
     </section>
@@ -158,28 +162,28 @@
                         <div class="w-10 h-10 bg-white rounded-lg border border-blue-200 flex items-center justify-center mb-6 shadow-sm text-blue-600">
                              <iconify-icon icon="solar:layers-linear" width="24"></iconify-icon>
                         </div>
-                        <h3 class="text-2xl font-semibold tracking-tight text-slate-900 mb-4">어근 연계 학습 시스템</h3>
+                        <h3 class="text-2xl font-semibold tracking-tight text-slate-900 mb-4">어원 연계 학습 시스템</h3>
                         <p class="text-base text-slate-600 leading-relaxed">
-                            어근이 같은 단어들을 하나의 그룹으로 묶어 배치했습니다. 단어 하나를 외우면 파생어까지 자연스럽게 습득되어 학습 효율을 극대화합니다.
+                            어원이 같은 단어들을 하나의 그룹으로 묶어 배치했습니다. 단어 하나를 외우면 파생어까지 자연스럽게 습득되어 학습 효율을 극대화합니다.
                         </p>
                     </div>
                     <div class="flex-1 w-full max-w-sm bg-white rounded-xl shadow-lg border border-slate-100 p-6">
                         <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
                             <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Root</span>
-                            <span class="font-medium text-slate-900 text-sm">Spect (보다)</span>
+                            <span class="font-medium text-slate-900 text-sm">Live (살다)</span>
                         </div>
                         <ul class="space-y-3">
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Inspect</span>
-                                <span class="text-xs text-slate-400">조사하다</span>
+                                <span class="text-sm">Lively</span>
+                                <span class="text-xs text-slate-400">활기찬</span>
                             </li>
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Prospect</span>
-                                <span class="text-xs text-slate-400">전망</span>
+                                <span class="text-sm">Livelihood</span>
+                                <span class="text-xs text-slate-400">생계</span>
                             </li>
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Spectator</span>
-                                <span class="text-xs text-slate-400">관중</span>
+                                <span class="text-sm">Livestock</span>
+                                <span class="text-xs text-slate-400">가축</span>
                             </li>
                         </ul>
                     </div>
@@ -292,7 +296,7 @@
                             </div>
                             <div class="flex items-center gap-3">
                                 <iconify-icon icon="solar:verified-check-linear" class="text-slate-900" width="20"></iconify-icon>
-                                <span class="text-base text-slate-700 font-medium">前 목동 S학원 최다 수강생 보유</span>
+                                <span class="text-base text-slate-700 font-medium">목동출신 영어강사</span>
                             </div>
                         </div>
                     </div>
