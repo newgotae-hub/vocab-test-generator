@@ -74,12 +74,8 @@
             <!-- Book Visual Representation -->
             <div class="relative w-full max-w-4xl mt-8">
                 <div class="absolute -inset-1 bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 rounded-[2rem] blur-2xl opacity-50"></div>
-                <div class="aspect-[16/9] md:aspect-[2/1] overflow-hidden flex bg-slate-50 border-slate-200 border rounded-2xl relative shadow-2xl items-center justify-center p-8 md:p-12">
-                    <div class="w-full h-full flex items-end justify-center gap-1 md:gap-4">
-                        <img src="/assets/images/베이직-목업.png" data-cutout="true" alt="평가원기출 VOCA 베이직 목업" class="h-[92%] md:h-[98%] w-auto object-contain drop-shadow-xl">
-                        <img src="/assets/images/어드밴스드-목업.png" data-cutout="true" alt="평가원기출 VOCA 어드밴스드 목업" class="h-[90%] md:h-[96%] w-auto object-contain drop-shadow-xl">
-                        <img src="/assets/images/어원편-목업.png" data-cutout="true" alt="평가원기출 VOCA 어원편 목업" class="h-[88%] md:h-[94%] w-auto object-contain drop-shadow-xl">
-                    </div>
+                <div class="aspect-[16/9] md:aspect-[2/1] overflow-hidden bg-[#d7d6dc] border-[#cfcdd4] border rounded-2xl relative shadow-2xl px-3 md:px-5 py-4 md:py-6">
+                    <img src="/assets/images/cover-mockup-1.jpg" alt="평가원기출 VOCA 표지 목업" class="w-full h-full object-contain">
                 </div>
                 <p class="text-center text-slate-400 text-xs mt-6 tracking-tight">기초부터 심화까지, 수능에 최적화된 라인업</p>
             </div>
@@ -334,89 +330,4 @@
             </div>
         </div>
     </footer>
-
-    <script>
-        // Remove only connected white background from image borders (runtime cutout).
-        (function applyBorderCutout() {
-            const images = document.querySelectorAll('img[data-cutout=\"true\"]');
-            const isWhiteLike = (r, g, b, a) => {
-                if (a < 220) return false;
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                return max > 236 && min > 225 && (max - min) < 18;
-            };
-
-            images.forEach((img) => {
-                if (!img.complete) {
-                    img.addEventListener('load', () => processImage(img), { once: true });
-                } else {
-                    processImage(img);
-                }
-            });
-
-            function processImage(img) {
-                try {
-                    const w = img.naturalWidth;
-                    const h = img.naturalHeight;
-                    if (!w || !h) return;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    if (!ctx) return;
-
-                    ctx.drawImage(img, 0, 0);
-                    const frame = ctx.getImageData(0, 0, w, h);
-                    const data = frame.data;
-                    const visited = new Uint8Array(w * h);
-                    const qx = new Int32Array(w * h);
-                    const qy = new Int32Array(w * h);
-                    let head = 0;
-                    let tail = 0;
-
-                    const push = (x, y) => {
-                        if (x < 0 || y < 0 || x >= w || y >= h) return;
-                        const p = y * w + x;
-                        if (visited[p]) return;
-                        const i = p * 4;
-                        if (!isWhiteLike(data[i], data[i + 1], data[i + 2], data[i + 3])) return;
-                        visited[p] = 1;
-                        qx[tail] = x;
-                        qy[tail] = y;
-                        tail += 1;
-                    };
-
-                    for (let x = 0; x < w; x += 1) {
-                        push(x, 0);
-                        push(x, h - 1);
-                    }
-                    for (let y = 1; y < h - 1; y += 1) {
-                        push(0, y);
-                        push(w - 1, y);
-                    }
-
-                    while (head < tail) {
-                        const x = qx[head];
-                        const y = qy[head];
-                        head += 1;
-                        const p = y * w + x;
-                        data[p * 4 + 3] = 0;
-
-                        push(x - 1, y);
-                        push(x + 1, y);
-                        push(x, y - 1);
-                        push(x, y + 1);
-                    }
-
-                    ctx.putImageData(frame, 0, 0);
-                    img.src = canvas.toDataURL('image/png');
-                } catch (error) {
-                    console.warn('Cutout failed:', error);
-                }
-            }
-        })();
-    </script>
-
-
 </body></html>
