@@ -78,12 +78,10 @@ header {
 .logo-icon {
     width: 2rem;
     height: 2rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
+    flex: 0 0 auto;
+    object-fit: cover;
     border-radius: 0.72rem;
-    background: linear-gradient(145deg, var(--brand), #1d4ed8);
-    color: #fff;
     box-shadow: 0 10px 16px -10px rgba(30, 58, 138, 0.35);
 }
 

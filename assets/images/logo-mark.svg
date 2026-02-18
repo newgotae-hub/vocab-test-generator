@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="수능평가원 VOCA 로고">
+  <defs>
+    <linearGradient id="bg" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#bg)"/>
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="4"/>
+  <path d="M68 60L112 196H140L188 60H156L126 160L98 60Z" fill="#ffffff"/>
+  <circle cx="192" cy="188" r="40" fill="#ff8f1f"/>
+  <path d="M192 164V212M168 188H216" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+</svg>
