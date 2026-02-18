@@ -9,6 +9,7 @@ python3 -m http.server 4173
 
 Open:
 - `http://localhost:4173/`
+- `http://localhost:4173/dashboard/`
 - `http://localhost:4173/generator/`
 - `http://localhost:4173/game/`
 - `http://localhost:4173/ranked/`
@@ -18,6 +19,7 @@ Open:
 ## Static Hosting Notes (No Rewrites)
 This MVP uses folder-based routes with `index.html` files:
 - `/index.html`
+- `/dashboard/index.html`
 - `/generator/index.html`
 - `/game/index.html`
 - `/ranked/index.html`

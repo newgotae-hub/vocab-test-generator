@@ -29,9 +29,8 @@ const pageInits = {
 };
 
 const bootstrap = () => {
-    markActiveNav();
-
     const pageName = document.body?.dataset?.page || '';
+    markActiveNav();
     const initPage = pageInits[pageName];
     if (typeof initPage === 'function') {
         initPage();
