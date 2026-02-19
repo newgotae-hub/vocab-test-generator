@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>VOCA Plus</title>
+    <link>https://voca.plus/</link>
+    <description>평가원 기출 기반 단어 학습 플랫폼</description>
+    <language>ko</language>
+
+    <item>
+      <title>VOCA Plus 런칭</title>
+      <link>https://voca.plus/</link>
+      <description>평가원 기출 단어 기반 학습 서비스가 시작되었습니다.</description>
+      <pubDate>Wed, 26 Feb 2026 00:00:00 +0900</pubDate>
+    </item>
+
+  </channel>
+</rss>
