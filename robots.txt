@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /data/
+Disallow: /assets/references/
+Disallow: /functions/
+Disallow: /firebase-debug.log
+
+Sitemap: https://voca.plus/sitemap.xml
