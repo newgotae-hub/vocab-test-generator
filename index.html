@@ -2,7 +2,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>평가원기출 VOCA - 수능 영어의 새로운 기준</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
@@ -33,7 +32,9 @@
             <div class="flex items-center gap-2">
                 <a href="/dashboard/" class="text-lg font-bold tracking-tight text-slate-900">평가원기출VOCA</a>
             </div>
-            <div class="hidden md:flex items-center gap-8">
+            <div class="flex items-center gap-8">
+                <a href="/test/" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Online Test</a>
+                <a href="/generator/" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">시험지만들기</a>
                 <a href="#features" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">특징</a>
                 <a href="#online" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">온라인 학습</a>
                 <a href="#author" class="hover:text-slate-900 transition-colors text-sm font-medium text-slate-500">저자 소개</a>
@@ -45,14 +46,14 @@
     <section class="relative pt-32 pb-20 overflow-hidden">
         <div class="absolute inset-0 bg-grid [mask-image:linear-gradient(to_bottom,white,transparent)] -z-10"></div>
         
-        <div class="flex flex-col text-center max-w-6xl mr-auto ml-auto px-4 md:px-6 items-center">
+        <div class="flex flex-col text-center max-w-6xl mr-auto ml-auto pr-6 pl-6 items-center">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-medium mb-8">
                 <span class="flex h-2 w-2 rounded-full bg-blue-600"></span>
                 평가원 20년 데이터 기반
             </div>
             
             <h1 class="text-5xl md:text-7xl font-semibold tracking-tight text-slate-900 mb-6 leading-[1.1]">
-                지금 외우는 단어의<br>
+                지금 외우는 <span class="whitespace-nowrap">단어의</span><br class="hidden md:block">
                 <span class="text-gradient">수능출제 확률</span>을 아시나요?
             </h1>
             
@@ -62,7 +63,7 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-16">
-                <button type="button" onclick="location.href='#book-showcase'" class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
+                <button class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
                     특징 살펴보기 <iconify-icon icon="solar:arrow-right-linear" width="20"></iconify-icon>
                 </button>
                 <button class="flex items-center justify-center gap-2 bg-white text-slate-600 border border-slate-200 text-base font-medium px-8 py-3 rounded-full hover:bg-slate-50 transition-all">
@@ -71,15 +72,16 @@
             </div>
 
             <!-- Book Visual Representation -->
-            <div id="book-showcase" class="relative w-full max-w-4xl mt-8 scroll-mt-24">
-                <div class="mx-auto w-[92%] md:w-[86%] flex items-center justify-between px-8 md:px-20 mb-3">
-                    <span class="text-[10px] md:text-sm text-slate-700 tracking-tight font-semibold">수능평가원VOCA - BASIC</span>
-                    <span class="text-[10px] md:text-sm text-slate-700 tracking-tight font-semibold">수능평가원VOCA - ADVANCED</span>
+            <div class="relative w-full max-w-4xl mt-8">
+                <div class="absolute -inset-1 bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 rounded-[2rem] blur-2xl opacity-50"></div>
+                <div class="aspect-[16/9] md:aspect-[2/1] overflow-hidden flex bg-slate-50 border-slate-200 border rounded-2xl relative shadow-2xl items-center justify-center p-8 md:p-12">
+                    <div class="w-full h-full flex items-end justify-center gap-1 md:gap-4">
+                        <img src="/assets/images/베이직-목업.png" data-cutout="true" alt="평가원기출 VOCA 베이직 목업" class="h-[92%] md:h-[98%] w-auto object-contain drop-shadow-xl">
+                        <img src="/assets/images/어드밴스드-목업.png" data-cutout="true" alt="평가원기출 VOCA 어드밴스드 목업" class="h-[90%] md:h-[96%] w-auto object-contain drop-shadow-xl">
+                        <img src="/assets/images/어원편-목업.png" data-cutout="true" alt="평가원기출 VOCA 어원편 목업" class="h-[88%] md:h-[94%] w-auto object-contain drop-shadow-xl">
+                    </div>
                 </div>
-                <div class="aspect-[16/9] md:aspect-[2/1] overflow-hidden bg-white border-white border rounded-2xl relative">
-                    <img src="/assets/images/cover-mockup-white.png" alt="평가원기출 VOCA 표지 목업" class="h-full w-auto mx-auto object-contain">
-                </div>
-                <p class="text-center text-slate-400 text-base mt-6 tracking-tight">기초부터 심화까지, 수능에 최적화된 라인업</p>
+                <p class="text-center text-slate-400 text-xs mt-6 tracking-tight">기초부터 심화까지, 수능에 최적화된 라인업</p>
             </div>
         </div>
     </section>
@@ -93,7 +95,7 @@
                     고난도 단어는 어디까지 외워야 할까요?
                 </h2>
                 <p class="text-lg text-slate-500 leading-relaxed">
-                    수많은 학생들이 수능에 나오지도 않는 어려운 단어에 시간을 낭비하고 있습니다.<br>
+                    수많은 중고등 학생들은 수능에 나오지도 않는 어려운 단어에 시간을 낭비하고 있습니다.<br>
                     이 책은 <span class="text-slate-900 font-medium">데이터</span>를 통해 그 명확한 기준을 제시합니다.
                 </p>
             </div>
@@ -163,28 +165,28 @@
                         <div class="w-10 h-10 bg-white rounded-lg border border-blue-200 flex items-center justify-center mb-6 shadow-sm text-blue-600">
                              <iconify-icon icon="solar:layers-linear" width="24"></iconify-icon>
                         </div>
-                        <h3 class="text-2xl font-semibold tracking-tight text-slate-900 mb-4">어원 연계 학습 시스템</h3>
+                        <h3 class="text-2xl font-semibold tracking-tight text-slate-900 mb-4">어근 연계 학습 시스템</h3>
                         <p class="text-base text-slate-600 leading-relaxed">
-                            어원이 같은 단어들을 하나의 그룹으로 묶어 배치했습니다. 단어 하나를 외우면 파생어까지 자연스럽게 습득되어 학습 효율을 극대화합니다.
+                            어근이 같은 단어들을 하나의 그룹으로 묶어 배치했습니다. 단어 하나를 외우면 파생어까지 자연스럽게 습득되어 학습 효율을 극대화합니다.
                         </p>
                     </div>
                     <div class="flex-1 w-full max-w-sm bg-white rounded-xl shadow-lg border border-slate-100 p-6">
                         <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
                             <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Root</span>
-                            <span class="font-medium text-slate-900 text-sm">Live (살다)</span>
+                            <span class="font-medium text-slate-900 text-sm">Spect (보다)</span>
                         </div>
                         <ul class="space-y-3">
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Lively</span>
-                                <span class="text-xs text-slate-400">활기찬</span>
+                                <span class="text-sm">Inspect</span>
+                                <span class="text-xs text-slate-400">조사하다</span>
                             </li>
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Livelihood</span>
-                                <span class="text-xs text-slate-400">생계</span>
+                                <span class="text-sm">Prospect</span>
+                                <span class="text-xs text-slate-400">전망</span>
                             </li>
                             <li class="flex items-center justify-between text-slate-600">
-                                <span class="text-sm">Livestock</span>
-                                <span class="text-xs text-slate-400">가축</span>
+                                <span class="text-sm">Spectator</span>
+                                <span class="text-xs text-slate-400">관중</span>
                             </li>
                         </ul>
                     </div>
@@ -225,7 +227,7 @@
                             <div>
                                 <h4 class="text-xl font-medium text-slate-900 mb-2 tracking-tight">선생님을 위한 출제 시스템</h4>
                                 <p class="text-base text-slate-500 leading-relaxed">
-                                    클릭 몇 번으로 범위에 맞는 시험지를 생성할 수 있습니다.<br class="hidden md:block">수업 준비 시간을 줄여드립니다.
+                                    클릭 몇 번으로 범위에 맞는 시험지를 생성할 수 있습니다.<br class="hidden md:block">수업 준비 시간을 획기적으로 줄여드립니다.
                                 </p>
                             </div>
                         </div>
@@ -297,7 +299,7 @@
                             </div>
                             <div class="flex items-center gap-3">
                                 <iconify-icon icon="solar:verified-check-linear" class="text-slate-900" width="20"></iconify-icon>
-                                <span class="text-base text-slate-700 font-medium">목동출신 영어강사</span>
+                                <span class="text-base text-slate-700 font-medium">前 목동 S학원 최다 수강생 보유</span>
                             </div>
                         </div>
                     </div>
@@ -332,4 +334,89 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        // Remove only connected white background from image borders (runtime cutout).
+        (function applyBorderCutout() {
+            const images = document.querySelectorAll('img[data-cutout=\"true\"]');
+            const isWhiteLike = (r, g, b, a) => {
+                if (a < 220) return false;
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                return max > 236 && min > 225 && (max - min) < 18;
+            };
+
+            images.forEach((img) => {
+                if (!img.complete) {
+                    img.addEventListener('load', () => processImage(img), { once: true });
+                } else {
+                    processImage(img);
+                }
+            });
+
+            function processImage(img) {
+                try {
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    if (!w || !h) return;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    if (!ctx) return;
+
+                    ctx.drawImage(img, 0, 0);
+                    const frame = ctx.getImageData(0, 0, w, h);
+                    const data = frame.data;
+                    const visited = new Uint8Array(w * h);
+                    const qx = new Int32Array(w * h);
+                    const qy = new Int32Array(w * h);
+                    let head = 0;
+                    let tail = 0;
+
+                    const push = (x, y) => {
+                        if (x < 0 || y < 0 || x >= w || y >= h) return;
+                        const p = y * w + x;
+                        if (visited[p]) return;
+                        const i = p * 4;
+                        if (!isWhiteLike(data[i], data[i + 1], data[i + 2], data[i + 3])) return;
+                        visited[p] = 1;
+                        qx[tail] = x;
+                        qy[tail] = y;
+                        tail += 1;
+                    };
+
+                    for (let x = 0; x < w; x += 1) {
+                        push(x, 0);
+                        push(x, h - 1);
+                    }
+                    for (let y = 1; y < h - 1; y += 1) {
+                        push(0, y);
+                        push(w - 1, y);
+                    }
+
+                    while (head < tail) {
+                        const x = qx[head];
+                        const y = qy[head];
+                        head += 1;
+                        const p = y * w + x;
+                        data[p * 4 + 3] = 0;
+
+                        push(x - 1, y);
+                        push(x + 1, y);
+                        push(x, y - 1);
+                        push(x, y + 1);
+                    }
+
+                    ctx.putImageData(frame, 0, 0);
+                    img.src = canvas.toDataURL('image/png');
+                } catch (error) {
+                    console.warn('Cutout failed:', error);
+                }
+            }
+        })();
+    </script>
+
+
 </body></html>
