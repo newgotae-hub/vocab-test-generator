@@ -11,6 +11,7 @@ import { buildQuestionSet } from '/src/domain/engine/questionSetBuilder.js';
 
 const HISTORY_KEY = 'voca_plus_test_history_v1';
 const HISTORY_LIMIT = 10;
+const MAX_QUESTION_COUNT = 200;
 
 const state = {
     bookKey: 'basic',
@@ -353,9 +354,10 @@ const renderReviewList = () => {
 
 const clampQuestionCount = ({ forceToPool = false } = {}) => {
     const poolSize = state.scopePool.length;
+    const cappedMax = Math.min(poolSize, MAX_QUESTION_COUNT);
     const currentValue = Number.parseInt(ui.questionCountInput?.value || '0', 10) || 0;
 
-    ui.questionCountInput.max = String(poolSize);
+    ui.questionCountInput.max = String(cappedMax);
 
     if (poolSize <= 0) {
         ui.questionCountInput.value = '0';
@@ -363,11 +365,11 @@ const clampQuestionCount = ({ forceToPool = false } = {}) => {
         return;
     }
 
-    const fallbackValue = state.questionCount > 0 ? state.questionCount : poolSize;
+    const fallbackValue = state.questionCount > 0 ? state.questionCount : cappedMax;
     const inputValue = currentValue > 0 ? currentValue : fallbackValue;
     const nextValue = forceToPool
-        ? poolSize
-        : Math.min(poolSize, Math.max(1, inputValue));
+        ? cappedMax
+        : Math.min(cappedMax, Math.max(1, inputValue));
 
     ui.questionCountInput.value = String(nextValue);
     state.questionCount = nextValue;
@@ -557,7 +559,11 @@ const createSessionConfigSnapshot = () => {
 };
 
 const beginTestWithPool = (pool, questionLimit = state.questionCount) => {
-    const requestedCount = Math.max(1, Number.parseInt(questionLimit, 10) || 1);
+    const maxAllowed = Math.min(pool.length, MAX_QUESTION_COUNT);
+    const requestedCount = Math.min(
+        maxAllowed,
+        Math.max(1, Number.parseInt(questionLimit, 10) || maxAllowed),
+    );
 
     const questions = buildQuestionSet({
         scopePool: pool,
@@ -738,9 +744,10 @@ const startTestFromSetup = () => {
         return;
     }
 
+    const maxAllowed = Math.min(state.scopePool.length, MAX_QUESTION_COUNT);
     state.questionCount = Math.min(
-        state.scopePool.length,
-        Math.max(1, Number.parseInt(ui.questionCountInput.value, 10) || state.scopePool.length),
+        maxAllowed,
+        Math.max(1, Number.parseInt(ui.questionCountInput.value, 10) || maxAllowed),
     );
     ui.questionCountInput.value = String(state.questionCount);
     syncTimeLimitFromQuestionCount();

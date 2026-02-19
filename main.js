@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const MAX_QUESTION_COUNT = 200;
+
     // --- Library Instances ---
     let PDFDocument = null;
     let rgb = null;
@@ -330,6 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const setNumQuestionsHint = (requestValue) => {
         const hint = state.ui.numQuestionsHint;
         if (!hint) return;
+
+        const selectedTotal = state.selectedWords.length;
+        if (selectedTotal > MAX_QUESTION_COUNT) {
+            hint.textContent = `한 번에 최대 ${MAX_QUESTION_COUNT}문항까지 생성할 수 있습니다.`;
+            hint.classList.remove('hidden');
+            return;
+        }
 
         const maxWords = parseInt(state.ui.numQuestions.max, 10);
         const requested = parseInt(requestValue, 10);
@@ -843,8 +852,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
         }
-        state.ui.numQuestions.value = String(totalWords);
-        state.ui.numQuestions.max = String(totalWords);
+        const maxQuestions = Math.min(totalWords, MAX_QUESTION_COUNT);
+        state.ui.numQuestions.value = String(maxQuestions);
+        state.ui.numQuestions.max = String(maxQuestions);
         setNumQuestionsHint(state.ui.numQuestions.value);
 
         if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
@@ -874,7 +884,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const requested = parseInt(state.ui.numQuestions.value, 10) || 0;
         const numQuestions = Math.min(
             requested,
-            state.selectedWords.length
+            state.selectedWords.length,
+            MAX_QUESTION_COUNT
         );
         if (numQuestions <= 0) return showToast('문항 수는 1 이상이어야 합니다.', 'error');
         let examTitle = getExamTitle();
@@ -1661,7 +1672,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.numQuestions.addEventListener('change', () => {
             const value = parseInt(state.ui.numQuestions.value, 10);
             const max = parseInt(state.ui.numQuestions.max, 10);
-            if (!Number.isInteger(value) || value < 1) {
+            if (!Number.isInteger(max) || max < 1) {
+                state.ui.numQuestions.value = '0';
+            } else if (!Number.isInteger(value) || value < 1) {
                 state.ui.numQuestions.value = '1';
             } else if (value > max) {
                 state.ui.numQuestions.value = String(max);

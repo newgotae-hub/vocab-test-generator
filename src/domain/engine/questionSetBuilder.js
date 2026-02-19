@@ -1,6 +1,8 @@
 import { normalizeText } from '/src/domain/data/vocabRepository.js';
 import { buildChoices } from '/src/domain/engine/distractorBuilder.js';
 
+const MAX_QUESTION_COUNT = 200;
+
 const shuffle = (items) => {
     const list = [...items];
     for (let i = list.length - 1; i > 0; i -= 1) {
@@ -57,7 +59,10 @@ export const buildQuestionSet = ({
         deduped.push(entry);
     });
 
-    const targetCount = Math.max(1, Number.parseInt(questionCount, 10) || deduped.length);
+    const targetCount = Math.min(
+        MAX_QUESTION_COUNT,
+        Math.max(1, Number.parseInt(questionCount, 10) || deduped.length),
+    );
     const shouldRandomSample = targetCount < deduped.length;
     const orderedCandidates = (shuffleQuestions || shouldRandomSample) ? shuffle(deduped) : [...deduped];
 
