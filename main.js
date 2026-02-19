@@ -226,7 +226,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return titles.join(' / ');
     };
 
-    const normalizeSpacingText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const DAY_WORD_KEYS = ['단어', 'word'];
+    const DAY_MEANING_KEYS = ['의미', 'meaning', '뜻'];
+    const ETY_CHAPTER_KEYS = ['chapter', '챕터', '대분류'];
+    const ETY_TOC_KEYS = ['toc', '목차', '소분류'];
+    const ETY_WORD_KEYS = ['word', '단어'];
+    const ETY_MEANING_KEYS = ['meaning', '의미', '뜻'];
+
+    const getDerivativeWordKeys = (index) => [`파생어${index}`, `파생어 ${index}`, `derivative${index}`];
+    const getDerivativeMeaningKeys = (index) => [`파생어${index} 뜻`, `파생어 ${index} 뜻`, `derivative${index} meaning`];
+
+    const normalizeSpacingText = (value) => {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/\uFEFF/g, '')
+            .normalize('NFKC')
+            .replace(/[\u0000-\u001F\u007F]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
 
     const normalizeFileName = (value) => {
         const text = normalizeSpacingText(value || '어휘시험지')
@@ -373,9 +391,32 @@ document.addEventListener('DOMContentLoaded', () => {
             error: (error) => reject(error),
         });
     });
-    const getCsvField = (row, key) => {
+    const getCsvField = (row, keys) => {
         if (!row || typeof row !== 'object') return '';
-        return row[key] ?? row[`﻿${key}`] ?? '';
+        const keyList = Array.isArray(keys) ? keys : [keys];
+
+        for (const key of keyList) {
+            const direct = row[key] ?? row[`﻿${key}`];
+            const normalized = normalizeSpacingText(direct);
+            if (normalized) return normalized;
+        }
+
+        const normalizedKeyMap = new Map();
+        Object.entries(row).forEach(([rawKey, rawValue]) => {
+            const normalizedKey = normalizeSpacingText(rawKey).toLowerCase();
+            if (!normalizedKeyMap.has(normalizedKey)) {
+                normalizedKeyMap.set(normalizedKey, rawValue);
+            }
+        });
+
+        for (const key of keyList) {
+            const normalizedKey = normalizeSpacingText(key).toLowerCase();
+            if (!normalizedKey) continue;
+            const normalized = normalizeSpacingText(normalizedKeyMap.get(normalizedKey));
+            if (normalized) return normalized;
+        }
+
+        return '';
     };
     const buildWordsByToc = (rows) => {
         const wordsByToc = {};
@@ -401,22 +442,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayNumber = Math.floor(index / 50) + 1;
         if (dayNumber > 30) return null;
 
+        const baseWord = getCsvField(row, DAY_WORD_KEYS);
+        if (!baseWord) return null;
+        const baseWordKey = baseWord.toLowerCase();
+
         const derivatives = [];
+        const derivativeKeys = new Set();
         for (let i = 1; i <= 6; i += 1) {
-            const derivedWord = normalizeSpacingText(getCsvField(row, `파생어${i}`));
+            const derivedWord = getCsvField(row, getDerivativeWordKeys(i));
             if (!derivedWord) continue;
+            if (derivedWord.toLowerCase() === baseWordKey) continue;
+
+            const derivativeMeaning = getCsvField(row, getDerivativeMeaningKeys(i));
+            const derivativeKey = `${derivedWord.toLowerCase()}|${derivativeMeaning.toLowerCase()}`;
+            if (derivativeKeys.has(derivativeKey)) continue;
+            derivativeKeys.add(derivativeKey);
+
             derivatives.push({
                 word: derivedWord,
-                meaning: normalizeSpacingText(getCsvField(row, `파생어${i} 뜻`)),
+                meaning: derivativeMeaning,
             });
         }
 
         return {
             chapter: 'DAY',
             toc: buildDayLabel(index),
-            word: normalizeSpacingText(getCsvField(row, '단어')),
-            meaning: normalizeSpacingText(getCsvField(row, '의미')),
+            word: baseWord,
+            meaning: getCsvField(row, DAY_MEANING_KEYS),
             derivatives,
+        };
+    }).filter(Boolean);
+    const mapEtymologyRows = (rows) => (rows || []).map((row) => {
+        const word = getCsvField(row, ETY_WORD_KEYS);
+        if (!word) return null;
+
+        return {
+            chapter: getCsvField(row, ETY_CHAPTER_KEYS),
+            toc: getCsvField(row, ETY_TOC_KEYS),
+            word,
+            meaning: getCsvField(row, ETY_MEANING_KEYS),
+            derivatives: [],
         };
     }).filter(Boolean);
     const ensureBookDataLoaded = async (bookKey) => {
@@ -438,13 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsedRows = await parseCsvRows(csvText);
 
         if (normalizedBook === 'etymology') {
-            const rows = parsedRows.map((row) => ({
-                chapter: normalizeSpacingText(row.chapter),
-                toc: normalizeSpacingText(row.toc),
-                word: normalizeSpacingText(row.word),
-                meaning: normalizeSpacingText(row.meaning),
-            }));
-            cacheBookData(normalizedBook, rows);
+            cacheBookData(normalizedBook, mapEtymologyRows(parsedRows));
             return;
         }
 
@@ -453,6 +512,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildQuestionPool = (entries) => {
         const pool = [];
         let hasEmptyWord = false;
+        const seenPoolKeys = new Set();
+
+        const pushPoolItem = ({ word, meaning, chapter, toc }) => {
+            const normalizedWord = normalizeSpacingText(word);
+            if (!normalizedWord) return;
+            const normalizedMeaning = normalizeSpacingText(meaning);
+            const normalizedChapter = normalizeSpacingText(chapter);
+            const normalizedToc = normalizeSpacingText(toc);
+            const poolKey = [
+                normalizedWord.toLowerCase(),
+                normalizedMeaning.toLowerCase(),
+                normalizedChapter.toLowerCase(),
+                normalizedToc.toLowerCase(),
+            ].join('|');
+
+            if (seenPoolKeys.has(poolKey)) return;
+            seenPoolKeys.add(poolKey);
+
+            pool.push({
+                word: normalizedWord,
+                meaning: normalizedMeaning,
+                chapter: normalizedChapter,
+                toc: normalizedToc,
+            });
+        };
 
         (entries || []).forEach((entry) => {
             const baseWord = normalizeSpacingText(entry?.word);
@@ -461,7 +545,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasEmptyWord = true;
                 return;
             }
-            pool.push({
+
+            pushPoolItem({
                 word: baseWord,
                 meaning: baseMeaning,
                 chapter: entry?.chapter,
@@ -472,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             (entry?.derivatives || []).forEach((derivative) => {
                 const derivativeWord = normalizeSpacingText(derivative?.word);
                 if (!derivativeWord) return;
-                pool.push({
+                pushPoolItem({
                     word: derivativeWord,
                     meaning: normalizeSpacingText(derivative?.meaning),
                     chapter: entry?.chapter,

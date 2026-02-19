@@ -7,16 +7,57 @@ const CSV_PATHS = {
 
 const bookCache = new Map();
 
-const normalizeSpacingText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+const DAY_WORD_KEYS = ['단어', 'word'];
+const DAY_MEANING_KEYS = ['의미', 'meaning', '뜻'];
+const ETY_CHAPTER_KEYS = ['chapter', '챕터', '대분류'];
+const ETY_TOC_KEYS = ['toc', '목차', '소분류'];
+const ETY_WORD_KEYS = ['word', '단어'];
+const ETY_MEANING_KEYS = ['meaning', '의미', '뜻'];
+
+const getDerivativeWordKeys = (index) => [`파생어${index}`, `파생어 ${index}`, `derivative${index}`];
+const getDerivativeMeaningKeys = (index) => [`파생어${index} 뜻`, `파생어 ${index} 뜻`, `derivative${index} meaning`];
+
+const normalizeSpacingText = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/\uFEFF/g, '')
+        .normalize('NFKC')
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
 
 const normalizeBookKey = (bookKey) => {
     const normalized = normalizeSpacingText(bookKey).toLowerCase();
     return BOOK_KEYS.includes(normalized) ? normalized : '';
 };
 
-const getCsvField = (row, key) => {
+const getCsvField = (row, keys) => {
     if (!row || typeof row !== 'object') return '';
-    return row[key] ?? row[`﻿${key}`] ?? '';
+    const keyList = Array.isArray(keys) ? keys : [keys];
+
+    for (const key of keyList) {
+        const direct = row[key] ?? row[`﻿${key}`];
+        const normalized = normalizeSpacingText(direct);
+        if (normalized) return normalized;
+    }
+
+    const normalizedKeyMap = new Map();
+    Object.entries(row).forEach(([rawKey, rawValue]) => {
+        const normalizedKey = normalizeSpacingText(rawKey).toLowerCase();
+        if (!normalizedKeyMap.has(normalizedKey)) {
+            normalizedKeyMap.set(normalizedKey, rawValue);
+        }
+    });
+
+    for (const key of keyList) {
+        const normalizedKey = normalizeSpacingText(key).toLowerCase();
+        if (!normalizedKey) continue;
+        const normalized = normalizeSpacingText(normalizedKeyMap.get(normalizedKey));
+        if (normalized) return normalized;
+    }
+
+    return '';
 };
 
 const parseCsvRows = (csvText) => new Promise((resolve, reject) => {
@@ -75,13 +116,25 @@ const mapDayRowsToWords = (bookKey, rows) => {
         const dayNumber = Math.floor(index / 50) + 1;
         if (dayNumber > 30) return null;
 
+        const baseWord = getCsvField(row, DAY_WORD_KEYS);
+        if (!baseWord) return null;
+        const baseWordKey = baseWord.toLowerCase();
+
         const derivatives = [];
+        const derivativeKeys = new Set();
         for (let i = 1; i <= 6; i += 1) {
-            const derivativeWord = normalizeSpacingText(getCsvField(row, `파생어${i}`));
+            const derivativeWord = getCsvField(row, getDerivativeWordKeys(i));
             if (!derivativeWord) continue;
+            if (derivativeWord.toLowerCase() === baseWordKey) continue;
+
+            const derivativeMeaning = getCsvField(row, getDerivativeMeaningKeys(i));
+            const derivativeKey = `${derivativeWord.toLowerCase()}|${derivativeMeaning.toLowerCase()}`;
+            if (derivativeKeys.has(derivativeKey)) continue;
+            derivativeKeys.add(derivativeKey);
+
             derivatives.push({
                 word: derivativeWord,
-                meaning: normalizeSpacingText(getCsvField(row, `파생어${i} 뜻`)),
+                meaning: derivativeMeaning,
             });
         }
 
@@ -89,8 +142,8 @@ const mapDayRowsToWords = (bookKey, rows) => {
             bookKey,
             chapter: 'DAY',
             toc: buildDayLabel(index),
-            word: normalizeSpacingText(getCsvField(row, '단어')),
-            meaning: normalizeSpacingText(getCsvField(row, '의미')),
+            word: baseWord,
+            meaning: getCsvField(row, DAY_MEANING_KEYS),
             derivatives,
         };
 
@@ -101,17 +154,20 @@ const mapDayRowsToWords = (bookKey, rows) => {
 
 const mapEtymologyRows = (rows) => {
     return (rows || []).map((row) => {
+        const word = getCsvField(row, ETY_WORD_KEYS);
+        if (!word) return null;
+
         const mapped = {
             bookKey: 'etymology',
-            chapter: normalizeSpacingText(row.chapter),
-            toc: normalizeSpacingText(row.toc),
-            word: normalizeSpacingText(row.word),
-            meaning: normalizeSpacingText(row.meaning),
+            chapter: getCsvField(row, ETY_CHAPTER_KEYS),
+            toc: getCsvField(row, ETY_TOC_KEYS),
+            word,
+            meaning: getCsvField(row, ETY_MEANING_KEYS),
             derivatives: [],
         };
         mapped.cardId = buildCardId(mapped);
         return mapped;
-    });
+    }).filter(Boolean);
 };
 
 const mapBookRows = (bookKey, parsedRows) => {
@@ -119,13 +175,25 @@ const mapBookRows = (bookKey, parsedRows) => {
     return mapDayRowsToWords(bookKey, parsedRows);
 };
 
+const dedupeRowsByCardId = (rows) => {
+    const dedupedMap = new Map();
+    (rows || []).forEach((row) => {
+        if (!row?.cardId) return;
+        if (!dedupedMap.has(row.cardId)) {
+            dedupedMap.set(row.cardId, row);
+        }
+    });
+    return [...dedupedMap.values()];
+};
+
 const buildDataset = (bookKey, rows) => {
-    const wordsByToc = buildWordsByToc(rows);
+    const dedupedRows = dedupeRowsByCardId(rows);
+    const wordsByToc = buildWordsByToc(dedupedRows);
     const tocs = Object.keys(wordsByToc);
 
     return {
         bookKey,
-        rows,
+        rows: dedupedRows,
         wordsByToc,
         tocs,
     };
