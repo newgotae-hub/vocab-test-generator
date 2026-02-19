@@ -433,6 +433,16 @@ const refreshPools = async () => {
     }
 };
 
+const getScopeSizeForSelection = async ({ selectedTocs, includeDerivatives }) => {
+    const nextScopePool = await getScopePool({
+        bookKey: state.bookKey,
+        chapterId: state.chapterId,
+        selectedTocs: sortTocs([...(selectedTocs || [])]),
+        includeDerivatives: Boolean(includeDerivatives),
+    });
+    return nextScopePool.length;
+};
+
 const loadScopeControls = async ({ resetSelection = false } = {}) => {
     await loadBookDataset(state.bookKey);
 
@@ -852,6 +862,28 @@ const bindEvents = () => {
         if (!toc) return;
 
         if (checkbox.checked) {
+            try {
+                const nextSelectedTocs = new Set(state.selectedTocs);
+                nextSelectedTocs.add(toc);
+                const nextScopeSize = await getScopeSizeForSelection({
+                    selectedTocs: nextSelectedTocs,
+                    includeDerivatives: state.includeDerivatives,
+                });
+
+                if (nextScopeSize > MAX_QUESTION_COUNT) {
+                    checkbox.checked = false;
+                    checkbox.closest('.toc-checklist-item')?.classList.remove('selected-item');
+                    showToast(`한 번에 최대 ${MAX_QUESTION_COUNT}개 단어까지만 선택할 수 있습니다.`, 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error(error);
+                checkbox.checked = false;
+                checkbox.closest('.toc-checklist-item')?.classList.remove('selected-item');
+                showToast('데이터를 불러오지 못했습니다.', 'error');
+                return;
+            }
+
             state.selectedTocs.add(toc);
         } else {
             state.selectedTocs.delete(toc);
@@ -862,7 +894,27 @@ const bindEvents = () => {
     });
 
     ui.includeDerivativesToggle?.addEventListener('change', async () => {
-        state.includeDerivatives = Boolean(ui.includeDerivativesToggle.checked);
+        const nextIncludeDerivatives = Boolean(ui.includeDerivativesToggle.checked);
+        if (nextIncludeDerivatives) {
+            try {
+                const nextScopeSize = await getScopeSizeForSelection({
+                    selectedTocs: state.selectedTocs,
+                    includeDerivatives: true,
+                });
+                if (nextScopeSize > MAX_QUESTION_COUNT) {
+                    ui.includeDerivativesToggle.checked = false;
+                    showToast(`파생어 포함 시 ${MAX_QUESTION_COUNT}개를 초과하여 적용할 수 없습니다.`, 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error(error);
+                ui.includeDerivativesToggle.checked = state.includeDerivatives;
+                showToast('데이터를 불러오지 못했습니다.', 'error');
+                return;
+            }
+        }
+
+        state.includeDerivatives = nextIncludeDerivatives;
         await refreshPools();
     });
 

@@ -40,20 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyWordWarningShown: false,
         isExamTitleCustomized: false,
         get selectedWords() {
-            if (this.selectedTocs.size === 0) return [];
-
-            const sourceEntries = [];
-            this.selectedTocs.forEach(toc => {
-                const tocWords = this.wordsByToc[toc];
-                if (!tocWords) return;
-                if (this.selectedBook === 'etymology') {
-                    if (!this.selectedChapter) return;
-                    sourceEntries.push(...tocWords.filter(w => w.chapter === this.selectedChapter));
-                    return;
-                }
-                sourceEntries.push(...tocWords);
-            });
-            return buildQuestionPool(sourceEntries);
+            return getSelectedWordsForTocs(this.selectedTocs);
         },
         ui: {
             bookLibrary: document.getElementById('book-library'),
@@ -582,6 +569,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return pool;
     };
+    const getSelectedWordsForTocs = (selectedTocs) => {
+        if (!selectedTocs || selectedTocs.size === 0) return [];
+
+        const sourceEntries = [];
+        selectedTocs.forEach((toc) => {
+            const tocWords = state.wordsByToc[toc];
+            if (!tocWords) return;
+
+            if (state.selectedBook === 'etymology') {
+                if (!state.selectedChapter) return;
+                sourceEntries.push(...tocWords.filter((word) => word.chapter === state.selectedChapter));
+                return;
+            }
+
+            sourceEntries.push(...tocWords);
+        });
+
+        return buildQuestionPool(sourceEntries);
+    };
+    const getCheckedTocsFromChecklist = () => {
+        const checked = state.ui.tocChecklist?.querySelectorAll('input[type="checkbox"]:checked') || [];
+        return new Set(
+            [...checked]
+                .map((el) => el.dataset.toc)
+                .filter(Boolean)
+        );
+    };
+    const enforceTocSelectionLimit = (checkbox, { notify = true } = {}) => {
+        if (!checkbox?.checked) return true;
+
+        const selectedTocs = getCheckedTocsFromChecklist();
+        const totalWords = getSelectedWordsForTocs(selectedTocs).length;
+        if (totalWords <= MAX_QUESTION_COUNT) return true;
+
+        checkbox.checked = false;
+        if (notify) {
+            showToast(`한 번에 최대 ${MAX_QUESTION_COUNT}개 단어까지만 선택할 수 있습니다.`, 'error');
+        }
+        return false;
+    };
     const loadScript = (src) => new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
@@ -874,7 +901,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const modifyAllTocs = (shouldSelect) => {
         if (state.selectedBook === 'etymology' && !state.selectedChapter) return;
-        state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = shouldSelect);
+
+        const checkboxes = [...state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]')];
+        if (!shouldSelect) {
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+            updateUiState();
+            return;
+        }
+
+        let blocked = false;
+        checkboxes.forEach((checkbox) => {
+            if (blocked || checkbox.checked) return;
+            checkbox.checked = true;
+            if (!enforceTocSelectionLimit(checkbox, { notify: false })) {
+                blocked = true;
+            }
+        });
+
+        if (blocked) {
+            showToast(`총 단어 수가 ${MAX_QUESTION_COUNT}개를 넘어서 전체 선택을 중단했습니다.`, 'info');
+        }
         updateUiState();
     };
 
@@ -1623,7 +1671,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if(subChapterItem) selectSubChapter(subChapterItem.dataset.chapter);
         });
 
-        state.ui.tocChecklist.addEventListener('change', updateUiState);
+        state.ui.tocChecklist.addEventListener('change', (e) => {
+            const checkbox = e.target.closest('input[type="checkbox"][data-toc]');
+            if (!checkbox) return;
+            enforceTocSelectionLimit(checkbox);
+            updateUiState();
+        });
         state.ui.tocChecklist.addEventListener('click', (e) => {
             const item = e.target.closest('.toc-checklist-item');
             if (!item || !state.ui.tocChecklist.contains(item)) return;
@@ -1635,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             e.stopPropagation();
             checkbox.checked = !checkbox.checked;
+            enforceTocSelectionLimit(checkbox);
             updateUiState();
         });
         if (state.ui.selectAllToc) {
@@ -1653,7 +1707,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (state.ui.includeDerivatives) {
             state.ui.includeDerivatives.addEventListener('change', (e) => {
-                state.includeDerivatives = Boolean(e.target.checked);
+                const nextIncludeDerivatives = Boolean(e.target.checked);
+                const previousIncludeDerivatives = state.includeDerivatives;
+                state.includeDerivatives = nextIncludeDerivatives;
+
+                const totalWords = getSelectedWordsForTocs(state.selectedTocs).length;
+                if (totalWords > MAX_QUESTION_COUNT) {
+                    state.includeDerivatives = previousIncludeDerivatives;
+                    state.ui.includeDerivatives.checked = previousIncludeDerivatives;
+                    showToast(`파생어 포함 시 ${MAX_QUESTION_COUNT}개를 초과하여 적용할 수 없습니다.`, 'error');
+                    if (state.selectedBook && state.selectedBook !== 'etymology') {
+                        renderTocChecklist();
+                    }
+                    updateUiState();
+                    return;
+                }
+
                 if (state.selectedBook && state.selectedBook !== 'etymology') {
                     renderTocChecklist();
                 }
