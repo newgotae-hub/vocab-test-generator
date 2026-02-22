@@ -7,6 +7,7 @@ import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
+const OAUTH_PROVIDERS = ['google', 'kakao'];
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -199,7 +200,7 @@ const mountAuthUI = () => {
             appearance: { theme: ThemeSupa },
             view: 'sign_in',
             showLinks: true,
-            providers: ['google'],
+            providers: OAUTH_PROVIDERS,
             onlyThirdPartyProviders: false,
             redirectTo: getOAuthRedirectTo(),
             localization: AUTH_UI_KO,
