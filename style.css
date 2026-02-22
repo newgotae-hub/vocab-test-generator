@@ -1145,6 +1145,19 @@ body[data-page="auth"] #app {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
+.auth-caps-lock-hint {
+    min-height: 1rem;
+    margin-top: 0.22rem;
+    color: #b45309;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    opacity: 0;
+}
+
+.auth-caps-lock-hint.is-visible {
+    opacity: 1;
+}
+
 .auth-root .supabase-auth-ui_ui-input::placeholder {
     color: #8b98ac;
 }

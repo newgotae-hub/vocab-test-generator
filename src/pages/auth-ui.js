@@ -162,11 +162,49 @@ const createAuthUiErrorNotifier = () => {
     };
 };
 
+const setupPasswordCapsLockHint = (rootEl) => {
+    if (!rootEl) return;
+    const passwordInput = rootEl.querySelector('input[type="password"], input[name="password"]');
+    if (!(passwordInput instanceof HTMLInputElement)) return;
+    if (passwordInput.dataset.capsHintBound === 'true') return;
+
+    passwordInput.dataset.capsHintBound = 'true';
+
+    const host = passwordInput.parentElement instanceof HTMLElement ? passwordInput.parentElement : passwordInput;
+    let hint = host.parentElement?.querySelector('.auth-caps-lock-hint');
+    if (!(hint instanceof HTMLElement)) {
+        hint = document.createElement('div');
+        hint.className = 'auth-caps-lock-hint';
+        hint.setAttribute('aria-live', 'polite');
+        host.insertAdjacentElement('afterend', hint);
+    }
+
+    const setHintVisible = (isVisible) => {
+        if (!(hint instanceof HTMLElement)) return;
+        hint.textContent = isVisible ? 'Caps Lock이 켜져 있습니다.' : '';
+        hint.classList.toggle('is-visible', isVisible);
+    };
+
+    const updateCapsState = (event) => {
+        const isOn = Boolean(event?.getModifierState?.('CapsLock'));
+        setHintVisible(isOn);
+    };
+
+    passwordInput.addEventListener('keydown', updateCapsState);
+    passwordInput.addEventListener('keyup', updateCapsState);
+    passwordInput.addEventListener('focus', updateCapsState);
+    passwordInput.addEventListener('blur', () => {
+        setHintVisible(false);
+    });
+};
+
 const watchAuthUiErrors = (rootEl) => {
     if (!rootEl) return;
     const notifyError = createAuthUiErrorNotifier();
 
     const scanForErrorMessages = () => {
+        setupPasswordCapsLockHint(rootEl);
+
         const messageNodes = rootEl.querySelectorAll('[class*="supabase-auth-ui_ui-message"]');
         messageNodes.forEach((node) => {
             const text = (node.textContent || '').trim();
