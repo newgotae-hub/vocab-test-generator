@@ -977,6 +977,50 @@ body[data-page="auth"] #app {
     margin-bottom: 0.55rem;
 }
 
+.auth-google-gis-wrap {
+    display: none;
+    width: 100%;
+    min-height: 48px;
+    position: relative;
+}
+
+.auth-google-gis-wrap.is-ready {
+    display: block;
+}
+
+.auth-google-gis-slot {
+    width: 100%;
+    min-height: 48px;
+}
+
+.auth-google-gis-slot > div {
+    width: 100% !important;
+}
+
+.auth-google-gis-slot iframe {
+    width: 100% !important;
+    border-radius: 999px;
+}
+
+.auth-google-gis-overlay {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    color: transparent;
+}
+
+.auth-google-gis-overlay:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.auth-google-gis-wrap.is-loading .auth-google-gis-overlay {
+    cursor: wait;
+}
+
 .auth-social-btn {
     width: 100%;
     min-height: 48px;
@@ -1042,6 +1086,10 @@ body[data-page="auth"] #app {
 .auth-social-btn--google:hover {
     background: #f8fafd;
     border-color: #5f6368;
+}
+
+.auth-social-btn--google-fallback[hidden] {
+    display: none;
 }
 
 .auth-social-btn--kakao {

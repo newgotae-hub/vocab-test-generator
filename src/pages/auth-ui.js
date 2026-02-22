@@ -7,6 +7,8 @@ import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
+const GOOGLE_GIS_CLIENT_ID = '1041300302202-ua00qcidtg5melhsqs8cl1u96gm3eqmh.apps.googleusercontent.com';
+const GOOGLE_GIS_SCRIPT_ID = 'google-gsi-client';
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -182,6 +184,84 @@ const watchAuthUiErrors = (rootEl) => {
     });
 };
 
+const loadGoogleGisScript = async () => {
+    if (window.google?.accounts?.id) return true;
+
+    const existingScript = document.getElementById(GOOGLE_GIS_SCRIPT_ID);
+    if (existingScript instanceof HTMLScriptElement) {
+        await new Promise((resolve) => {
+            if (window.google?.accounts?.id) {
+                resolve();
+                return;
+            }
+            existingScript.addEventListener('load', () => resolve(), { once: true });
+            existingScript.addEventListener('error', () => resolve(), { once: true });
+        });
+        return Boolean(window.google?.accounts?.id);
+    }
+
+    const script = document.createElement('script');
+    script.id = GOOGLE_GIS_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    const loaded = new Promise((resolve) => {
+        script.addEventListener('load', () => resolve(true), { once: true });
+        script.addEventListener('error', () => resolve(false), { once: true });
+    });
+    document.head.appendChild(script);
+    const result = await loaded;
+    return Boolean(result && window.google?.accounts?.id);
+};
+
+const setupGoogleGisButton = async (rootEl, onClickGoogle) => {
+    if (!rootEl) return;
+    const wrap = rootEl.querySelector('.auth-google-gis-wrap');
+    const slot = rootEl.querySelector('#auth-google-gis-slot');
+    const overlay = rootEl.querySelector('#auth-google-gis-overlay');
+    const fallback = rootEl.querySelector('#auth-google-fallback-btn');
+
+    if (!(wrap instanceof HTMLElement) || !(slot instanceof HTMLElement)) return;
+    if (!(fallback instanceof HTMLButtonElement)) return;
+    if (!(overlay instanceof HTMLButtonElement)) return;
+
+    fallback.hidden = false;
+    wrap.classList.remove('is-ready');
+
+    const hasGoogle = await loadGoogleGisScript();
+    if (!hasGoogle || !GOOGLE_GIS_CLIENT_ID) return;
+
+    try {
+        const slotWidth = Math.max(220, Math.min(380, Math.floor(wrap.getBoundingClientRect().width || 360)));
+        window.google.accounts.id.initialize({
+            client_id: GOOGLE_GIS_CLIENT_ID,
+            callback: () => {},
+        });
+        slot.innerHTML = '';
+        window.google.accounts.id.renderButton(slot, {
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'pill',
+            logo_alignment: 'left',
+            locale: 'ko',
+            width: slotWidth,
+        });
+        wrap.classList.add('is-ready');
+        fallback.hidden = true;
+    } catch (_error) {
+        wrap.classList.remove('is-ready');
+        fallback.hidden = false;
+    }
+
+    if (overlay.dataset.bound !== 'true') {
+        overlay.dataset.bound = 'true';
+        overlay.addEventListener('click', () => {
+            void onClickGoogle();
+        });
+    }
+};
+
 const redirectToTarget = () => {
     window.location.href = getRedirectPath();
 };
@@ -191,7 +271,7 @@ const mountAuthUI = () => {
     if (!rootEl) return;
 
     const setSocialLoadingState = (provider = '') => {
-        const buttons = rootEl.querySelectorAll('.auth-social-btn');
+        const buttons = rootEl.querySelectorAll('.auth-social-btn, .auth-google-gis-overlay');
         buttons.forEach((button) => {
             if (!(button instanceof HTMLButtonElement)) return;
             const targetProvider = button.dataset.provider || '';
@@ -199,6 +279,12 @@ const mountAuthUI = () => {
             button.disabled = Boolean(provider);
             button.classList.toggle('is-loading', isLoading);
         });
+
+        const googleWrap = rootEl.querySelector('.auth-google-gis-wrap');
+        if (googleWrap instanceof HTMLElement) {
+            const isGoogleLoading = provider === 'google';
+            googleWrap.classList.toggle('is-loading', isGoogleLoading);
+        }
     };
 
     const signInWithProvider = async (provider) => {
@@ -244,10 +330,26 @@ const mountAuthUI = () => {
                 'div',
                 { className: 'auth-social-stack' },
                 React.createElement(
+                    'div',
+                    { className: 'auth-google-gis-wrap' },
+                    React.createElement('div', { id: 'auth-google-gis-slot', className: 'auth-google-gis-slot', 'aria-hidden': 'true' }),
+                    React.createElement(
+                        'button',
+                        {
+                            id: 'auth-google-gis-overlay',
+                            type: 'button',
+                            className: 'auth-google-gis-overlay',
+                            'data-provider': 'google',
+                            'aria-label': 'Google 계정으로 계속',
+                        },
+                    ),
+                ),
+                React.createElement(
                     'button',
                     {
+                        id: 'auth-google-fallback-btn',
                         type: 'button',
-                        className: 'auth-social-btn auth-social-btn--google',
+                        className: 'auth-social-btn auth-social-btn--google auth-social-btn--google-fallback',
                         'data-provider': 'google',
                         onClick: () => { void signInWithProvider('google'); },
                     },
@@ -284,6 +386,7 @@ const mountAuthUI = () => {
         ),
     );
 
+    void setupGoogleGisButton(rootEl, () => signInWithProvider('google'));
     watchAuthUiErrors(rootEl);
 
     rootEl.addEventListener('click', (event) => {
