@@ -19,7 +19,7 @@ const AUTH_UI_KO = {
             button_label: '이메일로 계속',
             loading_button_label: '로그인 중...',
             social_provider_text: '{{provider}}로 로그인',
-            link_text: '계정이 없으신가요? 회원가입',
+            link_text: '이미 계정이 있으신가요? 로그인',
         },
         sign_up: {
             email_label: '이메일',
@@ -29,7 +29,7 @@ const AUTH_UI_KO = {
             button_label: '회원가입',
             loading_button_label: '가입 처리 중...',
             social_provider_text: '{{provider}}로 가입',
-            link_text: '이미 계정이 있으신가요? 로그인',
+            link_text: '계정이 없으신가요? 회원가입',
             confirmation_text: '메일함에서 인증 링크를 확인해 주세요.',
         },
         forgotten_password: {
