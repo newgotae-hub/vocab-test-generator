@@ -59,7 +59,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            const search = window.location.search || '';
+            const hash = (window.location.hash || '').replace(/^#/, '');
+            const isAuthSearch = /(?:^|[?&])(code|token_hash|error|error_code|error_description|type)=/.test(search);
+            const isAuthHash = /(?:^|&)(access_token|refresh_token|expires_in|expires_at|token_type|type)=/.test(hash);
+            if (isAuthSearch || isAuthHash) {
+                document.documentElement.classList.add('auth-callback-pending');
+            }
+        })();
+    </script>
     <style>
+        html.auth-callback-pending body { opacity: 0; }
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans KR", sans-serif; }
         .text-gradient {
             background-clip: text;
@@ -466,12 +478,17 @@
         import { initAuthNavLinks } from '/src/lib/authNav.js';
         import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
+        const clearCallbackPending = () => {
+            document.documentElement.classList.remove('auth-callback-pending');
+        };
+
         const initLandingAuth = async () => {
             const callbackResult = await completeAuthFromUrl();
             if (callbackResult.status === 'success') {
-                window.location.href = '/dashboard/';
+                window.location.replace('/dashboard/');
                 return;
             }
+            clearCallbackPending();
             if (callbackResult.status === 'error' && callbackResult.message) {
                 window.alert(callbackResult.message);
             }
