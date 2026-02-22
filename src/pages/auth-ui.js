@@ -82,6 +82,17 @@ const getSignupPath = () => {
     return query ? `/signup/?${query}` : '/signup/';
 };
 
+const getOAuthRedirectTo = () => {
+    const redirectPath = getRedirectPath();
+    const params = new URLSearchParams();
+    if (redirectPath && redirectPath !== DEFAULT_REDIRECT_PATH) {
+        params.set('redirect', redirectPath);
+    }
+    const query = params.toString();
+    const callbackPath = query ? `/auth/?${query}` : '/auth/';
+    return new URL(callbackPath, window.location.origin).toString();
+};
+
 const setNotice = (message, tone = 'info') => {
     const noticeEl = document.getElementById('auth-notice');
     if (!noticeEl) return;
@@ -188,8 +199,9 @@ const mountAuthUI = () => {
             appearance: { theme: ThemeSupa },
             view: 'sign_in',
             showLinks: true,
-            providers: [],
+            providers: ['google'],
             onlyThirdPartyProviders: false,
+            redirectTo: getOAuthRedirectTo(),
             localization: AUTH_UI_KO,
         }),
     );
