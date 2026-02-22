@@ -970,6 +970,62 @@ body[data-page="auth"] #app {
     gap: 0.52rem;
 }
 
+.auth-social-stack {
+    width: 100%;
+    display: grid;
+    gap: 0.52rem;
+    margin-bottom: 0.55rem;
+}
+
+.auth-social-btn {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid #d5deea;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.58rem;
+    padding: 0.62rem 0.85rem;
+}
+
+.auth-social-btn:hover {
+    background: #f8fafc;
+    border-color: #cdd7e7;
+}
+
+.auth-social-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 18px;
+}
+
+.auth-social-divider {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.08rem 0 0.62rem;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.auth-social-divider::before,
+.auth-social-divider::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: #e2e8f0;
+}
+
 .auth-root .supabase-auth-ui_ui-label {
     margin-bottom: 0.12rem;
     font-size: 0.84rem;

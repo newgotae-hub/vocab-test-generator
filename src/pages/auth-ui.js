@@ -7,7 +7,6 @@ import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
-const OAUTH_PROVIDERS = ['google', 'kakao'];
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -193,18 +192,82 @@ const mountAuthUI = () => {
     const rootEl = document.getElementById('supabase-auth-root');
     if (!rootEl) return;
 
+    const signInWithProvider = async (provider) => {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: getOAuthRedirectTo(),
+                },
+            });
+            if (error) {
+                setNotice(translateAuthError(error.message), 'error');
+            }
+        } catch (_error) {
+            setNotice('소셜 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.', 'error');
+        }
+    };
+
+    const googleIcon = React.createElement(
+        'svg',
+        { width: 18, height: 18, viewBox: '0 0 24 24', 'aria-hidden': 'true' },
+        React.createElement('path', { fill: '#EA4335', d: 'M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.8 3.2 14.6 2.2 12 2.2c-5.4 0-9.8 4.4-9.8 9.8s4.4 9.8 9.8 9.8c5.6 0 9.3-3.9 9.3-9.4 0-.6-.1-1.1-.2-1.6H12z' }),
+        React.createElement('path', { fill: '#FBBC05', d: 'M3.3 7.5l3.2 2.3C7.3 8 9.5 6.5 12 6.5c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.8 3.2 14.6 2.2 12 2.2 8.2 2.2 4.9 4.3 3.3 7.5z' }),
+        React.createElement('path', { fill: '#34A853', d: 'M12 21.8c2.6 0 4.8-.9 6.4-2.5l-3-2.4c-.8.6-1.9 1-3.4 1-2.5 0-4.7-1.7-5.4-4l-3.3 2.5c1.6 3.3 4.9 5.4 8.7 5.4z' }),
+        React.createElement('path', { fill: '#4285F4', d: 'M3.3 16.4l3.3-2.5c-.2-.6-.3-1.2-.3-1.9s.1-1.3.3-1.9L3.3 7.5C2.6 8.9 2.2 10.4 2.2 12s.4 3.1 1.1 4.4z' }),
+    );
+
+    const kakaoIcon = React.createElement(
+        'svg',
+        { width: 18, height: 18, viewBox: '0 0 24 24', 'aria-hidden': 'true' },
+        React.createElement('path', { fill: '#111827', d: 'M12 3.2c-5.2 0-9.4 3.3-9.4 7.4 0 2.7 1.8 5.1 4.5 6.4l-1.1 3.8c-.1.3.2.5.5.3l4.4-2.9c.4 0 .7.1 1.1.1 5.2 0 9.4-3.3 9.4-7.4S17.2 3.2 12 3.2z' }),
+    );
+
     const root = createRoot(rootEl);
     root.render(
-        React.createElement(Auth, {
-            supabaseClient: supabase,
-            appearance: { theme: ThemeSupa },
-            view: 'sign_in',
-            showLinks: true,
-            providers: OAUTH_PROVIDERS,
-            onlyThirdPartyProviders: false,
-            redirectTo: getOAuthRedirectTo(),
-            localization: AUTH_UI_KO,
-        }),
+        React.createElement(
+            React.Fragment,
+            null,
+            React.createElement(
+                'div',
+                { className: 'auth-social-stack' },
+                React.createElement(
+                    'button',
+                    {
+                        type: 'button',
+                        className: 'auth-social-btn',
+                        onClick: () => { void signInWithProvider('google'); },
+                    },
+                    React.createElement('span', { className: 'auth-social-icon' }, googleIcon),
+                    React.createElement('span', null, 'Google로 계속'),
+                ),
+                React.createElement(
+                    'button',
+                    {
+                        type: 'button',
+                        className: 'auth-social-btn',
+                        onClick: () => { void signInWithProvider('kakao'); },
+                    },
+                    React.createElement('span', { className: 'auth-social-icon' }, kakaoIcon),
+                    React.createElement('span', null, 'Kakao로 계속'),
+                ),
+            ),
+            React.createElement(
+                'div',
+                { className: 'auth-social-divider' },
+                React.createElement('span', null, '또는 이메일로 로그인'),
+            ),
+            React.createElement(Auth, {
+                supabaseClient: supabase,
+                appearance: { theme: ThemeSupa },
+                view: 'sign_in',
+                showLinks: true,
+                providers: [],
+                onlyThirdPartyProviders: false,
+                redirectTo: getOAuthRedirectTo(),
+                localization: AUTH_UI_KO,
+            }),
+        ),
     );
 
     watchAuthUiErrors(rootEl);
