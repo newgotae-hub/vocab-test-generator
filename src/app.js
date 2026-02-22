@@ -1,5 +1,6 @@
 import { initDashboardPage } from '/src/pages/dashboard.js';
 import { initGeneratorPage } from '/src/pages/generator.js';
+import { enforceAuthOrRedirect } from '/src/lib/authGuard.js';
 
 const normalizePath = (pathname) => {
     if (!pathname || pathname === '/index.html') return '/';
@@ -28,8 +29,13 @@ const pageInits = {
     generator: initGeneratorPage,
 };
 
-const bootstrap = () => {
+const bootstrap = async () => {
     const pageName = document.body?.dataset?.page || '';
+    const canAccessPage = await enforceAuthOrRedirect(pageName);
+    if (!canAccessPage) {
+        return;
+    }
+
     markActiveNav();
     const initPage = pageInits[pageName];
     if (typeof initPage === 'function') {
