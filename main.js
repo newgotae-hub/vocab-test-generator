@@ -1660,9 +1660,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         state.ui.bookLibrary.addEventListener('click', (e) => {
-            const bookItem = e.target.closest('.book-item');
-            if (!bookItem || !state.ui.bookLibrary.contains(bookItem)) return;
-            const rawBookKey = bookItem.dataset.book;
+            const bookTarget = e.target.closest('.book-item, .book-option');
+            if (!bookTarget || !state.ui.bookLibrary.contains(bookTarget)) return;
+            const rawBookKey = bookTarget.dataset.book;
             if (!rawBookKey) return;
             void selectBook(rawBookKey);
         });
