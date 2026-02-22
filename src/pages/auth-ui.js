@@ -14,10 +14,10 @@ const AUTH_UI_KO = {
             password_label: '비밀번호',
             email_input_placeholder: 'you@example.com',
             password_input_placeholder: '비밀번호',
-            button_label: '로그인',
+            button_label: '이메일로 계속',
             loading_button_label: '로그인 중...',
             social_provider_text: '{{provider}}로 로그인',
-            link_text: '이미 계정이 있으신가요? 로그인',
+            link_text: '계정이 없으신가요? 회원가입',
         },
         sign_up: {
             email_label: '이메일',
@@ -27,7 +27,7 @@ const AUTH_UI_KO = {
             button_label: '회원가입',
             loading_button_label: '가입 처리 중...',
             social_provider_text: '{{provider}}로 가입',
-            link_text: '계정이 없으신가요? 회원가입',
+            link_text: '이미 계정이 있으신가요? 로그인',
             confirmation_text: '메일함에서 인증 링크를 확인해 주세요.',
         },
         forgotten_password: {
@@ -157,7 +157,6 @@ const createAuthUiErrorNotifier = () => {
         }
         lastAlertedMessage = message;
         lastAlertedAt = now;
-        window.alert(message);
     };
 };
 
@@ -180,7 +179,6 @@ const watchAuthUiErrors = (rootEl) => {
     observer.observe(rootEl, {
         childList: true,
         subtree: true,
-        characterData: true,
     });
 };
 
@@ -192,7 +190,19 @@ const mountAuthUI = () => {
     const rootEl = document.getElementById('supabase-auth-root');
     if (!rootEl) return;
 
+    const setSocialLoadingState = (provider = '') => {
+        const buttons = rootEl.querySelectorAll('.auth-social-btn');
+        buttons.forEach((button) => {
+            if (!(button instanceof HTMLButtonElement)) return;
+            const targetProvider = button.dataset.provider || '';
+            const isLoading = Boolean(provider) && targetProvider === provider;
+            button.disabled = Boolean(provider);
+            button.classList.toggle('is-loading', isLoading);
+        });
+    };
+
     const signInWithProvider = async (provider) => {
+        setSocialLoadingState(provider);
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -201,9 +211,11 @@ const mountAuthUI = () => {
                 },
             });
             if (error) {
+                setSocialLoadingState();
                 setNotice(translateAuthError(error.message), 'error');
             }
         } catch (_error) {
+            setSocialLoadingState();
             setNotice('소셜 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.', 'error');
         }
     };
@@ -235,27 +247,29 @@ const mountAuthUI = () => {
                     'button',
                     {
                         type: 'button',
-                        className: 'auth-social-btn',
+                        className: 'auth-social-btn auth-social-btn--google',
+                        'data-provider': 'google',
                         onClick: () => { void signInWithProvider('google'); },
                     },
                     React.createElement('span', { className: 'auth-social-icon' }, googleIcon),
-                    React.createElement('span', null, 'Google로 계속'),
+                    React.createElement('span', { className: 'auth-social-label' }, 'Google 계정으로 계속'),
                 ),
                 React.createElement(
                     'button',
                     {
                         type: 'button',
-                        className: 'auth-social-btn',
+                        className: 'auth-social-btn auth-social-btn--kakao',
+                        'data-provider': 'kakao',
                         onClick: () => { void signInWithProvider('kakao'); },
                     },
                     React.createElement('span', { className: 'auth-social-icon' }, kakaoIcon),
-                    React.createElement('span', null, 'Kakao로 계속'),
+                    React.createElement('span', { className: 'auth-social-label' }, '카카오 로그인'),
                 ),
             ),
             React.createElement(
                 'div',
                 { className: 'auth-social-divider' },
-                React.createElement('span', null, '또는 이메일로 로그인'),
+                React.createElement('span', null, '또는 이메일로 계속'),
             ),
             React.createElement(Auth, {
                 supabaseClient: supabase,

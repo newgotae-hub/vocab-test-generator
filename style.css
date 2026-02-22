@@ -979,24 +979,44 @@ body[data-page="auth"] #app {
 
 .auth-social-btn {
     width: 100%;
-    min-height: 44px;
-    border-radius: 10px;
+    min-height: 48px;
+    border-radius: 12px;
     border: 1px solid #d5deea;
     background: #fff;
     color: #0f172a;
     font: inherit;
-    font-size: 0.88rem;
-    font-weight: 700;
+    font-size: 0.92rem;
+    font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 0.58rem;
-    padding: 0.62rem 0.85rem;
+    justify-content: center;
+    gap: 0.62rem;
+    padding: 0.62rem 1rem;
+    transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 120ms ease;
+}
+
+.auth-social-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 .auth-social-btn:hover {
     background: #f8fafc;
     border-color: #cdd7e7;
+}
+
+.auth-social-btn:active {
+    transform: translateY(1px);
+}
+
+.auth-social-btn:disabled {
+    cursor: wait;
+    opacity: 0.85;
+}
+
+.auth-social-btn.is-loading {
+    pointer-events: none;
 }
 
 .auth-social-icon {
@@ -1006,6 +1026,33 @@ body[data-page="auth"] #app {
     align-items: center;
     justify-content: center;
     flex: 0 0 18px;
+}
+
+.auth-social-label {
+    line-height: 1;
+}
+
+.auth-social-btn--google {
+    border-color: #747775;
+    color: #1f1f1f;
+    background: #fff;
+    font-family: Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+
+.auth-social-btn--google:hover {
+    background: #f8fafd;
+    border-color: #5f6368;
+}
+
+.auth-social-btn--kakao {
+    border-color: #fee500;
+    background: #fee500;
+    color: rgba(0, 0, 0, 0.85);
+}
+
+.auth-social-btn--kakao:hover {
+    background: #f7dd00;
+    border-color: #f0d700;
 }
 
 .auth-social-divider {
