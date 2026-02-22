@@ -1,10 +1,9 @@
 import React from 'https://esm.sh/react@18';
 import { createRoot } from 'https://esm.sh/react-dom@18/client';
 import { supabase } from '/src/lib/supabaseClient.js';
+import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
-const OTP_VALID_SECONDS = 2 * 60;
-const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const sanitizeRedirectPath = (candidate) => {
     if (!candidate) return DEFAULT_REDIRECT_PATH;
@@ -39,19 +38,9 @@ const getLoginPath = () => {
     return query ? `/auth/?${query}` : '/auth/';
 };
 
-const getSignupPath = () => {
+const getEmailRedirectTo = () => {
     const redirectPath = getRedirectPath();
-    const params = new URLSearchParams();
-    if (redirectPath && redirectPath !== DEFAULT_REDIRECT_PATH) {
-        params.set('redirect', redirectPath);
-    }
-    const query = params.toString();
-    return query ? `/signup/?${query}` : '/signup/';
-};
-
-const hasSignupCallbackParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('type') === 'signup' || params.has('token_hash');
+    return new URL(redirectPath || DEFAULT_REDIRECT_PATH, window.location.origin).toString();
 };
 
 const setNotice = (message, tone = 'info') => {
@@ -85,48 +74,21 @@ const mapAuthErrorMessage = (error) => {
     if (message.includes('password') && message.includes('6')) {
         return '비밀번호는 6자 이상이어야 합니다.';
     }
-    if (message.includes('invalid') && message.includes('token')) {
-        return '인증번호가 올바르지 않습니다.';
+    if (message.includes('failed to fetch') || message.includes('network')) {
+        return '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
     }
-    if (message.includes('token') && message.includes('expired')) {
-        return '인증번호가 만료되었습니다. 재발송 후 다시 시도해 주세요.';
-    }
-    return '인증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    return '회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 };
 
-const formatRemain = (seconds) => {
-    const safe = Math.max(0, Number(seconds) || 0);
-    const mm = String(Math.floor(safe / 60)).padStart(2, '0');
-    const ss = String(safe % 60).padStart(2, '0');
-    return `${mm}:${ss}`;
-};
-
-const mountSignupUI = (initialState = {}) => {
+const mountSignupUI = () => {
     const rootEl = document.getElementById('supabase-signup-root');
     if (!rootEl) return;
 
     const SignupApp = () => {
-        const [email, setEmail] = React.useState(initialState.email || '');
+        const [email, setEmail] = React.useState('');
         const [password, setPassword] = React.useState('');
         const [passwordConfirm, setPasswordConfirm] = React.useState('');
-        const [otpCode, setOtpCode] = React.useState('');
         const [isBusy, setIsBusy] = React.useState(false);
-        const [isVerified, setIsVerified] = React.useState(Boolean(initialState.verified));
-        const [otpExpiresAt, setOtpExpiresAt] = React.useState(0);
-        const [resendCooldownUntil, setResendCooldownUntil] = React.useState(0);
-        const [nowSec, setNowSec] = React.useState(Math.floor(Date.now() / 1000));
-
-        const inVerifyMode = otpExpiresAt > 0 && !isVerified;
-        const otpRemain = Math.max(0, otpExpiresAt - nowSec);
-        const resendRemain = Math.max(0, resendCooldownUntil - nowSec);
-
-        React.useEffect(() => {
-            if (!inVerifyMode && resendRemain <= 0) return undefined;
-            const timer = window.setInterval(() => {
-                setNowSec(Math.floor(Date.now() / 1000));
-            }, 1000);
-            return () => window.clearInterval(timer);
-        }, [inVerifyMode, resendRemain]);
 
         const handleSignup = async (event) => {
             event.preventDefault();
@@ -150,7 +112,7 @@ const mountSignupUI = (initialState = {}) => {
                     email: email.trim(),
                     password,
                     options: {
-                        emailRedirectTo: getSignupPath(),
+                        emailRedirectTo: getEmailRedirectTo(),
                     },
                 });
                 if (error) throw error;
@@ -161,78 +123,7 @@ const mountSignupUI = (initialState = {}) => {
                     return;
                 }
 
-                const now = Math.floor(Date.now() / 1000);
-                setOtpExpiresAt(now + OTP_VALID_SECONDS);
-                setResendCooldownUntil(now + OTP_RESEND_COOLDOWN_SECONDS);
-                setNowSec(now);
-                setNotice('인증 메일을 보냈습니다. 2분 내에 인증번호를 입력해 주세요. (코드가 없으면 메일의 Confirm 링크로 인증 가능)', 'success');
-            } catch (error) {
-                setNotice(mapAuthErrorMessage(error), 'error');
-            } finally {
-                setIsBusy(false);
-            }
-        };
-
-        const verifyCode = async () => {
-            if (!email.trim()) {
-                setNotice('이메일을 입력해 주세요.', 'error');
-                return;
-            }
-            if (otpCode.trim().length < 6) {
-                setNotice('인증번호 6자리를 입력해 주세요.', 'error');
-                return;
-            }
-            if (otpRemain <= 0) {
-                setNotice('제한시간이 만료되었습니다. 재발송 후 다시 시도해 주세요.', 'error');
-                return;
-            }
-
-            setIsBusy(true);
-            setNotice('인증번호 확인 중...', 'info');
-            try {
-                const { error } = await supabase.auth.verifyOtp({
-                    email: email.trim(),
-                    token: otpCode.trim(),
-                    type: 'signup',
-                });
-                if (error) throw error;
-
-                setIsVerified(true);
-                setNotice('인증되었습니다.', 'success');
-            } catch (error) {
-                setNotice(mapAuthErrorMessage(error), 'error');
-            } finally {
-                setIsBusy(false);
-            }
-        };
-
-        const resendCode = async () => {
-            if (!email.trim()) {
-                setNotice('이메일을 입력해 주세요.', 'error');
-                return;
-            }
-            if (resendRemain > 0) {
-                setNotice(`${resendRemain}초 후 재발송 가능합니다.`, 'error');
-                return;
-            }
-
-            setIsBusy(true);
-            setNotice('인증 메일을 다시 보내고 있습니다...', 'info');
-            try {
-                const { error } = await supabase.auth.resend({
-                    type: 'signup',
-                    email: email.trim(),
-                    options: {
-                        emailRedirectTo: getSignupPath(),
-                    },
-                });
-                if (error) throw error;
-
-                const now = Math.floor(Date.now() / 1000);
-                setOtpExpiresAt(now + OTP_VALID_SECONDS);
-                setResendCooldownUntil(now + OTP_RESEND_COOLDOWN_SECONDS);
-                setNowSec(now);
-                setNotice('인증 메일을 다시 보냈습니다.', 'success');
+                setNotice('이메일에서 "인증하기"를 누르면 회원가입이 완료됩니다.', 'success');
             } catch (error) {
                 setNotice(mapAuthErrorMessage(error), 'error');
             } finally {
@@ -283,64 +174,14 @@ const mountSignupUI = (initialState = {}) => {
                     disabled: isBusy,
                     required: true,
                 }),
-                inVerifyMode && React.createElement(
-                    React.Fragment,
-                    null,
-                    React.createElement(
-                        'div',
-                        { className: 'signup-verify-row' },
-                        React.createElement('label', { className: 'signup-label', htmlFor: 'signup-otp' }, '인증번호'),
-                        React.createElement(
-                            'span',
-                            { className: `signup-verify-timer${otpRemain <= 0 ? ' is-expired' : ''}` },
-                            formatRemain(otpRemain),
-                        ),
-                    ),
-                    React.createElement('input', {
-                        id: 'signup-otp',
-                        className: 'signup-input signup-otp-input',
-                        type: 'text',
-                        inputMode: 'numeric',
-                        pattern: '[0-9]*',
-                        maxLength: 6,
-                        placeholder: '6자리 인증번호',
-                        value: otpCode,
-                        onChange: (event) => setOtpCode(event.target.value.replace(/[^0-9]/g, '')),
-                        disabled: isBusy || isVerified,
-                    }),
-                    React.createElement(
-                        'div',
-                        { className: 'signup-mini-actions' },
-                        React.createElement(
-                            'button',
-                            {
-                                type: 'button',
-                                className: 'signup-mini-btn',
-                                onClick: verifyCode,
-                                disabled: isBusy || isVerified,
-                            },
-                            '인증번호 확인',
-                        ),
-                        React.createElement(
-                            'button',
-                            {
-                                type: 'button',
-                                className: 'signup-mini-btn signup-mini-btn-secondary',
-                                onClick: resendCode,
-                                disabled: isBusy || resendRemain > 0 || isVerified,
-                            },
-                            resendRemain > 0 ? `재발송 ${resendRemain}s` : '인증번호 재발송',
-                        ),
-                    ),
-                ),
                 React.createElement(
                     'button',
                     {
                         type: 'submit',
                         className: 'signup-primary-btn',
-                        disabled: isBusy || isVerified || inVerifyMode,
+                        disabled: isBusy,
                     },
-                    inVerifyMode ? '인증 메일 발송 완료' : (isBusy ? '처리 중...' : '회원가입'),
+                    isBusy ? '처리 중...' : '회원가입',
                 ),
             ),
             React.createElement(
@@ -363,7 +204,15 @@ const mountSignupUI = (initialState = {}) => {
 };
 
 const initSignupPage = async () => {
-    const isSignupCallback = hasSignupCallbackParams();
+    const callbackResult = await completeAuthFromUrl();
+    if (callbackResult.status === 'success') {
+        setNotice('이메일 인증이 완료되었습니다. 이동합니다...', 'success');
+        window.location.href = getRedirectPath();
+        return;
+    }
+    if (callbackResult.status === 'error' && callbackResult.message) {
+        setNotice(callbackResult.message, 'error');
+    }
 
     try {
         const { data, error } = await supabase.auth.getSession();
@@ -371,14 +220,6 @@ const initSignupPage = async () => {
             setNotice('세션 확인에 실패했습니다. 다시 시도해 주세요.', 'error');
         }
         if (data?.session) {
-            if (isSignupCallback) {
-                setNotice('인증되었습니다.', 'success');
-                mountSignupUI({
-                    verified: true,
-                    email: data.session?.user?.email || '',
-                });
-                return;
-            }
             window.location.href = getRedirectPath();
             return;
         }
@@ -387,6 +228,12 @@ const initSignupPage = async () => {
     }
 
     mountSignupUI();
+
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+            window.location.href = getRedirectPath();
+        }
+    });
 };
 
 if (document.readyState === 'loading') {

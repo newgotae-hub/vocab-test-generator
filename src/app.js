@@ -1,6 +1,8 @@
 import { initDashboardPage } from '/src/pages/dashboard.js';
 import { initGeneratorPage } from '/src/pages/generator.js';
 import { enforceAuthOrRedirect } from '/src/lib/authGuard.js';
+import { initAuthNavLinks } from '/src/lib/authNav.js';
+import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const normalizePath = (pathname) => {
     if (!pathname || pathname === '/index.html') return '/';
@@ -31,11 +33,17 @@ const pageInits = {
 
 const bootstrap = async () => {
     const pageName = document.body?.dataset?.page || '';
+    const callbackResult = await completeAuthFromUrl();
+    if (callbackResult.status === 'error' && callbackResult.message) {
+        window.alert(callbackResult.message);
+    }
+
     const canAccessPage = await enforceAuthOrRedirect(pageName);
     if (!canAccessPage) {
         return;
     }
 
+    await initAuthNavLinks();
     markActiveNav();
     const initPage = pageInits[pageName];
     if (typeof initPage === 'function') {

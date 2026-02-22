@@ -65,6 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookLibraryCard = state.ui.bookLibrary.closest('.card');
     const leftColumn = document.querySelector('.left-column');
     const rightColumn = document.querySelector('.right-column');
+    const syncGeneratorBookStageLayout = () => {
+        const isGeneratorPage = document.body?.dataset?.page === 'generator';
+        const isBookSelectionStage = isGeneratorPage && !state.selectedBook;
+        document.body?.classList.toggle('generator-book-stage', isBookSelectionStage);
+    };
 
     const getSectionCards = (section) => {
         if (section === 'books') return [bookLibraryCard].filter(Boolean);
@@ -843,6 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const updateUiState = () => {
+        syncGeneratorBookStageLayout();
         const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
         state.selectedTocs = new Set(checkedTocs);
         state.ui.tocChecklist.querySelectorAll('.toc-checklist-item').forEach(item => {
@@ -1758,6 +1764,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     const init = () => {
+        syncGeneratorBookStageLayout();
         loadData();
         ensureMobileSettingsAtBottom();
         window.addEventListener('resize', () => {

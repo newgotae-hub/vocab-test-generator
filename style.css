@@ -133,6 +133,45 @@ main {
     gap: 1rem;
 }
 
+/* Generator first step: full-screen book selection */
+body[data-page="generator"].generator-book-stage main {
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 180px);
+}
+
+body[data-page="generator"].generator-book-stage .right-column {
+    display: none;
+}
+
+body[data-page="generator"].generator-book-stage #test-config-card {
+    display: none !important;
+}
+
+body[data-page="generator"].generator-book-stage .book-select-card {
+    min-height: calc(100vh - 190px);
+    padding: clamp(1.25rem, 2.6vw, 2.2rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+body[data-page="generator"].generator-book-stage .book-select-card h2,
+body[data-page="generator"].generator-book-stage .book-select-card .subtitle {
+    text-align: center;
+}
+
+body[data-page="generator"].generator-book-stage .book-library {
+    width: min(1080px, 100%);
+    margin: 0 auto;
+    gap: clamp(0.75rem, 1.4vw, 1.2rem);
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+body[data-page="generator"].generator-book-stage .book-item-name {
+    font-size: 0.88rem;
+    padding: 0.75rem 0.7rem 0.8rem;
+}
+
 .card {
     position: relative;
     padding: 1.2rem;
@@ -180,6 +219,18 @@ main {
     width: 100%;
     aspect-ratio: 3 / 4;
     object-fit: cover;
+}
+
+.book-item-name {
+    display: block;
+    padding: 0.62rem 0.62rem 0.7rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .book-item:hover {
@@ -836,6 +887,7 @@ body[data-page="auth"] {
 body[data-page="auth"] #app {
     width: min(100%, 100% - 1.2rem);
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 0;
     margin: 0 auto;
     display: grid;
@@ -843,8 +895,14 @@ body[data-page="auth"] #app {
 }
 
 .auth-main {
+    display: block;
     width: min(100%, 460px);
+    max-width: 460px;
+    margin: 0 auto;
     padding: 1rem 0.4rem;
+    grid-template-columns: none;
+    gap: 0;
+    align-items: stretch;
 }
 
 .auth-supa-shell {
@@ -1074,6 +1132,13 @@ body[data-page="auth"] #app {
 .signup-otp-input {
     letter-spacing: 0.12em;
     font-weight: 700;
+}
+
+.signup-help-text {
+    margin: 0.05rem 0 0.1rem;
+    font-size: 0.76rem;
+    color: #64748b;
+    line-height: 1.4;
 }
 
 .signup-mini-actions {
@@ -1684,6 +1749,21 @@ body[data-page="auth"] #app {
 
     main {
         grid-template-columns: 1fr;
+    }
+
+    body[data-page="generator"].generator-book-stage main {
+        min-height: calc(100dvh - 170px);
+    }
+
+    body[data-page="generator"].generator-book-stage .book-select-card {
+        min-height: calc(100dvh - 180px);
+        padding: 1.05rem;
+    }
+
+    body[data-page="generator"].generator-book-stage .book-library {
+        width: 100%;
+        gap: 0.7rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .dashboard-grid {

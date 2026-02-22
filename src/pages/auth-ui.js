@@ -3,8 +3,10 @@ import { createRoot } from 'https://esm.sh/react-dom@18/client';
 import { Auth } from 'https://esm.sh/@supabase/auth-ui-react';
 import { ThemeSupa } from 'https://esm.sh/@supabase/auth-ui-shared';
 import { supabase } from '/src/lib/supabaseClient.js';
+import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
+const AUTH_ALERT_COOLDOWN_MS = 4000;
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -94,6 +96,83 @@ const setNotice = (message, tone = 'info') => {
     if (tone === 'success') noticeEl.classList.add('auth-notice--success');
 };
 
+const translateAuthError = (rawMessage) => {
+    const message = (rawMessage || '').trim();
+    if (!message) return '';
+
+    const lowered = message.toLowerCase();
+    if (lowered.includes('invalid login credentials')) {
+        return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    }
+    if (lowered.includes('email not confirmed')) {
+        return '이메일 인증 후 로그인해 주세요.';
+    }
+    if (lowered.includes('too many requests') || lowered.includes('over_email_send_rate_limit')) {
+        return '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+    }
+    if (lowered.includes('failed to fetch') || lowered.includes('network')) {
+        return '네트워크 오류가 발생했습니다. 연결 상태를 확인해 주세요.';
+    }
+    return message;
+};
+
+const isLikelyErrorMessage = (node, text) => {
+    const cls = typeof node?.className === 'string' ? node.className.toLowerCase() : '';
+    const lowered = (text || '').toLowerCase();
+    if (cls.includes('danger') || cls.includes('error')) return true;
+    return (
+        lowered.includes('invalid') ||
+        lowered.includes('error') ||
+        lowered.includes('failed') ||
+        lowered.includes('not confirmed') ||
+        lowered.includes('too many requests') ||
+        lowered.includes('올바르지') ||
+        lowered.includes('실패')
+    );
+};
+
+const createAuthUiErrorNotifier = () => {
+    let lastAlertedMessage = '';
+    let lastAlertedAt = 0;
+
+    return (rawMessage) => {
+        const message = translateAuthError(rawMessage);
+        if (!message) return;
+
+        setNotice(message, 'error');
+        const now = Date.now();
+        if (message === lastAlertedMessage && now - lastAlertedAt < AUTH_ALERT_COOLDOWN_MS) {
+            return;
+        }
+        lastAlertedMessage = message;
+        lastAlertedAt = now;
+        window.alert(message);
+    };
+};
+
+const watchAuthUiErrors = (rootEl) => {
+    if (!rootEl) return;
+    const notifyError = createAuthUiErrorNotifier();
+
+    const scanForErrorMessages = () => {
+        const messageNodes = rootEl.querySelectorAll('[class*="supabase-auth-ui_ui-message"]');
+        messageNodes.forEach((node) => {
+            const text = (node.textContent || '').trim();
+            if (!text) return;
+            if (!isLikelyErrorMessage(node, text)) return;
+            notifyError(text);
+        });
+    };
+
+    scanForErrorMessages();
+    const observer = new MutationObserver(scanForErrorMessages);
+    observer.observe(rootEl, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+    });
+};
+
 const redirectToTarget = () => {
     window.location.href = getRedirectPath();
 };
@@ -115,6 +194,8 @@ const mountAuthUI = () => {
         }),
     );
 
+    watchAuthUiErrors(rootEl);
+
     rootEl.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
@@ -129,6 +210,16 @@ const mountAuthUI = () => {
 };
 
 const initAuthPage = async () => {
+    const callbackResult = await completeAuthFromUrl();
+    if (callbackResult.status === 'success') {
+        setNotice('이메일 인증이 완료되었습니다. 이동합니다...', 'success');
+        redirectToTarget();
+        return;
+    }
+    if (callbackResult.status === 'error' && callbackResult.message) {
+        setNotice(callbackResult.message, 'error');
+    }
+
     const hasRedirect = window.location.search.includes('redirect=');
     if (hasRedirect) {
         setNotice('보호된 페이지입니다. 먼저 로그인하세요.');
