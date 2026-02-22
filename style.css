@@ -222,11 +222,9 @@ body[data-page="generator"].generator-book-stage .book-item-name {
 
 .book-item img {
     display: block;
-    width: 92%;
-    margin: 0 auto 0.46rem;
-    aspect-ratio: 3 / 4;
-    object-fit: contain;
-    background: #fff;
+    width: 100%;
+    height: auto;
+    margin: 0;
     transition: transform 160ms ease;
     transform-origin: center center;
 }
