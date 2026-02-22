@@ -7,8 +7,7 @@ import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
-const OAUTH_PROVIDERS = ['google'];
-const KAKAO_SCOPES = 'profile_nickname profile_image';
+const OAUTH_PROVIDERS = ['google', 'kakao'];
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -194,48 +193,18 @@ const mountAuthUI = () => {
     const rootEl = document.getElementById('supabase-auth-root');
     if (!rootEl) return;
 
-    const signInWithKakao = async () => {
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'kakao',
-                options: {
-                    redirectTo: getOAuthRedirectTo(),
-                    scopes: KAKAO_SCOPES,
-                },
-            });
-            if (error) {
-                setNotice(translateAuthError(error.message), 'error');
-            }
-        } catch (_error) {
-            setNotice('카카오 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.', 'error');
-        }
-    };
-
     const root = createRoot(rootEl);
     root.render(
-        React.createElement(
-            React.Fragment,
-            null,
-            React.createElement(Auth, {
-                supabaseClient: supabase,
-                appearance: { theme: ThemeSupa },
-                view: 'sign_in',
-                showLinks: true,
-                providers: OAUTH_PROVIDERS,
-                onlyThirdPartyProviders: false,
-                redirectTo: getOAuthRedirectTo(),
-                localization: AUTH_UI_KO,
-            }),
-            React.createElement(
-                'button',
-                {
-                    type: 'button',
-                    className: 'auth-kakao-btn',
-                    onClick: () => { void signInWithKakao(); },
-                },
-                '카카오로 로그인',
-            ),
-        ),
+        React.createElement(Auth, {
+            supabaseClient: supabase,
+            appearance: { theme: ThemeSupa },
+            view: 'sign_in',
+            showLinks: true,
+            providers: OAUTH_PROVIDERS,
+            onlyThirdPartyProviders: false,
+            redirectTo: getOAuthRedirectTo(),
+            localization: AUTH_UI_KO,
+        }),
     );
 
     watchAuthUiErrors(rootEl);

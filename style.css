@@ -1017,24 +1017,6 @@ body[data-page="auth"] #app {
     cursor: not-allowed;
 }
 
-.auth-kakao-btn {
-    width: 100%;
-    min-height: 44px;
-    border-radius: 10px;
-    border: 1px solid #e7c84a;
-    background: #fee500;
-    color: #1f2937;
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 0.46rem;
-}
-
-.auth-kakao-btn:hover {
-    background: #f7dc46;
-}
-
 .auth-root .supabase-auth-ui_ui-anchor {
     font-size: 0.82rem;
     color: #64748b;
