@@ -70,6 +70,16 @@ const getRedirectPath = () => {
     return sanitizeRedirectPath(params.get('redirect'));
 };
 
+const getSignupPath = () => {
+    const redirectPath = getRedirectPath();
+    const params = new URLSearchParams();
+    if (redirectPath && redirectPath !== DEFAULT_REDIRECT_PATH) {
+        params.set('redirect', redirectPath);
+    }
+    const query = params.toString();
+    return query ? `/signup/?${query}` : '/signup/';
+};
+
 const setNotice = (message, tone = 'info') => {
     const noticeEl = document.getElementById('auth-notice');
     if (!noticeEl) return;
@@ -104,6 +114,18 @@ const mountAuthUI = () => {
             localization: AUTH_UI_KO,
         }),
     );
+
+    rootEl.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const anchor = target.closest('a');
+        if (!anchor) return;
+        const text = (anchor.textContent || '').trim();
+        if (!text.includes('회원가입')) return;
+
+        event.preventDefault();
+        window.location.href = getSignupPath();
+    });
 };
 
 const initAuthPage = async () => {
