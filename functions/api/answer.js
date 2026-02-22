@@ -1,4 +1,4 @@
-1export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => ({}));
   const { sessionId, answers } = body;
 
