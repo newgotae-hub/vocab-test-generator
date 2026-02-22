@@ -7,6 +7,7 @@ import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
 const DEFAULT_REDIRECT_PATH = '/dashboard/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
+const OAUTH_REDIRECT_TO = 'https://voca.plus/auth/callback';
 const AUTH_UI_KO = {
     variables: {
         sign_in: {
@@ -83,14 +84,7 @@ const getSignupPath = () => {
 };
 
 const getOAuthRedirectTo = () => {
-    const redirectPath = getRedirectPath();
-    const params = new URLSearchParams();
-    if (redirectPath && redirectPath !== DEFAULT_REDIRECT_PATH) {
-        params.set('redirect', redirectPath);
-    }
-    const query = params.toString();
-    const callbackPath = query ? `/auth/?${query}` : '/auth/';
-    return new URL(callbackPath, window.location.origin).toString();
+    return OAUTH_REDIRECT_TO;
 };
 
 const setNotice = (message, tone = 'info') => {
