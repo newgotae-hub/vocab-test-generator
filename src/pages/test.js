@@ -62,6 +62,7 @@ const ui = {
 
     progressText: document.getElementById('test-progress'),
     remainingTimeText: document.getElementById('test-remaining-time'),
+    pronounceBtn: document.getElementById('test-pronounce-btn'),
     questionPrompt: document.getElementById('test-question-prompt'),
     choiceList: document.getElementById('test-choice-list'),
     nextBtn: document.getElementById('test-next-btn'),
@@ -132,6 +133,54 @@ const showToast = (message, type = 'info', duration = 2200) => {
         toast.classList.remove('is-visible');
         window.setTimeout(() => toast.remove(), 190);
     }, Math.max(900, duration));
+};
+
+const isSpeechSupported = () => {
+    return Boolean(window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function');
+};
+
+const shouldSpeakPrompt = (question) => {
+    return Boolean(question?.direction === 'E2K' && normalizeSpacingText(question?.prompt));
+};
+
+const pickEnglishVoice = () => {
+    if (!isSpeechSupported()) return null;
+    const voices = window.speechSynthesis.getVoices?.() || [];
+    return voices.find((voice) => voice.lang === 'en-US')
+        || voices.find((voice) => String(voice.lang || '').toLowerCase().startsWith('en'))
+        || null;
+};
+
+const stopSpeech = () => {
+    if (!isSpeechSupported()) return;
+    window.speechSynthesis.cancel();
+};
+
+const speakQuestionPrompt = (question) => {
+    if (!isSpeechSupported()) return false;
+    if (!shouldSpeakPrompt(question)) return false;
+
+    const text = normalizeSpacingText(question?.prompt);
+    if (!text) return false;
+
+    const utterance = new window.SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    const voice = pickEnglishVoice();
+    if (voice) utterance.voice = voice;
+
+    stopSpeech();
+    window.speechSynthesis.speak(utterance);
+    return true;
+};
+
+const syncPronounceButton = (question) => {
+    if (!ui.pronounceBtn) return;
+    const shouldShow = shouldSpeakPrompt(question);
+    const supported = isSpeechSupported();
+    ui.pronounceBtn.classList.toggle('hidden', !shouldShow);
+    ui.pronounceBtn.disabled = !shouldShow || !supported;
 };
 
 const setActiveOption = (container, selector, value, dataKey) => {
@@ -525,6 +574,10 @@ const renderCurrentQuestion = () => {
 
     ui.progressText.textContent = `${index + 1} / ${questions.length}`;
     ui.questionPrompt.textContent = question.prompt;
+    syncPronounceButton(question);
+    if (!speakQuestionPrompt(question)) {
+        stopSpeech();
+    }
 
     const selectedAnswer = normalizeSpacingText(answers[index]);
     ui.choiceList.classList.add('test-choice-grid');
@@ -681,6 +734,7 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
 
     state.session.isSubmitting = true;
     state.session.autoSubmitted = autoSubmitted;
+    stopSpeech();
     stopTimer();
 
     const finishedAtIso = new Date().toISOString();
@@ -754,6 +808,7 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
 
 const openConfirmView = () => {
     if (!state.session) return;
+    stopSpeech();
 
     const unansweredCount = state.session.answers.filter((answer) => !normalizeSpacingText(answer)).length;
     ui.confirmUnansweredText.textContent = `미응답 ${unansweredCount}개`;
@@ -844,6 +899,7 @@ const copyText = async (text) => {
 
 const bindEvents = () => {
     window.addEventListener('beforeunload', (event) => {
+        stopSpeech();
         if (!isExitGuardActive()) return;
         event.preventDefault();
         event.returnValue = '';
@@ -983,6 +1039,14 @@ const bindEvents = () => {
 
     ui.startBtn?.addEventListener('click', () => {
         startTestFromSetup();
+    });
+
+    ui.pronounceBtn?.addEventListener('click', () => {
+        if (!state.session) return;
+        const question = state.session.questions[state.session.index];
+        if (!speakQuestionPrompt(question)) {
+            showToast('영어 문항에서만 발음을 재생할 수 있습니다.', 'info');
+        }
     });
 
     ui.choiceList?.addEventListener('click', (event) => {
