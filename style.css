@@ -788,6 +788,10 @@ input:checked + .slider::before {
     line-height: 1.2;
 }
 
+.mypage-hero-copy {
+    padding-left: 0.38rem;
+}
+
 .mypage-hero .subtitle {
     margin: 0;
     max-height: none;

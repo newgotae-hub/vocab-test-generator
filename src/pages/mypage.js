@@ -85,18 +85,6 @@ const setStatus = (el, message, tone = 'info') => {
     }
 };
 
-const downloadJson = (filename, value) => {
-    const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-};
-
 const downloadBlob = (blob, filename) => {
     if (!(blob instanceof Blob)) return;
     const url = URL.createObjectURL(blob);
@@ -162,23 +150,22 @@ const getUi = () => {
         createdAt: document.getElementById('mypage-created-at'),
         lastSignin: document.getElementById('mypage-last-signin'),
         authProvider: document.getElementById('mypage-auth-provider'),
+        passwordOpenBtn: document.getElementById('mypage-password-open'),
         passwordForm: document.getElementById('mypage-password-form'),
+        passwordEmailInput: document.getElementById('mypage-password-email'),
         passwordInput: document.getElementById('mypage-password'),
         passwordConfirmInput: document.getElementById('mypage-password-confirm'),
+        passwordCancelBtn: document.getElementById('mypage-password-cancel'),
         securityStatus: document.getElementById('mypage-security-status'),
         logoutLocalBtn: document.getElementById('mypage-logout-local'),
         logoutAllBtn: document.getElementById('mypage-logout-all'),
+        deleteAccountBtn: document.getElementById('mypage-delete-account'),
 
         generatorSummary: document.getElementById('mypage-generator-summary'),
         generatorStatus: document.getElementById('mypage-generator-status'),
         generatorHistory: document.getElementById('mypage-generator-history'),
         testSummary: document.getElementById('mypage-test-summary'),
         testHistory: document.getElementById('mypage-test-history'),
-
-        exportDataBtn: document.getElementById('mypage-export-data'),
-        clearLocalHistoryBtn: document.getElementById('mypage-clear-local-history'),
-        requestDeleteBtn: document.getElementById('mypage-request-delete'),
-        privacyStatus: document.getElementById('mypage-privacy-status'),
 
         supportForm: document.getElementById('mypage-support-form'),
         supportSubject: document.getElementById('mypage-support-subject'),
@@ -288,6 +275,24 @@ const renderAccountInfo = (ui) => {
     }
 };
 
+const resetPasswordForm = (ui) => {
+    if (ui.passwordEmailInput) ui.passwordEmailInput.value = '';
+    if (ui.passwordInput) ui.passwordInput.value = '';
+    if (ui.passwordConfirmInput) ui.passwordConfirmInput.value = '';
+};
+
+const togglePasswordForm = (ui, shouldOpen) => {
+    if (!ui.passwordForm) return;
+    ui.passwordForm.classList.toggle('hidden', !shouldOpen);
+    if (!shouldOpen) {
+        resetPasswordForm(ui);
+        return;
+    }
+    if (ui.passwordEmailInput) {
+        ui.passwordEmailInput.focus();
+    }
+};
+
 const handleProfileSave = async (event, ui) => {
     event.preventDefault();
     if (!state.user) return;
@@ -320,9 +325,15 @@ const handleProfileSave = async (event, ui) => {
 
 const handlePasswordSave = async (event, ui) => {
     event.preventDefault();
+    const typedEmail = normalizeSpacingText(ui.passwordEmailInput?.value).toLowerCase();
+    const accountEmail = normalizeSpacingText(state.user?.email).toLowerCase();
     const password = String(ui.passwordInput?.value || '');
     const passwordConfirm = String(ui.passwordConfirmInput?.value || '');
 
+    if (!typedEmail || typedEmail !== accountEmail) {
+        setStatus(ui.securityStatus, '아이디(이메일)를 정확히 입력해 주세요.', 'error');
+        return;
+    }
     if (password.length < 8) {
         setStatus(ui.securityStatus, '비밀번호는 8자 이상으로 입력해 주세요.', 'error');
         return;
@@ -339,8 +350,7 @@ const handlePasswordSave = async (event, ui) => {
         return;
     }
 
-    if (ui.passwordInput) ui.passwordInput.value = '';
-    if (ui.passwordConfirmInput) ui.passwordConfirmInput.value = '';
+    togglePasswordForm(ui, false);
     setStatus(ui.securityStatus, '비밀번호가 변경되었습니다.', 'success');
 };
 
@@ -358,35 +368,15 @@ const handleLogout = async (scope, ui) => {
     }
 };
 
-const handleExportData = (ui) => {
-    const fileDate = new Date();
-    const filename = `mypage-export-${fileDate.getFullYear()}${String(fileDate.getMonth() + 1).padStart(2, '0')}${String(fileDate.getDate()).padStart(2, '0')}.json`;
-    const payload = {
-        exportedAt: new Date().toISOString(),
-        user: {
-            id: state.user?.id || '',
-            email: state.user?.email || '',
-            createdAt: state.user?.created_at || '',
-            lastSignInAt: state.user?.last_sign_in_at || '',
-            metadata: state.user?.user_metadata || {},
-        },
-        generatorHistory: state.generatorHistory,
-        testHistory: state.testHistory,
-    };
+const handleDeleteAccountRequest = (ui) => {
+    const typed = window.prompt('계정 탈퇴를 진행하려면 DELETE를 입력하세요.');
+    if (typed === null) return;
+    if (String(typed).trim() !== 'DELETE') {
+        setStatus(ui.securityStatus, '탈퇴가 취소되었습니다. DELETE를 정확히 입력해 주세요.', 'error');
+        return;
+    }
+    if (!window.confirm('정말 계정 탈퇴 요청을 진행하시겠습니까?')) return;
 
-    downloadJson(filename, payload);
-    setStatus(ui.privacyStatus, '내 데이터 JSON 파일을 다운로드했습니다.', 'success');
-};
-
-const handleClearLocalHistory = (ui) => {
-    if (!window.confirm('이 브라우저에 저장된 시험지/온라인 테스트 기록을 모두 삭제하시겠습니까?')) return;
-    localStorage.removeItem(GENERATOR_HISTORY_KEY);
-    localStorage.removeItem(TEST_HISTORY_KEY);
-    refreshHistoryUI(ui);
-    setStatus(ui.privacyStatus, '로컬 기록이 삭제되었습니다.', 'success');
-};
-
-const handleRequestDelete = (ui) => {
     const email = state.user?.email || '';
     const userId = state.user?.id || '';
     const subject = encodeURIComponent('[평가원기출VOCA] 계정 탈퇴 요청');
@@ -402,7 +392,7 @@ const handleRequestDelete = (ui) => {
         ].join('\n'),
     );
     window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
-    setStatus(ui.privacyStatus, `메일 앱이 열렸습니다. ${SUPPORT_EMAIL}로 요청을 보내 주세요.`);
+    setStatus(ui.securityStatus, `메일 앱이 열렸습니다. ${SUPPORT_EMAIL}로 요청을 보내 주세요.`);
 };
 
 const handleSupportSubmit = (event, ui) => {
@@ -480,8 +470,18 @@ const bindEvents = (ui) => {
         void handleProfileSave(event, ui);
     });
 
+    ui.passwordOpenBtn?.addEventListener('click', () => {
+        setStatus(ui.securityStatus, '');
+        togglePasswordForm(ui, true);
+    });
+
     ui.passwordForm?.addEventListener('submit', (event) => {
         void handlePasswordSave(event, ui);
+    });
+
+    ui.passwordCancelBtn?.addEventListener('click', () => {
+        setStatus(ui.securityStatus, '');
+        togglePasswordForm(ui, false);
     });
 
     ui.logoutLocalBtn?.addEventListener('click', () => {
@@ -492,16 +492,8 @@ const bindEvents = (ui) => {
         void handleLogout('global', ui);
     });
 
-    ui.exportDataBtn?.addEventListener('click', () => {
-        handleExportData(ui);
-    });
-
-    ui.clearLocalHistoryBtn?.addEventListener('click', () => {
-        handleClearLocalHistory(ui);
-    });
-
-    ui.requestDeleteBtn?.addEventListener('click', () => {
-        handleRequestDelete(ui);
+    ui.deleteAccountBtn?.addEventListener('click', () => {
+        handleDeleteAccountRequest(ui);
     });
 
     ui.generatorHistory?.addEventListener('click', (event) => {
@@ -515,6 +507,7 @@ const bindEvents = (ui) => {
 
 export const initMyPage = async () => {
     const ui = getUi();
+    togglePasswordForm(ui, false);
     refreshHistoryUI(ui);
     bindEvents(ui);
 
