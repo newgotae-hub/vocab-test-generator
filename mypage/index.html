@@ -84,155 +84,179 @@
 
             <section class="mypage-grid" aria-label="마이페이지 관리 섹션">
                 <div class="mypage-column">
-                    <section class="card mypage-panel" id="mypage-profile-panel">
-                        <div class="mypage-panel-head">
-                            <h2>내 정보</h2>
-                            <p class="subtitle">이름, 학교, 학년 정보를 저장해 두면 시험지 제작 시 더 빠르게 이어서 작업할 수 있습니다.</p>
-                        </div>
-                        <form id="mypage-profile-form" class="mypage-form">
-                            <label class="mypage-field">
-                                <span>이메일</span>
-                                <input id="mypage-email" class="text-input" type="email" readonly>
-                            </label>
-                            <div class="mypage-field-grid">
-                                <label class="mypage-field">
-                                    <span>이름</span>
-                                    <input id="mypage-display-name" class="text-input" type="text" maxlength="40" placeholder="이름을 입력하세요">
-                                </label>
-                                <label class="mypage-field">
-                                    <span>학교</span>
-                                    <input id="mypage-school" class="text-input" type="text" maxlength="60" placeholder="학교명을 입력하세요">
-                                </label>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-profile-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>내 정보</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">이름, 학교, 학년 정보를 저장해 두면 시험지 제작 시 더 빠르게 이어서 작업할 수 있습니다.</p>
+                                <form id="mypage-profile-form" class="mypage-form">
+                                    <label class="mypage-field">
+                                        <span>이메일</span>
+                                        <input id="mypage-email" class="text-input" type="email" readonly>
+                                    </label>
+                                    <div class="mypage-field-grid">
+                                        <label class="mypage-field">
+                                            <span>이름</span>
+                                            <input id="mypage-display-name" class="text-input" type="text" maxlength="40" placeholder="이름을 입력하세요">
+                                        </label>
+                                        <label class="mypage-field">
+                                            <span>학교</span>
+                                            <input id="mypage-school" class="text-input" type="text" maxlength="60" placeholder="학교명을 입력하세요">
+                                        </label>
+                                    </div>
+                                    <label class="mypage-field">
+                                        <span>학년</span>
+                                        <select id="mypage-grade" class="text-input">
+                                            <option value="">선택 안 함</option>
+                                            <option value="중1">중1</option>
+                                            <option value="중2">중2</option>
+                                            <option value="중3">중3</option>
+                                            <option value="고1">고1</option>
+                                            <option value="고2">고2</option>
+                                            <option value="고3">고3</option>
+                                            <option value="N수">N수</option>
+                                        </select>
+                                    </label>
+                                    <div class="mypage-action-row">
+                                        <button id="mypage-profile-save" type="submit" class="button-primary mypage-btn-fit">내 정보 저장</button>
+                                    </div>
+                                    <p id="mypage-profile-status" class="mypage-status-text" aria-live="polite"></p>
+                                </form>
                             </div>
-                            <label class="mypage-field">
-                                <span>학년</span>
-                                <select id="mypage-grade" class="text-input">
-                                    <option value="">선택 안 함</option>
-                                    <option value="중1">중1</option>
-                                    <option value="중2">중2</option>
-                                    <option value="중3">중3</option>
-                                    <option value="고1">고1</option>
-                                    <option value="고2">고2</option>
-                                    <option value="고3">고3</option>
-                                    <option value="N수">N수</option>
-                                </select>
-                            </label>
-                            <div class="mypage-action-row">
-                                <button id="mypage-profile-save" type="submit" class="button-primary mypage-btn-fit">내 정보 저장</button>
-                            </div>
-                            <p id="mypage-profile-status" class="mypage-status-text" aria-live="polite"></p>
-                        </form>
+                        </details>
                     </section>
 
-                    <section class="card mypage-panel" id="mypage-security-panel">
-                        <div class="mypage-panel-head">
-                            <h2>계정 보안</h2>
-                            <p class="subtitle">비밀번호를 변경하고 로그인 세션을 관리하세요.</p>
-                        </div>
-                        <dl class="mypage-meta-list">
-                            <div>
-                                <dt>가입일</dt>
-                                <dd id="mypage-created-at">-</dd>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-security-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>계정 보안</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">비밀번호를 변경하고 로그인 세션을 관리하세요.</p>
+                                <dl class="mypage-meta-list">
+                                    <div>
+                                        <dt>가입일</dt>
+                                        <dd id="mypage-created-at">-</dd>
+                                    </div>
+                                    <div>
+                                        <dt>마지막 로그인</dt>
+                                        <dd id="mypage-last-signin">-</dd>
+                                    </div>
+                                    <div>
+                                        <dt>로그인 방식</dt>
+                                        <dd id="mypage-auth-provider">-</dd>
+                                    </div>
+                                </dl>
+                                <form id="mypage-password-form" class="mypage-form">
+                                    <div class="mypage-field-grid">
+                                        <label class="mypage-field">
+                                            <span>새 비밀번호</span>
+                                            <input id="mypage-password" class="text-input" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상 입력">
+                                        </label>
+                                        <label class="mypage-field">
+                                            <span>비밀번호 확인</span>
+                                            <input id="mypage-password-confirm" class="text-input" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력">
+                                        </label>
+                                    </div>
+                                    <div class="mypage-action-row">
+                                        <button id="mypage-password-save" type="submit" class="button-primary mypage-btn-fit">비밀번호 변경</button>
+                                    </div>
+                                    <p id="mypage-security-status" class="mypage-status-text" aria-live="polite"></p>
+                                </form>
+                                <div class="mypage-action-row">
+                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">이 기기에서 로그아웃</button>
+                                    <button id="mypage-logout-all" type="button" class="mypage-button mypage-button--ghost">모든 기기 로그아웃</button>
+                                </div>
                             </div>
-                            <div>
-                                <dt>마지막 로그인</dt>
-                                <dd id="mypage-last-signin">-</dd>
-                            </div>
-                            <div>
-                                <dt>로그인 방식</dt>
-                                <dd id="mypage-auth-provider">-</dd>
-                            </div>
-                        </dl>
-                        <form id="mypage-password-form" class="mypage-form">
-                            <div class="mypage-field-grid">
-                                <label class="mypage-field">
-                                    <span>새 비밀번호</span>
-                                    <input id="mypage-password" class="text-input" type="password" minlength="8" autocomplete="new-password" placeholder="8자 이상 입력">
-                                </label>
-                                <label class="mypage-field">
-                                    <span>비밀번호 확인</span>
-                                    <input id="mypage-password-confirm" class="text-input" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력">
-                                </label>
-                            </div>
-                            <div class="mypage-action-row">
-                                <button id="mypage-password-save" type="submit" class="button-primary mypage-btn-fit">비밀번호 변경</button>
-                            </div>
-                            <p id="mypage-security-status" class="mypage-status-text" aria-live="polite"></p>
-                        </form>
-                        <div class="mypage-action-row">
-                            <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">이 기기에서 로그아웃</button>
-                            <button id="mypage-logout-all" type="button" class="mypage-button mypage-button--ghost">모든 기기 로그아웃</button>
-                        </div>
+                        </details>
                     </section>
 
-                    <section class="card mypage-panel" id="mypage-privacy-panel">
-                        <div class="mypage-panel-head">
-                            <h2>개인정보 관리</h2>
-                            <p class="subtitle">내 데이터 내보내기와 로컬 기록 삭제, 계정 탈퇴 요청을 처리할 수 있습니다.</p>
-                        </div>
-                        <div class="mypage-action-row">
-                            <button id="mypage-export-data" type="button" class="mypage-button">내 데이터 다운로드</button>
-                            <button id="mypage-clear-local-history" type="button" class="mypage-button mypage-button--danger">로컬 기록 삭제</button>
-                        </div>
-                        <div class="mypage-action-row">
-                            <button id="mypage-request-delete" type="button" class="mypage-button mypage-button--ghost">계정 탈퇴 요청</button>
-                        </div>
-                        <p id="mypage-privacy-status" class="mypage-status-text" aria-live="polite"></p>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-privacy-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>개인정보 관리</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">내 데이터 내보내기와 로컬 기록 삭제, 계정 탈퇴 요청을 처리할 수 있습니다.</p>
+                                <div class="mypage-action-row">
+                                    <button id="mypage-export-data" type="button" class="mypage-button">내 데이터 다운로드</button>
+                                    <button id="mypage-clear-local-history" type="button" class="mypage-button mypage-button--danger">로컬 기록 삭제</button>
+                                </div>
+                                <div class="mypage-action-row">
+                                    <button id="mypage-request-delete" type="button" class="mypage-button mypage-button--ghost">계정 탈퇴 요청</button>
+                                </div>
+                                <p id="mypage-privacy-status" class="mypage-status-text" aria-live="polite"></p>
+                            </div>
+                        </details>
                     </section>
 
-                    <section class="card mypage-panel" id="mypage-support-panel">
-                        <div class="mypage-panel-head">
-                            <h2>고객지원</h2>
-                            <p class="subtitle">자주 묻는 질문을 확인하고 문의 메일을 바로 보낼 수 있습니다.</p>
-                        </div>
-                        <div class="mypage-faq-list">
-                            <details class="mypage-faq-item">
-                                <summary>시험지 파일이 열리지 않을 때는 어떻게 하나요?</summary>
-                                <p>생성 직후 다운로드가 끝났는지 확인한 뒤, 최신 버전의 Word 또는 PDF 뷰어에서 다시 열어보세요.</p>
-                            </details>
-                            <details class="mypage-faq-item">
-                                <summary>온라인 테스트 기록이 보이지 않아요.</summary>
-                                <p>테스트 기록은 브라우저 로컬 저장소 기준으로 관리됩니다. 브라우저/기기를 변경하면 기존 기록이 보이지 않을 수 있습니다.</p>
-                            </details>
-                            <details class="mypage-faq-item">
-                                <summary>계정 관련 문의는 어디로 보내나요?</summary>
-                                <p>아래 문의 보내기 버튼을 누르면 계정 정보가 포함된 메일 작성 창이 열립니다.</p>
-                            </details>
-                        </div>
-                        <form id="mypage-support-form" class="mypage-form">
-                            <label class="mypage-field">
-                                <span>문의 제목</span>
-                                <input id="mypage-support-subject" class="text-input" type="text" maxlength="80" placeholder="예: 시험지 생성 오류 문의">
-                            </label>
-                            <label class="mypage-field">
-                                <span>문의 내용</span>
-                                <textarea id="mypage-support-message" class="text-input" rows="4" maxlength="1000" placeholder="문제 상황과 재현 방법을 작성해 주세요."></textarea>
-                            </label>
-                            <div class="mypage-action-row">
-                                <button type="submit" class="mypage-button">문의 보내기</button>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-support-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>고객지원</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">자주 묻는 질문을 확인하고 문의 메일을 바로 보낼 수 있습니다.</p>
+                                <div class="mypage-faq-list">
+                                    <details class="mypage-faq-item">
+                                        <summary>시험지 파일이 열리지 않을 때는 어떻게 하나요?</summary>
+                                        <p>생성 직후 다운로드가 끝났는지 확인한 뒤, 최신 버전의 Word 또는 PDF 뷰어에서 다시 열어보세요.</p>
+                                    </details>
+                                    <details class="mypage-faq-item">
+                                        <summary>온라인 테스트 기록이 보이지 않아요.</summary>
+                                        <p>테스트 기록은 브라우저 로컬 저장소 기준으로 관리됩니다. 브라우저/기기를 변경하면 기존 기록이 보이지 않을 수 있습니다.</p>
+                                    </details>
+                                    <details class="mypage-faq-item">
+                                        <summary>계정 관련 문의는 어디로 보내나요?</summary>
+                                        <p>아래 문의 보내기 버튼을 누르면 계정 정보가 포함된 메일 작성 창이 열립니다.</p>
+                                    </details>
+                                </div>
+                                <form id="mypage-support-form" class="mypage-form">
+                                    <label class="mypage-field">
+                                        <span>문의 제목</span>
+                                        <input id="mypage-support-subject" class="text-input" type="text" maxlength="80" placeholder="예: 시험지 생성 오류 문의">
+                                    </label>
+                                    <label class="mypage-field">
+                                        <span>문의 내용</span>
+                                        <textarea id="mypage-support-message" class="text-input" rows="4" maxlength="1000" placeholder="문제 상황과 재현 방법을 작성해 주세요."></textarea>
+                                    </label>
+                                    <div class="mypage-action-row">
+                                        <button type="submit" class="mypage-button">문의 보내기</button>
+                                    </div>
+                                </form>
+                                <p id="mypage-support-status" class="mypage-status-text" aria-live="polite"></p>
                             </div>
-                        </form>
-                        <p id="mypage-support-status" class="mypage-status-text" aria-live="polite"></p>
+                        </details>
                     </section>
                 </div>
 
                 <div class="mypage-column">
-                    <section class="card mypage-panel" id="mypage-generator-panel">
-                        <div class="mypage-panel-head">
-                            <h2>내 시험지</h2>
-                            <p class="subtitle">내가 생성한 시험지 목록입니다.</p>
-                        </div>
-                        <p id="mypage-generator-summary" class="mypage-inline-summary">기록 0건</p>
-                        <div id="mypage-generator-history" class="test-history-list"></div>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-generator-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>내 시험지</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">내가 생성한 시험지 목록입니다.</p>
+                                <p id="mypage-generator-summary" class="mypage-inline-summary">기록 0건</p>
+                                <div id="mypage-generator-history" class="test-history-list"></div>
+                            </div>
+                        </details>
                     </section>
 
-                    <section class="card mypage-panel" id="mypage-test-panel">
-                        <div class="mypage-panel-head">
-                            <h2>온라인 테스트 기록</h2>
-                            <p class="subtitle">최근 응시 결과와 정답률을 확인하세요.</p>
-                        </div>
-                        <p id="mypage-test-summary" class="mypage-inline-summary">기록 0건</p>
-                        <div id="mypage-test-history" class="test-history-list"></div>
+                    <section class="card mypage-panel mypage-accordion" id="mypage-test-panel">
+                        <details class="mypage-accordion-item">
+                            <summary class="mypage-accordion-trigger">
+                                <h2>온라인 테스트 기록</h2>
+                            </summary>
+                            <div class="mypage-accordion-body">
+                                <p class="subtitle mypage-accordion-subtitle">최근 응시 결과와 정답률을 확인하세요.</p>
+                                <p id="mypage-test-summary" class="mypage-inline-summary">기록 0건</p>
+                                <div id="mypage-test-history" class="test-history-list"></div>
+                            </div>
+                        </details>
                     </section>
                 </div>
             </section>

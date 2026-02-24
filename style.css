@@ -834,8 +834,64 @@ input:checked + .slider::before {
 }
 
 .mypage-panel {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+}
+
+.mypage-accordion-item {
+    margin: 0;
+}
+
+.mypage-accordion-trigger {
+    margin: 0;
+    list-style: none;
+    cursor: pointer;
+    position: relative;
+    padding: 0.98rem 2.8rem 0.98rem 1rem;
+    text-align: center;
+}
+
+.mypage-accordion-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.mypage-accordion-trigger h2 {
+    margin: 0;
+}
+
+.mypage-accordion-trigger::after {
+    content: "+";
+    position: absolute;
+    right: 1.05rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: #1d4ed8;
+    font-weight: 700;
+    line-height: 1.35rem;
+    text-align: center;
+    background: #fff;
+}
+
+.mypage-accordion-item[open] .mypage-accordion-trigger::after {
+    content: "-";
+}
+
+.mypage-accordion-body {
+    border-top: 1px solid var(--line);
+    padding: 1rem 1.2rem 1.2rem;
     display: grid;
     gap: 0.9rem;
+}
+
+.mypage-accordion-subtitle {
+    margin: 0;
+    max-height: none;
+    text-align: center;
 }
 
 .mypage-panel-head h2 {
@@ -903,6 +959,7 @@ input:checked + .slider::before {
 
 .mypage-button:focus-visible,
 .mypage-button--ghost:focus-visible,
+.mypage-accordion-trigger:focus-visible,
 .mypage-faq-item summary:focus-visible {
     outline: 2px solid #1d4ed8;
     outline-offset: 2px;
