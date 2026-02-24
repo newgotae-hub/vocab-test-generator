@@ -755,6 +755,260 @@ input:checked + .slider::before {
     box-shadow: 0 16px 28px -22px rgba(15, 23, 42, 0.6);
 }
 
+.mypage-main {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 1rem;
+}
+
+.mypage-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+}
+
+.mypage-kicker {
+    margin: 0 0 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.24rem 0.62rem;
+    background: rgba(29, 78, 216, 0.1);
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.mypage-hero h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.mypage-hero .subtitle {
+    margin: 0;
+    max-height: none;
+}
+
+.mypage-hero-metrics {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.58rem;
+}
+
+.mypage-metric {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.72rem 0.78rem;
+    display: grid;
+    gap: 0.22rem;
+}
+
+.mypage-metric strong {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-subtle);
+}
+
+.mypage-metric span {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.mypage-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.mypage-column {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+}
+
+.mypage-panel {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.mypage-panel-head h2 {
+    margin: 0 0 0.4rem;
+}
+
+.mypage-panel-head .subtitle {
+    margin: 0;
+    max-height: none;
+}
+
+.mypage-form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.mypage-field {
+    display: grid;
+    gap: 0.36rem;
+}
+
+.mypage-field > span {
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+}
+
+.mypage-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+}
+
+.mypage-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.mypage-btn-fit {
+    width: auto;
+    margin-top: 0;
+    padding-inline: 1rem;
+}
+
+.mypage-button {
+    border: 1px solid #1d4ed8;
+    background: #1d4ed8;
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.58rem 0.88rem;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+    box-shadow: 0 8px 20px -14px rgba(29, 78, 216, 0.55);
+}
+
+.mypage-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+}
+
+.mypage-button:focus-visible,
+.mypage-button--ghost:focus-visible,
+.mypage-faq-item summary:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+}
+
+.mypage-button--ghost {
+    border-color: var(--line);
+    background: #fff;
+    color: #1f2937;
+    box-shadow: none;
+}
+
+.mypage-button--danger {
+    border-color: #dc2626;
+    background: #dc2626;
+}
+
+.mypage-status-text {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--text-subtle);
+    min-height: 1.25rem;
+}
+
+.mypage-status-text.is-success {
+    color: #065f46;
+}
+
+.mypage-status-text.is-error {
+    color: #b91c1c;
+}
+
+.mypage-meta-list {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+}
+
+.mypage-meta-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.58rem 0.72rem;
+}
+
+.mypage-meta-list dt {
+    margin: 0;
+    color: var(--text-subtle);
+    font-size: 0.83rem;
+    font-weight: 600;
+}
+
+.mypage-meta-list dd {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-align: right;
+}
+
+.mypage-inline-summary {
+    margin: 0;
+    font-size: 0.87rem;
+    color: #334155;
+    font-weight: 600;
+}
+
+.mypage-history-item {
+    gap: 0.24rem;
+}
+
+.mypage-history-subtle {
+    color: var(--text-subtle);
+}
+
+.mypage-faq-list {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.mypage-faq-item {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.18rem 0.62rem;
+    background: #fff;
+}
+
+.mypage-faq-item summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.44rem 0;
+    color: #0f172a;
+}
+
+.mypage-faq-item p {
+    margin: 0 0 0.55rem;
+    color: #334155;
+    font-size: 0.88rem;
+    line-height: 1.52;
+}
+
 body[data-page="landing"] {
     background:
         radial-gradient(1000px 550px at 8% 0%, rgba(59, 130, 246, 0.16) 0%, transparent 64%),
@@ -1946,6 +2200,18 @@ body[data-page="auth"] #app {
         grid-template-columns: 1fr;
     }
 
+    .mypage-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mypage-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .mypage-hero-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .test-actions {
         grid-template-columns: 1fr;
     }
@@ -2019,6 +2285,20 @@ body[data-page="auth"] #app {
 
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+
+    .mypage-hero-metrics,
+    .mypage-field-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mypage-action-row {
+        flex-direction: column;
+    }
+
+    .mypage-btn-fit,
+    .mypage-button {
+        width: 100%;
     }
 
     .book-library {
