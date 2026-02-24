@@ -162,6 +162,23 @@ const getGeneratorArchive = async (archiveIdRaw) => {
     }
 };
 
+const clearGeneratorArchives = async () => {
+    if (!window.indexedDB) return;
+    const db = await openGeneratorArchiveDb();
+    try {
+        const tx = db.transaction(GENERATOR_ARCHIVE_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(GENERATOR_ARCHIVE_STORE_NAME);
+        await requestToPromise(store.clear());
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB 트랜잭션에 실패했습니다.'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB 트랜잭션이 중단되었습니다.'));
+        });
+    } finally {
+        db.close();
+    }
+};
+
 const getUi = () => {
     return {
         heroEmail: document.getElementById('mypage-hero-email'),
@@ -190,6 +207,7 @@ const getUi = () => {
         deleteAccountBtn: document.getElementById('mypage-delete-account'),
 
         generatorSummary: document.getElementById('mypage-generator-summary'),
+        generatorClearBtn: document.getElementById('mypage-generator-clear'),
         generatorStatus: document.getElementById('mypage-generator-status'),
         generatorHistory: document.getElementById('mypage-generator-history'),
         testSummary: document.getElementById('mypage-test-summary'),
@@ -525,6 +543,28 @@ const handleGeneratorHistoryRegenerate = (event, ui) => {
     return true;
 };
 
+const handleClearGeneratorHistory = async (ui) => {
+    if (state.generatorHistory.length === 0) {
+        setStatus(ui.generatorStatus, '삭제할 시험지 기록이 없습니다.');
+        return;
+    }
+    if (!window.confirm('내 시험지 기록을 모두 삭제하시겠습니까?\n재다운로드 파일도 함께 삭제됩니다.')) return;
+
+    if (ui.generatorClearBtn) ui.generatorClearBtn.disabled = true;
+    setStatus(ui.generatorStatus, '시험지 기록을 삭제하는 중입니다...');
+    try {
+        localStorage.removeItem(GENERATOR_HISTORY_KEY);
+        await clearGeneratorArchives();
+        refreshHistoryUI(ui);
+        setStatus(ui.generatorStatus, '내 시험지 기록을 삭제했습니다.', 'success');
+    } catch (error) {
+        console.error(error);
+        setStatus(ui.generatorStatus, '기록 삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
+    } finally {
+        if (ui.generatorClearBtn) ui.generatorClearBtn.disabled = false;
+    }
+};
+
 const bindEvents = (ui) => {
     ui.profileForm?.addEventListener('submit', (event) => {
         void handleProfileSave(event, ui);
@@ -560,6 +600,10 @@ const bindEvents = (ui) => {
         const handled = handleGeneratorHistoryRegenerate(event, ui);
         if (handled) return;
         void handleGeneratorHistoryDownload(event, ui);
+    });
+
+    ui.generatorClearBtn?.addEventListener('click', () => {
+        void handleClearGeneratorHistory(ui);
     });
 
     ui.supportForm?.addEventListener('submit', (event) => {
