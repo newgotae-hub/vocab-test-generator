@@ -290,14 +290,12 @@ const renderTestHistory = (container, summaryEl, history) => {
         const total = Number(entry?.summary?.total || 0);
         const accuracy = Number(entry?.summary?.accuracy || 0).toFixed(1);
         const finishedAt = formatLocalDatetime(entry?.finishedAt);
-        const examType = normalizeSpacingText(entry?.config?.examType) || '-';
+        const bookLabel = getBookLabel(entry?.config?.bookKey);
+        const compactLine = `${index + 1}. ${finishedAt} · ${bookLabel} · 점수 ${score}/${total} (${accuracy}%)`;
 
         return `
             <article class="test-history-item mypage-history-item">
-                <strong>${index + 1}. ${escapeHtml(finishedAt)}</strong>
-                <span>교재: ${escapeHtml(getBookLabel(entry?.config?.bookKey))}</span>
-                <span>유형: ${escapeHtml(examType)} · 점수: ${score}/${total} (${accuracy}%)</span>
-                <span class="mypage-history-subtle">인증코드: ${escapeHtml(entry?.verificationCode || '-')}</span>
+                <strong class="mypage-history-title">${escapeHtml(compactLine)}</strong>
             </article>
         `;
     }).join('');
