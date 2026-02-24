@@ -479,7 +479,7 @@ const handleSupportSubmit = (event, ui) => {
     );
     const ccQuery = email ? `&cc=${encodeURIComponent(email)}` : '';
     window.location.href = `mailto:${COUNSEL_EMAIL}?subject=${subject}${ccQuery}&body=${body}`;
-    setStatus(ui.supportStatus, email ? `상담 메일 작성 창을 열었습니다. ${COUNSEL_EMAIL}로 전송되고, 본인 이메일 참조(CC)도 함께 설정했습니다.` : `상담 메일 작성 창을 열었습니다. ${COUNSEL_EMAIL}로 전송해 주세요.`, 'success');
+    setStatus(ui.supportStatus, email ? '상담 메일 작성 창을 열었습니다. 전송 주소와 참조(CC)가 자동으로 채워집니다.' : '상담 메일 작성 창을 열었습니다. 내용을 확인한 뒤 전송해 주세요.', 'success');
 };
 
 const handleGeneratorHistoryDownload = async (event, ui) => {
