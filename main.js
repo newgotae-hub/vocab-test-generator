@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_QUESTION_COUNT = 200;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
     const GENERATOR_HISTORY_LIMIT = 20;
+    const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
+    const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 
     // --- Library Instances ---
     let PDFDocument = null;
@@ -261,11 +263,89 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const pushGeneratorHistoryEntry = (entry) => {
+    const requestToPromise = (request) => new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('IndexedDB 요청에 실패했습니다.'));
+    });
+
+    const openGeneratorArchiveDb = () => {
+        if (!window.indexedDB) {
+            return Promise.reject(new Error('IndexedDB를 사용할 수 없습니다.'));
+        }
+        return new Promise((resolve, reject) => {
+            const request = window.indexedDB.open(GENERATOR_ARCHIVE_DB_NAME, 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains(GENERATOR_ARCHIVE_STORE_NAME)) {
+                    db.createObjectStore(GENERATOR_ARCHIVE_STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB 열기에 실패했습니다.'));
+        });
+    };
+
+    const withGeneratorArchiveStore = async (mode, worker) => {
+        const db = await openGeneratorArchiveDb();
+        try {
+            const tx = db.transaction(GENERATOR_ARCHIVE_STORE_NAME, mode);
+            const store = tx.objectStore(GENERATOR_ARCHIVE_STORE_NAME);
+            const result = await worker(store);
+            await new Promise((resolve, reject) => {
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error || new Error('IndexedDB 트랜잭션에 실패했습니다.'));
+                tx.onabort = () => reject(tx.error || new Error('IndexedDB 트랜잭션이 중단되었습니다.'));
+            });
+            return result;
+        } finally {
+            db.close();
+        }
+    };
+
+    const saveGeneratorArchiveFiles = async (fileEntries) => {
+        if (!window.indexedDB || !Array.isArray(fileEntries) || fileEntries.length === 0) {
+            return '';
+        }
+        const archiveId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const payloadFiles = fileEntries.map((entry) => ({
+            name: normalizeSpacingText(entry?.name) || '시험지',
+            type: normalizeSpacingText(entry?.type) || 'application/octet-stream',
+            blob: entry?.blob instanceof Blob ? entry.blob : new Blob([], { type: 'application/octet-stream' }),
+        }));
+        await withGeneratorArchiveStore('readwrite', (store) => requestToPromise(store.put({
+            id: archiveId,
+            createdAt: new Date().toISOString(),
+            files: payloadFiles,
+        })));
+        return archiveId;
+    };
+
+    const pruneGeneratorArchives = async (historyEntries) => {
+        if (!window.indexedDB) return;
+        const keepIds = new Set(
+            (historyEntries || [])
+                .map((entry) => normalizeSpacingText(entry?.archiveId))
+                .filter(Boolean),
+        );
+        try {
+            await withGeneratorArchiveStore('readwrite', async (store) => {
+                const keys = await requestToPromise(store.getAllKeys());
+                const staleKeys = (keys || [])
+                    .map((key) => String(key))
+                    .filter((key) => !keepIds.has(key));
+                await Promise.all(staleKeys.map((key) => requestToPromise(store.delete(key))));
+            });
+        } catch (error) {
+            console.warn('시험지 파일 보관함 정리 실패:', error);
+        }
+    };
+
+    const pushGeneratorHistoryEntry = async (entry) => {
         try {
             const current = safeParseGeneratorHistory(localStorage.getItem(GENERATOR_HISTORY_KEY));
             const next = [entry, ...current].slice(0, GENERATOR_HISTORY_LIMIT);
             localStorage.setItem(GENERATOR_HISTORY_KEY, JSON.stringify(next));
+            await pruneGeneratorArchives(next);
         } catch (error) {
             console.warn('시험지 생성 기록 저장 실패:', error);
         }
@@ -1025,21 +1105,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseFileName = normalizeFileName(`${getBookPrefixForFile(state.selectedBook)}${settings.fileBaseName || settings.examTitle}`);
         showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
+            const generatedFiles = [];
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
-                downloadBlob(new Blob([questionPdfBytes], { type: 'application/pdf' }), `${baseFileName}.pdf`);
+                const questionBlob = new Blob([questionPdfBytes], { type: 'application/pdf' });
+                downloadBlob(questionBlob, `${baseFileName}.pdf`);
+                generatedFiles.push({ name: `${baseFileName}.pdf`, type: 'application/pdf', blob: questionBlob });
                 await sleep(DOWNLOAD_GAP_MS);
                 const answerPdfBytes = await createPdf(questions, settings, true);
-                downloadBlob(new Blob([answerPdfBytes], { type: 'application/pdf' }), `${baseFileName}_답.pdf`);
+                const answerBlob = new Blob([answerPdfBytes], { type: 'application/pdf' });
+                downloadBlob(answerBlob, `${baseFileName}_답.pdf`);
+                generatedFiles.push({ name: `${baseFileName}_답.pdf`, type: 'application/pdf', blob: answerBlob });
             } else {
                 const questionDocx = await createDocx(questions, settings, false);
                 downloadBlob(questionDocx.blob, `${baseFileName}.docx`);
+                generatedFiles.push({
+                    name: `${baseFileName}.docx`,
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    blob: questionDocx.blob,
+                });
                 await sleep(DOWNLOAD_GAP_MS);
                 const answerDocx = await createDocx(questions, settings, true);
                 downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
+                generatedFiles.push({
+                    name: `${baseFileName}_답.docx`,
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    blob: answerDocx.blob,
+                });
             }
 
-            pushGeneratorHistoryEntry({
+            let archiveId = '';
+            try {
+                archiveId = await saveGeneratorArchiveFiles(generatedFiles);
+            } catch (archiveError) {
+                console.warn('시험지 파일 보관 실패:', archiveError);
+            }
+
+            const historyEntry = {
                 generatedAt: new Date().toISOString(),
                 config: {
                     examTitle: settings.examTitle,
@@ -1053,10 +1155,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectedTocs: [...state.selectedTocs].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
                     includeDerivatives: Boolean(state.includeDerivatives),
                 },
-                files: settings.outputFormat === 'PDF'
-                    ? [`${baseFileName}.pdf`, `${baseFileName}_답.pdf`]
-                    : [`${baseFileName}.docx`, `${baseFileName}_답.docx`],
-            });
+                files: generatedFiles.map((file) => file.name),
+            };
+            if (archiveId) {
+                historyEntry.archiveId = archiveId;
+            }
+            await pushGeneratorHistoryEntry(historyEntry);
         } catch(e) {
             showToast('시험지 생성 중 오류가 발생했습니다.', 'error');
             console.error(e);

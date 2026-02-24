@@ -4,6 +4,8 @@ const TEST_HISTORY_KEY = 'voca_plus_test_history_v1';
 const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
 const TEST_HISTORY_LIMIT = 10;
 const GENERATOR_HISTORY_LIMIT = 20;
+const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
+const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 const SUPPORT_EMAIL = 'support@voca.plus';
 
 const BOOK_LABELS = {
@@ -95,6 +97,55 @@ const downloadJson = (filename, value) => {
     URL.revokeObjectURL(url);
 };
 
+const downloadBlob = (blob, filename) => {
+    if (!(blob instanceof Blob)) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || '시험지';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
+
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const requestToPromise = (request) => new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB 요청에 실패했습니다.'));
+});
+
+const openGeneratorArchiveDb = () => {
+    if (!window.indexedDB) {
+        return Promise.reject(new Error('IndexedDB를 사용할 수 없습니다.'));
+    }
+    return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(GENERATOR_ARCHIVE_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(GENERATOR_ARCHIVE_STORE_NAME)) {
+                db.createObjectStore(GENERATOR_ARCHIVE_STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('IndexedDB 열기에 실패했습니다.'));
+    });
+};
+
+const getGeneratorArchive = async (archiveIdRaw) => {
+    const archiveId = normalizeSpacingText(archiveIdRaw);
+    if (!archiveId || !window.indexedDB) return null;
+    const db = await openGeneratorArchiveDb();
+    try {
+        const tx = db.transaction(GENERATOR_ARCHIVE_STORE_NAME, 'readonly');
+        const store = tx.objectStore(GENERATOR_ARCHIVE_STORE_NAME);
+        return await requestToPromise(store.get(archiveId));
+    } finally {
+        db.close();
+    }
+};
+
 const getUi = () => {
     return {
         heroEmail: document.getElementById('mypage-hero-email'),
@@ -119,6 +170,7 @@ const getUi = () => {
         logoutAllBtn: document.getElementById('mypage-logout-all'),
 
         generatorSummary: document.getElementById('mypage-generator-summary'),
+        generatorStatus: document.getElementById('mypage-generator-status'),
         generatorHistory: document.getElementById('mypage-generator-history'),
         testSummary: document.getElementById('mypage-test-summary'),
         testHistory: document.getElementById('mypage-test-history'),
@@ -155,15 +207,20 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         const outputFormat = normalizeSpacingText(config.outputFormat) || '-';
         const testType = normalizeSpacingText(config.testType) || '-';
         const fileNames = Array.isArray(entry?.files) ? entry.files.join(', ') : '-';
+        const hasArchive = Boolean(normalizeSpacingText(entry?.archiveId));
+        const redownloadAttr = hasArchive ? `data-redownload-index="${index}"` : '';
 
         return `
-            <article class="test-history-item mypage-history-item">
+            <article class="test-history-item mypage-history-item" ${redownloadAttr}>
                 <strong>${index + 1}. ${escapeHtml(examTitle)}</strong>
                 <span>생성일: ${escapeHtml(generatedAt)}</span>
                 <span>교재: ${escapeHtml(getBookLabel(config.bookKey || config.bookName))}</span>
                 <span>형식: ${escapeHtml(outputFormat)} · 유형: ${escapeHtml(testType)} · 문항: ${questionCount}개</span>
                 <span>시험 범위: ${selectedCount}개 목차</span>
                 <span class="mypage-history-subtle">파일명: ${escapeHtml(fileNames)}</span>
+                <div class="mypage-action-row">
+                    <button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr} ${hasArchive ? '' : 'disabled'}>${hasArchive ? '파일 다시 다운로드' : '재다운로드 불가(이전 기록)'}</button>
+                </div>
             </article>
         `;
     }).join('');
@@ -375,6 +432,49 @@ const handleSupportSubmit = (event, ui) => {
     setStatus(ui.supportStatus, '문의 메일 작성 창을 열었습니다.', 'success');
 };
 
+const handleGeneratorHistoryDownload = async (event, ui) => {
+    const trigger = event.target?.closest?.('[data-redownload-index]');
+    if (!trigger) return;
+    const index = Number(trigger.dataset.redownloadIndex);
+    if (!Number.isInteger(index) || index < 0) return;
+    const historyEntry = state.generatorHistory[index];
+    if (!historyEntry) return;
+
+    const archiveId = normalizeSpacingText(historyEntry.archiveId);
+    if (!archiveId) {
+        setStatus(ui.generatorStatus, '이 기록은 재다운로드용 파일이 저장되지 않았습니다.', 'error');
+        return;
+    }
+
+    const button = trigger.tagName === 'BUTTON'
+        ? trigger
+        : trigger.querySelector('button[data-redownload-index]');
+
+    if (button) button.disabled = true;
+    setStatus(ui.generatorStatus, '파일을 불러오는 중입니다...');
+
+    try {
+        const archive = await getGeneratorArchive(archiveId);
+        const files = Array.isArray(archive?.files) ? archive.files : [];
+        if (files.length === 0) {
+            setStatus(ui.generatorStatus, '저장된 파일을 찾지 못했습니다. 새로 시험지를 생성해 주세요.', 'error');
+            return;
+        }
+
+        for (const file of files) {
+            const fileName = normalizeSpacingText(file?.name) || '시험지';
+            downloadBlob(file?.blob, fileName);
+            await sleep(420);
+        }
+        setStatus(ui.generatorStatus, '과거 시험지 다운로드를 시작했습니다.', 'success');
+    } catch (error) {
+        setStatus(ui.generatorStatus, '파일 다운로드에 실패했습니다. 다시 시도해 주세요.', 'error');
+        console.error(error);
+    } finally {
+        if (button) button.disabled = false;
+    }
+};
+
 const bindEvents = (ui) => {
     ui.profileForm?.addEventListener('submit', (event) => {
         void handleProfileSave(event, ui);
@@ -402,6 +502,10 @@ const bindEvents = (ui) => {
 
     ui.requestDeleteBtn?.addEventListener('click', () => {
         handleRequestDelete(ui);
+    });
+
+    ui.generatorHistory?.addEventListener('click', (event) => {
+        void handleGeneratorHistoryDownload(event, ui);
     });
 
     ui.supportForm?.addEventListener('submit', (event) => {
