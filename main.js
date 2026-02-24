@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const GENERATOR_HISTORY_LIMIT = 20;
     const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
     const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
+    const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
 
     // --- Library Instances ---
     let PDFDocument = null;
@@ -163,6 +164,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (value === 'basic' || value === '베이직' || value === '베이식') return 'basic';
         if (value === 'advanced' || value === '어드밴스드' || value === '어드밴스') return 'advanced';
         return value;
+    };
+
+    const consumeGeneratorRestoreRequest = () => {
+        const raw = localStorage.getItem(GENERATOR_RESTORE_REQUEST_KEY);
+        if (!raw) return null;
+        localStorage.removeItem(GENERATOR_RESTORE_REQUEST_KEY);
+        try {
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return null;
+            return parsed;
+        } catch (_) {
+            return null;
+        }
     };
 
     const getBookNameForOutput = (bookKey) => {
@@ -1166,6 +1180,91 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(e);
         }
     };
+
+    const applyGeneratorRestoreRequest = async () => {
+        const restore = consumeGeneratorRestoreRequest();
+        if (!restore) return;
+
+        const config = restore?.config || {};
+        const bookKey = normalizeBookKey(config.bookKey);
+        if (!bookKey) {
+            showToast('재생성 요청 정보가 올바르지 않습니다.', 'error');
+            return;
+        }
+
+        try {
+            await selectBook(bookKey);
+        } catch (error) {
+            console.error(error);
+            showToast('교재 정보를 복원하지 못했습니다.', 'error');
+            return;
+        }
+
+        if (bookKey === 'etymology') {
+            const chapterId = normalizeSpacingText(config.selectedChapter);
+            if (chapterId) {
+                selectSubChapter(chapterId);
+            }
+        }
+
+        const selectedTocs = Array.isArray(config.selectedTocs)
+            ? config.selectedTocs.map((toc) => normalizeSpacingText(toc)).filter(Boolean)
+            : [];
+        if (selectedTocs.length > 0) {
+            const tocSet = new Set(selectedTocs);
+            state.ui.tocChecklist
+                .querySelectorAll('input[type="checkbox"][data-toc]')
+                .forEach((checkbox) => {
+                    checkbox.checked = tocSet.has(normalizeSpacingText(checkbox.dataset.toc));
+                });
+            updateUiState();
+        }
+
+        if (state.ui.includeDerivatives && bookKey !== 'etymology') {
+            const shouldIncludeDerivatives = Boolean(config.includeDerivatives);
+            state.ui.includeDerivatives.checked = shouldIncludeDerivatives;
+            state.ui.includeDerivatives.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        const examTitle = normalizeSpacingText(config.examTitle);
+        if (state.ui.examTitle && examTitle) {
+            state.ui.examTitle.value = examTitle;
+            state.isExamTitleCustomized = true;
+        }
+
+        const testType = normalizeSpacingText(config.testType).toUpperCase();
+        const testTypeOption = state.ui.testTypeOptions
+            ?.querySelector(`.test-type-option[data-type="${testType}"]`);
+        if (testTypeOption && !testTypeOption.classList.contains('hidden')) {
+            state.ui.testTypeOptions.querySelectorAll('.test-type-option').forEach((opt) => opt.classList.remove('active'));
+            testTypeOption.classList.add('active');
+        }
+
+        const outputFormat = normalizeSpacingText(config.outputFormat).toUpperCase();
+        const outputOption = document.querySelector(`input[name="output-format"][value="${outputFormat}"]`);
+        if (outputOption && !outputOption.disabled) {
+            outputOption.checked = true;
+        }
+
+        if (state.ui.shuffleQuestions) {
+            state.ui.shuffleQuestions.checked = Boolean(config.shouldShuffle);
+        }
+
+        const requestedNumQuestions = Number.parseInt(config.numQuestions, 10);
+        const maxQuestions = Number.parseInt(state.ui.numQuestions.max, 10) || state.selectedWords.length || 0;
+        if (Number.isInteger(requestedNumQuestions) && requestedNumQuestions > 0 && maxQuestions > 0) {
+            state.ui.numQuestions.value = String(Math.max(1, Math.min(requestedNumQuestions, maxQuestions)));
+            setNumQuestionsHint(state.ui.numQuestions.value);
+        }
+
+        if (state.selectedWords.length === 0) {
+            showToast('선택한 범위 데이터가 없어 자동 재생성을 진행하지 못했습니다.', 'error');
+            return;
+        }
+
+        showToast('마이페이지 기록 설정을 복원했습니다. 시험지를 다시 생성합니다.');
+        await generateTest();
+    };
     
     const createPdf = async (questions, options = {}, isAnswerSheet = false) => {
         if (!PDFDocument || !state.koreanFont || !hasFontkit) {
@@ -1911,13 +2010,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization ---
     const init = () => {
         syncGeneratorBookStageLayout();
-        loadData();
+        const loadTask = loadData();
         ensureMobileSettingsAtBottom();
         window.addEventListener('resize', () => {
             ensureMobileSettingsAtBottom();
         });
         syncSectionNavFromCards();
         setupEventListeners();
+        void loadTask.then(() => applyGeneratorRestoreRequest());
     };
 
     init();

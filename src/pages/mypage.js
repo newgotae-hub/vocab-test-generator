@@ -6,6 +6,7 @@ const TEST_HISTORY_LIMIT = 10;
 const GENERATOR_HISTORY_LIMIT = 20;
 const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
 const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
+const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
 const SUPPORT_EMAIL = 'support@voca.plus';
 
 const BOOK_LABELS = {
@@ -60,6 +61,33 @@ const safeParseHistory = (raw, limit) => {
 const getBookLabel = (bookKey) => {
     const normalized = normalizeSpacingText(bookKey).toLowerCase();
     return BOOK_LABELS[normalized] || normalizeSpacingText(bookKey) || '-';
+};
+
+const buildGeneratorRestoreRequest = (historyEntry) => {
+    const config = historyEntry?.config || {};
+    const selectedTocs = Array.isArray(config.selectedTocs)
+        ? config.selectedTocs
+            .map((toc) => normalizeSpacingText(toc))
+            .filter(Boolean)
+        : [];
+    const numQuestionsRaw = Number.parseInt(config.numQuestions, 10);
+    const numQuestions = Number.isInteger(numQuestionsRaw)
+        ? Math.max(1, Math.min(200, numQuestionsRaw))
+        : 0;
+    return {
+        createdAt: new Date().toISOString(),
+        config: {
+            examTitle: normalizeSpacingText(config.examTitle) || '어휘 시험지',
+            bookKey: normalizeSpacingText(config.bookKey || config.bookName),
+            outputFormat: normalizeSpacingText(config.outputFormat).toUpperCase() || 'WORD',
+            testType: normalizeSpacingText(config.testType).toUpperCase() || 'KOR',
+            numQuestions,
+            shouldShuffle: Boolean(config.shouldShuffle),
+            selectedChapter: normalizeSpacingText(config.selectedChapter),
+            selectedTocs,
+            includeDerivatives: Boolean(config.includeDerivatives),
+        },
+    };
 };
 
 const getProviderLabel = (providerRaw) => {
@@ -206,7 +234,9 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
                 <span>시험 범위: ${selectedCount}개 목차</span>
                 <span class="mypage-history-subtle">파일명: ${escapeHtml(fileNames)}</span>
                 <div class="mypage-action-row">
-                    <button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr} ${hasArchive ? '' : 'disabled'}>${hasArchive ? '파일 다시 다운로드' : '재다운로드 불가(이전 기록)'}</button>
+                    ${hasArchive
+        ? `<button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr}>파일 다시 다운로드</button>`
+        : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
                 </div>
             </article>
         `;
@@ -465,6 +495,36 @@ const handleGeneratorHistoryDownload = async (event, ui) => {
     }
 };
 
+const handleGeneratorHistoryRegenerate = (event, ui) => {
+    const trigger = event.target?.closest?.('[data-regenerate-index]');
+    if (!trigger) return false;
+    const index = Number(trigger.dataset.regenerateIndex);
+    if (!Number.isInteger(index) || index < 0) return true;
+
+    const historyEntry = state.generatorHistory[index];
+    if (!historyEntry) {
+        setStatus(ui.generatorStatus, '기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.', 'error');
+        return true;
+    }
+
+    const requestPayload = buildGeneratorRestoreRequest(historyEntry);
+    const bookKey = normalizeSpacingText(requestPayload?.config?.bookKey).toLowerCase();
+    if (!bookKey || requestPayload.config.selectedTocs.length === 0) {
+        setStatus(ui.generatorStatus, '설정 정보가 부족하여 자동 재생성이 어렵습니다. 생성 페이지에서 다시 선택해 주세요.', 'error');
+        return true;
+    }
+
+    try {
+        localStorage.setItem(GENERATOR_RESTORE_REQUEST_KEY, JSON.stringify(requestPayload));
+        setStatus(ui.generatorStatus, '생성 페이지로 이동합니다. 동일 설정으로 파일을 다시 만듭니다.');
+        window.location.href = '/generator/';
+    } catch (error) {
+        console.error(error);
+        setStatus(ui.generatorStatus, '재생성 요청 저장에 실패했습니다. 다시 시도해 주세요.', 'error');
+    }
+    return true;
+};
+
 const bindEvents = (ui) => {
     ui.profileForm?.addEventListener('submit', (event) => {
         void handleProfileSave(event, ui);
@@ -497,6 +557,8 @@ const bindEvents = (ui) => {
     });
 
     ui.generatorHistory?.addEventListener('click', (event) => {
+        const handled = handleGeneratorHistoryRegenerate(event, ui);
+        if (handled) return;
         void handleGeneratorHistoryDownload(event, ui);
     });
 
