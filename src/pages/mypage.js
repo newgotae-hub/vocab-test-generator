@@ -267,16 +267,20 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
                 : `${fileList[0]} 외 ${fileList.length - 1}개`;
         const hasArchive = Boolean(normalizeSpacingText(entry?.archiveId));
         const redownloadAttr = hasArchive ? `data-redownload-index="${index}"` : '';
-        const compactMeta = `생성 ${generatedAt} · 교재 ${getBookLabel(config.bookKey || config.bookName)} · ${outputFormat}/${testType} · ${questionCount}문항 · 범위 ${selectedCount}개 · 파일 ${fileSummary}`;
+        const compactMetaPrimary = `생성 ${generatedAt} · 교재 ${getBookLabel(config.bookKey || config.bookName)} · 형식 ${outputFormat}/${testType}`;
+        const compactMetaSecondary = `문항 ${questionCount}개 · 범위 ${selectedCount}개 · 파일 ${fileSummary}`;
 
         return `
             <article class="test-history-item mypage-history-item">
                 <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
-                <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
+                <div class="mypage-history-meta-wrap">
+                    <span class="mypage-history-compact mypage-history-meta-row">${escapeHtml(compactMetaPrimary)}</span>
+                    <span class="mypage-history-compact mypage-history-meta-row">${escapeHtml(compactMetaSecondary)}</span>
+                </div>
                 <div class="mypage-action-row mypage-history-actions">
                     ${hasArchive
-        ? `<button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr}>파일 다시 다운로드</button>`
-        : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
+        ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>파일 다시 다운로드</button>`
+        : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
                 </div>
             </article>
         `;
