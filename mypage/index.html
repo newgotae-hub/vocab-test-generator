@@ -148,8 +148,11 @@
                                         <dd id="mypage-auth-provider">-</dd>
                                     </div>
                                 </dl>
-                                <div class="mypage-action-row">
+                                <div class="mypage-security-actions">
                                     <button id="mypage-password-open" type="button" class="mypage-button">비밀번호 변경</button>
+                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">이 기기에서 로그아웃</button>
+                                    <button id="mypage-logout-all" type="button" class="mypage-button mypage-button--ghost">모든 기기 로그아웃</button>
+                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger mypage-security-action--danger">계정 탈퇴</button>
                                 </div>
                                 <form id="mypage-password-form" class="mypage-form hidden">
                                     <label class="mypage-field">
@@ -171,13 +174,6 @@
                                         <button id="mypage-password-cancel" type="button" class="mypage-button mypage-button--ghost mypage-btn-fit">닫기</button>
                                     </div>
                                 </form>
-                                <div class="mypage-action-row">
-                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">이 기기에서 로그아웃</button>
-                                    <button id="mypage-logout-all" type="button" class="mypage-button mypage-button--ghost">모든 기기 로그아웃</button>
-                                </div>
-                                <div class="mypage-action-row">
-                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger">계정 탈퇴</button>
-                                </div>
                                 <p id="mypage-security-status" class="mypage-status-text" aria-live="polite"></p>
                                 <p class="subtitle mypage-accordion-subtitle">안전한 진행을 위해 탈퇴 전에 <strong>DELETE</strong> 입력 확인이 필요합니다.</p>
                             </div>

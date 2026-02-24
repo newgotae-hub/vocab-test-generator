@@ -192,7 +192,7 @@
     <!-- Features Section -->
     <section id="features" class="pt-20 pb-24 bg-white">
         <div class="max-w-6xl mx-auto px-6">
-            <div class="grid md:grid-cols-10 gap-8">
+            <div class="grid md:grid-cols-10 gap-8 relative -top-2 md:-top-3">
                 <!-- Feature 1 -->
                 <div class="col-span-1 md:col-span-7 bg-slate-50 rounded-2xl p-8 border border-slate-100 overflow-hidden">
                     <div class="flex flex-col md:flex-row items-start md:items-center gap-8">
@@ -334,7 +334,7 @@
                 <div class="flex flex-col md:flex-row gap-10 items-start">
                     <div class="flex-1">
                         <h2 class="text-3xl font-semibold tracking-tight text-slate-900 mb-6">
-                            "제 학생들을 가르치려고<br>직접 만든 단어장입니다."
+                            "제 학생들을 가르치려고<br class="hidden md:block">직접 만든 단어장입니다."
                         </h2>
                         <p class="text-lg text-slate-500 mb-8 leading-relaxed">
                             목동의 교육 현장에서 수많은 학생들을 지도하며 느꼈던 갈증을 해결하기 위해 집필했습니다. 진짜 수능에 필요한 것이 무엇인지, 데이터와 경험으로 증명합니다.
@@ -360,10 +360,11 @@
                         </div>
                     </div>
                     
-                    <!-- Author Profile Visual (Abstract) -->
-                    <div class="w-full md:w-64 h-64 bg-slate-200 rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0">
-                        <iconify-icon icon="solar:user-linear" width="80" class="text-slate-400"></iconify-icon>
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/10 to-transparent"></div>
+                    <!-- Author Profile Visual -->
+                    <div class="w-full md:w-72 shrink-0">
+                        <div class="relative mx-auto w-full max-w-[320px] md:max-w-none aspect-[4/5] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_28px_60px_-24px_rgba(15,23,42,0.58)]">
+                            <img src="/assets/images/수정본.jpg" alt="저자 프로필 사진" loading="lazy" decoding="async" class="h-full w-full object-cover object-center brightness-[1.08] contrast-[0.93] saturate-[0.96]">
+                        </div>
                     </div>
                 </div>
             </div>

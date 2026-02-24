@@ -29,6 +29,7 @@ const state = {
     session: null,
     result: null,
     history: [],
+    allowUnsafeExit: false,
 
     isUpdatingScope: false,
 };
@@ -61,7 +62,6 @@ const ui = {
 
     progressText: document.getElementById('test-progress'),
     remainingTimeText: document.getElementById('test-remaining-time'),
-    directionLabel: document.getElementById('test-direction-label'),
     questionPrompt: document.getElementById('test-question-prompt'),
     choiceList: document.getElementById('test-choice-list'),
     nextBtn: document.getElementById('test-next-btn'),
@@ -85,6 +85,7 @@ const ui = {
 };
 
 const normalizeSpacingText = (value) => normalizeText(value);
+const EXIT_CONFIRM_MESSAGE = '시험이 아직 제출되지 않았습니다.\n저장되지 않을 수 있습니다. 정말 나가시겠습니까?';
 
 const CHAPTER_LABELS = {
     CH1: '접두사',
@@ -149,6 +150,26 @@ const formatDuration = (ms) => {
 const formatLocalDatetime = (isoString) => {
     const date = new Date(isoString);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+};
+
+const isExitGuardActive = () => {
+    return Boolean(state.session && !state.result && !state.session.isSubmitting && !state.allowUnsafeExit);
+};
+
+const allowUnsafeExitTemporarily = () => {
+    state.allowUnsafeExit = true;
+    window.setTimeout(() => {
+        state.allowUnsafeExit = false;
+    }, 1200);
+};
+
+const confirmExitIfNeeded = () => {
+    if (!isExitGuardActive()) return true;
+    const shouldLeave = window.confirm(EXIT_CONFIRM_MESSAGE);
+    if (shouldLeave) {
+        allowUnsafeExitTemporarily();
+    }
+    return shouldLeave;
 };
 
 const setVisibleSection = (view) => {
@@ -503,7 +524,6 @@ const renderCurrentQuestion = () => {
     if (!question) return;
 
     ui.progressText.textContent = `${index + 1} / ${questions.length}`;
-    ui.directionLabel.textContent = question.direction === 'K2E' ? '한국어 → 영어' : '영어 → 한국어';
     ui.questionPrompt.textContent = question.prompt;
 
     const selectedAnswer = normalizeSpacingText(answers[index]);
@@ -605,6 +625,7 @@ const beginTestWithPool = (pool, questionLimit = state.questionCount) => {
     };
 
     state.result = null;
+    state.allowUnsafeExit = false;
     setVisibleSection('run');
     renderCurrentQuestion();
     startTimer();
@@ -710,6 +731,7 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
     result.summaryText = buildSummaryText({ result, config: sessionConfig });
 
     state.result = result;
+    state.allowUnsafeExit = false;
 
     pushHistoryEntry({
         startedAt: result.startedAt,
@@ -821,6 +843,26 @@ const copyText = async (text) => {
 };
 
 const bindEvents = () => {
+    window.addEventListener('beforeunload', (event) => {
+        if (!isExitGuardActive()) return;
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href]');
+        if (!link) return;
+        if (link.target && link.target.toLowerCase() === '_blank') return;
+        if (link.hasAttribute('download')) return;
+
+        const href = String(link.getAttribute('href') || '').trim();
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+        if (!confirmExitIfNeeded()) {
+            event.preventDefault();
+        }
+    });
+
     ui.bookOptions?.addEventListener('click', async (event) => {
         const option = event.target.closest('.test-type-option[data-book]');
         if (!option) return;
