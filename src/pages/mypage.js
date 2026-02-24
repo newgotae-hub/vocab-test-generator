@@ -253,35 +253,22 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         const config = entry?.config || {};
         const generatedAt = formatLocalDatetime(entry?.generatedAt);
         const questionCount = Number.isInteger(config.numQuestions) ? config.numQuestions : 0;
-        const selectedCount = Array.isArray(config.selectedTocs) ? config.selectedTocs.length : 0;
         const examTitle = normalizeSpacingText(config.examTitle) || '어휘 시험지';
         const outputFormat = normalizeSpacingText(config.outputFormat) || '-';
         const testType = normalizeSpacingText(config.testType) || '-';
-        const fileList = Array.isArray(entry?.files)
-            ? entry.files.map((name) => normalizeSpacingText(name)).filter(Boolean)
-            : [];
-        const fileSummary = fileList.length === 0
-            ? '-'
-            : fileList.length === 1
-                ? fileList[0]
-                : `${fileList[0]} 외 ${fileList.length - 1}개`;
         const hasArchive = Boolean(normalizeSpacingText(entry?.archiveId));
         const redownloadAttr = hasArchive ? `data-redownload-index="${index}"` : '';
-        const compactMetaPrimary = `생성 ${generatedAt} · 교재 ${getBookLabel(config.bookKey || config.bookName)} · 형식 ${outputFormat}/${testType}`;
-        const compactMetaSecondary = `문항 ${questionCount}개 · 범위 ${selectedCount}개 · 파일 ${fileSummary}`;
+        const compactMeta = `${generatedAt} · ${getBookLabel(config.bookKey || config.bookName)} · ${outputFormat}/${testType} · ${questionCount}개`;
 
         return `
             <article class="test-history-item mypage-history-item">
-                <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
-                <div class="mypage-history-meta-wrap">
-                    <span class="mypage-history-compact mypage-history-meta-row">${escapeHtml(compactMetaPrimary)}</span>
-                    <span class="mypage-history-compact mypage-history-meta-row">${escapeHtml(compactMetaSecondary)}</span>
-                </div>
-                <div class="mypage-action-row mypage-history-actions">
+                <div class="mypage-history-head">
+                    <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
                     ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>파일 다시 다운로드</button>`
         : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
                 </div>
+                <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
             </article>
         `;
     }).join('');
