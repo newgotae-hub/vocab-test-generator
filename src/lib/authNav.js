@@ -3,6 +3,16 @@ import { supabase } from '/src/lib/supabaseClient.js';
 const LOGIN_PATH = '/auth/';
 const LOGIN_LABEL = '로그인';
 const LOGOUT_LABEL = '로그아웃';
+const PROTECTED_PAGES = new Set([
+    'dashboard',
+    'mypage',
+    'generator',
+    'test',
+    'cards',
+    'ranked',
+    'stats',
+    'game',
+]);
 
 const getAuthLinks = () => Array.from(
     document.querySelectorAll('a[data-auth-link], nav a[href="/auth/"]'),
@@ -51,6 +61,13 @@ export const initAuthNavLinks = async (options = {}) => {
     };
     const links = getAuthLinks();
     if (!links.length) return;
+
+    const pageName = document.body?.dataset?.page || '';
+    if (PROTECTED_PAGES.has(pageName)) {
+        // Protected pages always require a session, so render as logged-in immediately
+        // to prevent "로그인 -> 마이페이지" text flicker during async session fetch.
+        links.forEach((link) => setLinkState(link, true, linkOptions));
+    }
 
     bindLogoutHandler(logoutRedirectPath);
 
