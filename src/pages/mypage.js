@@ -487,8 +487,9 @@ const handleSupportSubmit = (event, ui) => {
             messageRaw,
         ].join('\n'),
     );
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
-    setStatus(ui.supportStatus, '문의 메일 작성 창을 열었습니다.', 'success');
+    const ccQuery = email ? `&cc=${encodeURIComponent(email)}` : '';
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}${ccQuery}&body=${body}`;
+    setStatus(ui.supportStatus, email ? '문의 메일 작성 창을 열었습니다. 본인 이메일 참조(CC)도 함께 설정했습니다.' : '문의 메일 작성 창을 열었습니다.', 'success');
 };
 
 const handleGeneratorHistoryDownload = async (event, ui) => {
