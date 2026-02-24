@@ -166,17 +166,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return value;
     };
 
-    const consumeGeneratorRestoreRequest = () => {
+    const getGeneratorRestoreRequest = () => {
         const raw = localStorage.getItem(GENERATOR_RESTORE_REQUEST_KEY);
         if (!raw) return null;
-        localStorage.removeItem(GENERATOR_RESTORE_REQUEST_KEY);
         try {
             const parsed = JSON.parse(raw);
             if (!parsed || typeof parsed !== 'object') return null;
             return parsed;
         } catch (_) {
+            localStorage.removeItem(GENERATOR_RESTORE_REQUEST_KEY);
             return null;
         }
+    };
+
+    const clearGeneratorRestoreRequest = () => {
+        localStorage.removeItem(GENERATOR_RESTORE_REQUEST_KEY);
+    };
+
+    const normalizeRestoreToc = (tocRaw, bookKey) => {
+        const toc = normalizeSpacingText(tocRaw);
+        if (!toc) return '';
+        if (bookKey === 'etymology') return toc;
+        const dayMatch = toc.match(/^day\s*0?(\d{1,2})$/i);
+        if (!dayMatch) return toc;
+        const dayNo = Number.parseInt(dayMatch[1], 10);
+        if (!Number.isInteger(dayNo) || dayNo < 1 || dayNo > 99) return toc;
+        return `DAY ${String(dayNo).padStart(2, '0')}`;
     };
 
     const getBookNameForOutput = (bookKey) => {
@@ -1182,13 +1197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyGeneratorRestoreRequest = async () => {
-        const restore = consumeGeneratorRestoreRequest();
+        const restore = getGeneratorRestoreRequest();
         if (!restore) return;
 
         const config = restore?.config || {};
         const bookKey = normalizeBookKey(config.bookKey);
         if (!bookKey) {
             showToast('재생성 요청 정보가 올바르지 않습니다.', 'error');
+            clearGeneratorRestoreRequest();
             return;
         }
 
@@ -1197,6 +1213,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(error);
             showToast('교재 정보를 복원하지 못했습니다.', 'error');
+            return;
+        }
+        if (state.selectedBook !== bookKey) {
+            showToast('교재 선택을 자동 복원하지 못했습니다. 교재를 다시 선택해 주세요.', 'error');
             return;
         }
 
@@ -1208,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectedTocs = Array.isArray(config.selectedTocs)
-            ? config.selectedTocs.map((toc) => normalizeSpacingText(toc)).filter(Boolean)
+            ? config.selectedTocs.map((toc) => normalizeRestoreToc(toc, bookKey)).filter(Boolean)
             : [];
         if (selectedTocs.length > 0) {
             const tocSet = new Set(selectedTocs);
@@ -1262,6 +1282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        clearGeneratorRestoreRequest();
         showToast('마이페이지 기록 설정을 복원했습니다. 시험지를 다시 생성합니다.');
         await generateTest();
     };

@@ -63,8 +63,25 @@ const getBookLabel = (bookKey) => {
     return BOOK_LABELS[normalized] || normalizeSpacingText(bookKey) || '-';
 };
 
+const inferBookKey = (...values) => {
+    for (const raw of values) {
+        const value = normalizeSpacingText(raw).toLowerCase();
+        if (!value) continue;
+        if (value.includes('basic') || value.includes('베이직') || value.includes('베이식')) return 'basic';
+        if (value.includes('advanced') || value.includes('어드밴스드') || value.includes('어드밴스')) return 'advanced';
+        if (value.includes('etymology') || value.includes('어원')) return 'etymology';
+    }
+    return '';
+};
+
 const buildGeneratorRestoreRequest = (historyEntry) => {
     const config = historyEntry?.config || {};
+    const fileNames = Array.isArray(historyEntry?.files) ? historyEntry.files : [];
+    const inferredBookKey = inferBookKey(
+        config.bookKey,
+        config.bookName,
+        ...fileNames,
+    );
     const selectedTocs = Array.isArray(config.selectedTocs)
         ? config.selectedTocs
             .map((toc) => normalizeSpacingText(toc))
@@ -78,7 +95,7 @@ const buildGeneratorRestoreRequest = (historyEntry) => {
         createdAt: new Date().toISOString(),
         config: {
             examTitle: normalizeSpacingText(config.examTitle) || '어휘 시험지',
-            bookKey: normalizeSpacingText(config.bookKey || config.bookName),
+            bookKey: inferredBookKey || normalizeSpacingText(config.bookKey || config.bookName),
             outputFormat: normalizeSpacingText(config.outputFormat).toUpperCase() || 'WORD',
             testType: normalizeSpacingText(config.testType).toUpperCase() || 'KOR',
             numQuestions,
