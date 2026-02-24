@@ -1805,6 +1805,62 @@ body[data-page="auth"] #app {
     font-size: 1.03rem;
 }
 
+#test-run-view {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    padding: clamp(1rem, 2.6vw, 1.5rem);
+}
+
+#test-run-view .toc-title-row {
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+#test-run-view #test-progress {
+    margin: 0;
+    font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+}
+
+#test-run-view #test-remaining-time {
+    font-size: 0.95rem;
+}
+
+#test-run-view #test-direction-label {
+    margin: 0.45rem 0 0.25rem;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+#test-run-view #test-question-prompt {
+    margin: 0.15rem auto 1.15rem;
+    max-width: 24ch;
+    text-align: center;
+    line-height: 1.45;
+    font-size: clamp(1.55rem, 3.2vw, 2.3rem);
+    letter-spacing: -0.01em;
+}
+
+#test-run-view #test-choice-list {
+    width: min(860px, 100%);
+    margin: 0 auto;
+}
+
+#test-run-view #test-choice-list.test-choice-grid {
+    gap: 0.9rem;
+}
+
+#test-run-view .test-choice-card {
+    min-height: 82px;
+    padding: 1.02rem 1.08rem;
+}
+
+#test-run-view .test-choice-text {
+    font-size: clamp(1rem, 1.45vw, 1.2rem);
+    line-height: 1.52;
+    text-align: center;
+}
+
 .test-actions {
     margin-top: 0.75rem;
     display: grid;
