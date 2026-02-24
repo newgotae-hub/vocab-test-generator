@@ -1069,9 +1069,15 @@ input:checked + .slider::before {
 .mypage-history-compact {
     font-size: 0.83rem;
     color: var(--text-subtle);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.34;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
+.mypage-history-actions {
+    justify-content: flex-end;
 }
 
 .mypage-history-subtle {

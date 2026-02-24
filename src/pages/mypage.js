@@ -8,6 +8,7 @@ const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
 const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
 const SUPPORT_EMAIL = 'support@voca.plus';
+const COUNSEL_EMAIL = 'newgotae@naver.com';
 
 const BOOK_LABELS = {
     basic: '베이직',
@@ -220,6 +221,7 @@ const getUi = () => {
         passwordCancelBtn: document.getElementById('mypage-password-cancel'),
         securityStatus: document.getElementById('mypage-security-status'),
         logoutLocalBtn: document.getElementById('mypage-logout-local'),
+        testClearBtn: document.getElementById('mypage-test-clear'),
         deleteAccountBtn: document.getElementById('mypage-delete-account'),
 
         generatorSummary: document.getElementById('mypage-generator-summary'),
@@ -268,10 +270,10 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         const compactMeta = `생성 ${generatedAt} · 교재 ${getBookLabel(config.bookKey || config.bookName)} · ${outputFormat}/${testType} · ${questionCount}문항 · 범위 ${selectedCount}개 · 파일 ${fileSummary}`;
 
         return `
-            <article class="test-history-item mypage-history-item" ${redownloadAttr}>
+            <article class="test-history-item mypage-history-item">
                 <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
                 <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
-                <div class="mypage-action-row">
+                <div class="mypage-action-row mypage-history-actions">
                     ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr}>파일 다시 다운로드</button>`
         : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
@@ -474,7 +476,7 @@ const handleSupportSubmit = (event, ui) => {
 
     const email = state.user?.email || '';
     const userId = state.user?.id || '';
-    const subject = encodeURIComponent(`[평가원기출VOCA 문의] ${subjectRaw}`);
+    const subject = encodeURIComponent(`[평가원기출VOCA 상담] ${subjectRaw}`);
     const body = encodeURIComponent(
         [
             `email: ${email}`,
@@ -482,17 +484,17 @@ const handleSupportSubmit = (event, ui) => {
             `page: /mypage/`,
             `created_at: ${new Date().toISOString()}`,
             '',
-            '[문의 내용]',
+            '[상담 내용]',
             messageRaw,
         ].join('\n'),
     );
     const ccQuery = email ? `&cc=${encodeURIComponent(email)}` : '';
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}${ccQuery}&body=${body}`;
-    setStatus(ui.supportStatus, email ? '문의 메일 작성 창을 열었습니다. 본인 이메일 참조(CC)도 함께 설정했습니다.' : '문의 메일 작성 창을 열었습니다.', 'success');
+    window.location.href = `mailto:${COUNSEL_EMAIL}?subject=${subject}${ccQuery}&body=${body}`;
+    setStatus(ui.supportStatus, email ? `상담 메일 작성 창을 열었습니다. ${COUNSEL_EMAIL}로 전송되고, 본인 이메일 참조(CC)도 함께 설정했습니다.` : `상담 메일 작성 창을 열었습니다. ${COUNSEL_EMAIL}로 전송해 주세요.`, 'success');
 };
 
 const handleGeneratorHistoryDownload = async (event, ui) => {
-    const trigger = event.target?.closest?.('[data-redownload-index]');
+    const trigger = event.target?.closest?.('button[data-redownload-index]');
     if (!trigger) return;
     const index = Number(trigger.dataset.redownloadIndex);
     if (!Number.isInteger(index) || index < 0) return;
@@ -505,9 +507,7 @@ const handleGeneratorHistoryDownload = async (event, ui) => {
         return;
     }
 
-    const button = trigger.tagName === 'BUTTON'
-        ? trigger
-        : trigger.querySelector('button[data-redownload-index]');
+    const button = trigger;
 
     if (button) button.disabled = true;
     setStatus(ui.generatorStatus, '파일을 불러오는 중입니다...');
@@ -586,6 +586,27 @@ const handleClearGeneratorHistory = async (ui) => {
     }
 };
 
+const handleClearTestHistory = async (ui) => {
+    if (state.testHistory.length === 0) {
+        setStatus(ui.securityStatus, '삭제할 온라인 테스트 기록이 없습니다.');
+        return;
+    }
+    if (!window.confirm('온라인 테스트 기록을 모두 삭제하시겠습니까?')) return;
+
+    if (ui.testClearBtn) ui.testClearBtn.disabled = true;
+    setStatus(ui.securityStatus, '온라인 테스트 기록을 삭제하는 중입니다...');
+    try {
+        localStorage.removeItem(TEST_HISTORY_KEY);
+        refreshHistoryUI(ui);
+        setStatus(ui.securityStatus, '온라인 테스트 기록을 삭제했습니다.', 'success');
+    } catch (error) {
+        console.error(error);
+        setStatus(ui.securityStatus, '기록 삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
+    } finally {
+        if (ui.testClearBtn) ui.testClearBtn.disabled = false;
+    }
+};
+
 const bindEvents = (ui) => {
     ui.profileForm?.addEventListener('submit', (event) => {
         void handleProfileSave(event, ui);
@@ -621,6 +642,10 @@ const bindEvents = (ui) => {
 
     ui.generatorClearBtn?.addEventListener('click', () => {
         void handleClearGeneratorHistory(ui);
+    });
+
+    ui.testClearBtn?.addEventListener('click', () => {
+        void handleClearTestHistory(ui);
     });
 
     ui.supportForm?.addEventListener('submit', (event) => {
