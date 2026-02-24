@@ -8,13 +8,13 @@ const getAuthLinks = () => Array.from(
     document.querySelectorAll('a[data-auth-link], nav a[href="/auth/"]'),
 );
 
-const setLinkState = (link, isLoggedIn) => {
+const setLinkState = (link, isLoggedIn, options) => {
     if (!(link instanceof HTMLAnchorElement)) return;
 
     link.setAttribute('data-auth-link', '');
-    link.dataset.authAction = isLoggedIn ? 'logout' : 'login';
-    link.textContent = isLoggedIn ? LOGOUT_LABEL : LOGIN_LABEL;
-    link.setAttribute('href', isLoggedIn ? '#' : LOGIN_PATH);
+    link.dataset.authAction = isLoggedIn ? options.loggedInAction : 'login';
+    link.textContent = isLoggedIn ? options.loggedInLabel : options.loginLabel;
+    link.setAttribute('href', isLoggedIn ? options.loggedInPath : options.loginPath);
 };
 
 const bindLogoutHandler = (logoutRedirectPath) => {
@@ -42,6 +42,13 @@ const bindLogoutHandler = (logoutRedirectPath) => {
 
 export const initAuthNavLinks = async (options = {}) => {
     const logoutRedirectPath = options.logoutRedirectPath || '/';
+    const linkOptions = {
+        loginPath: options.loginPath || LOGIN_PATH,
+        loginLabel: options.loginLabel || LOGIN_LABEL,
+        loggedInPath: options.loggedInPath || '#',
+        loggedInLabel: options.loggedInLabel || LOGOUT_LABEL,
+        loggedInAction: options.loggedInAction || 'logout',
+    };
     const links = getAuthLinks();
     if (!links.length) return;
 
@@ -50,13 +57,13 @@ export const initAuthNavLinks = async (options = {}) => {
     try {
         const { data, error } = await supabase.auth.getSession();
         const isLoggedIn = !error && Boolean(data?.session);
-        links.forEach((link) => setLinkState(link, isLoggedIn));
+        links.forEach((link) => setLinkState(link, isLoggedIn, linkOptions));
     } catch (_error) {
-        links.forEach((link) => setLinkState(link, false));
+        links.forEach((link) => setLinkState(link, false, linkOptions));
     }
 
     supabase.auth.onAuthStateChange((_event, session) => {
         const currentLinks = getAuthLinks();
-        currentLinks.forEach((link) => setLinkState(link, Boolean(session)));
+        currentLinks.forEach((link) => setLinkState(link, Boolean(session), linkOptions));
     });
 };

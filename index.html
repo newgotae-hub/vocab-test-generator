@@ -492,7 +492,11 @@
             if (callbackResult.status === 'error' && callbackResult.message) {
                 window.alert(callbackResult.message);
             }
-            await initAuthNavLinks();
+            await initAuthNavLinks({
+                loggedInLabel: '마이페이지',
+                loggedInPath: '/dashboard/',
+                loggedInAction: 'mypage',
+            });
         };
 
         initLandingAuth();

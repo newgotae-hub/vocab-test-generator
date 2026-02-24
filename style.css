@@ -136,7 +136,7 @@ main {
 /* Generator first step: full-screen book selection */
 body[data-page="generator"].generator-book-stage main {
     grid-template-columns: 1fr;
-    min-height: calc(100vh - 180px);
+    align-items: start;
 }
 
 body[data-page="generator"].generator-book-stage .right-column {
@@ -148,11 +148,10 @@ body[data-page="generator"].generator-book-stage #test-config-card {
 }
 
 body[data-page="generator"].generator-book-stage .book-select-card {
-    min-height: calc(100vh - 190px);
-    padding: clamp(1.25rem, 2.6vw, 2.2rem);
+    padding: clamp(0.85rem, 2.2vw, 1.7rem) clamp(1rem, 2.4vw, 2rem) clamp(1.05rem, 2.4vw, 1.7rem);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 body[data-page="generator"].generator-book-stage .book-select-card h2,
@@ -161,10 +160,25 @@ body[data-page="generator"].generator-book-stage .book-select-card .subtitle {
 }
 
 body[data-page="generator"].generator-book-stage .book-library {
-    width: min(1080px, 100%);
+    width: min(840px, 100%);
     margin: 0 auto;
-    gap: clamp(0.75rem, 1.4vw, 1.2rem);
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: clamp(0.65rem, 1.2vw, 1rem);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+}
+
+body[data-page="generator"].generator-book-stage .book-option {
+    gap: 0.4rem;
+}
+
+body[data-page="generator"].generator-book-stage .book-item {
+    aspect-ratio: 3 / 4.2;
+}
+
+body[data-page="generator"].generator-book-stage .book-item img {
+    height: 100%;
+    object-fit: contain;
+    object-position: center top;
 }
 
 body[data-page="generator"].generator-book-stage .book-item-name {
@@ -1933,17 +1947,16 @@ body[data-page="auth"] #app {
     }
 
     body[data-page="generator"].generator-book-stage main {
-        min-height: calc(100dvh - 170px);
+        align-items: start;
     }
 
     body[data-page="generator"].generator-book-stage .book-select-card {
-        min-height: calc(100dvh - 180px);
-        padding: 1.05rem;
+        padding: 0.95rem;
     }
 
     body[data-page="generator"].generator-book-stage .book-library {
         width: 100%;
-        gap: 0.7rem;
+        gap: 0.6rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
