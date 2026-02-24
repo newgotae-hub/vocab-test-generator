@@ -61,78 +61,26 @@
             <div class="left-column">
                 <!-- Vocabulary Lists Card -->
                 <div class="card book-select-card">
-                    <fieldset id="book-library" class="book-library" aria-describedby="book-library-help">
-                        <legend class="book-library-title">교재 선택</legend>
-                        <p id="book-library-help" class="book-library-help">시험지 생성에 사용할 교재를 선택하세요.</p>
-
-                        <div class="book-options-grid">
-                            <div class="book-choice">
-                                <input class="book-radio" type="radio" name="book" id="book-basic" data-book="basic" value="basic">
-                                <label class="book-option" for="book-basic" data-book="basic">
-                                    <div class="book-option-head">
-                                        <span class="book-level">BASIC</span>
-                                        <span class="book-summary">기초 어휘 중심의 기본 학습 교재</span>
-                                    </div>
-                                    <div class="book-cover">
-                                        <img src="/assets/images/베이직.jpg" alt="수능평가원VOCA BASIC 표지" loading="lazy" decoding="async">
-                                    </div>
-                                    <span class="book-option-state">
-                                        <span class="book-option-state-default">선택하기</span>
-                                        <span class="book-option-state-selected" aria-hidden="true">
-                                            <svg class="book-option-check" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M3 8.4L6.2 11.5L13 4.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                            </svg>
-                                            선택됨
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-
-                            <div class="book-choice">
-                                <input class="book-radio" type="radio" name="book" id="book-advanced" data-book="advanced" value="advanced">
-                                <label class="book-option" for="book-advanced" data-book="advanced">
-                                    <div class="book-option-head">
-                                        <span class="book-level">ADVANCED</span>
-                                        <span class="book-summary">고난도 기출 어휘를 담은 심화 교재</span>
-                                    </div>
-                                    <div class="book-cover">
-                                        <img src="/assets/images/어드밴스드.jpg" alt="수능평가원VOCA ADVANCED 표지" loading="lazy" decoding="async">
-                                    </div>
-                                    <span class="book-option-state">
-                                        <span class="book-option-state-default">선택하기</span>
-                                        <span class="book-option-state-selected" aria-hidden="true">
-                                            <svg class="book-option-check" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M3 8.4L6.2 11.5L13 4.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                            </svg>
-                                            선택됨
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-
-                            <div class="book-choice">
-                                <input class="book-radio" type="radio" name="book" id="book-etymology" data-book="etymology" value="etymology">
-                                <label class="book-option" for="book-etymology" data-book="etymology">
-                                    <div class="book-option-head">
-                                        <span class="book-level">어원편</span>
-                                        <span class="book-summary">접두사·접미사·어근 중심의 확장 학습</span>
-                                    </div>
-                                    <div class="book-cover">
-                                        <img src="/assets/images/어원편.jpg" alt="수능평가원VOCA 어원편 표지" loading="lazy" decoding="async">
-                                    </div>
-                                    <span class="book-option-state">
-                                        <span class="book-option-state-default">선택하기</span>
-                                        <span class="book-option-state-selected" aria-hidden="true">
-                                            <svg class="book-option-check" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M3 8.4L6.2 11.5L13 4.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                            </svg>
-                                            선택됨
-                                        </span>
-                                    </span>
-                                </label>
+                    <div id="book-library" class="book-library">
+                        <div class="book-option" data-book="basic">
+                            <span class="book-item-name">수능평가원VOCA - BASIC</span>
+                            <div class="book-item" data-book="basic">
+                                <img src="/assets/images/베이직.jpg" alt="베이직 표지">
                             </div>
                         </div>
-                    </fieldset>
+                        <div class="book-option" data-book="advanced">
+                            <span class="book-item-name">수능평가원VOCA - ADVANCED</span>
+                            <div class="book-item" data-book="advanced">
+                                <img src="/assets/images/어드밴스드.jpg" alt="어드밴스드 표지">
+                            </div>
+                        </div>
+                        <div class="book-option" data-book="etymology">
+                            <span class="book-item-name">수능평가원VOCA - 어원편</span>
+                            <div class="book-item" data-book="etymology">
+                                <img src="/assets/images/어원편.jpg" alt="어원편 표지">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Test Configuration Card -->

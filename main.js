@@ -180,17 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return prefixes[normalized] || '';
     };
 
-    const syncBookSelectionUi = (bookKey) => {
-        const normalizedSelected = normalizeBookKey(bookKey);
-        state.ui.bookLibrary.querySelectorAll('.book-radio[data-book]').forEach((radio) => {
-            const isSelected = normalizeBookKey(radio.dataset.book) === normalizedSelected;
-            radio.checked = isSelected;
-        });
-        state.ui.bookLibrary.querySelectorAll('.book-option[data-book]').forEach((option) => {
-            option.classList.toggle('is-selected', normalizeBookKey(option.dataset.book) === normalizedSelected);
-        });
-    };
-
     const extractExamTitleFromToc = (tocLabel = '') => {
         const trimmed = normalizeSpacingText(tocLabel);
         if (!trimmed) return '어휘 시험지';
@@ -703,18 +692,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const normalizedBook = normalizeBookKey(bookName);
         if (!['etymology', 'basic', 'advanced'].includes(normalizedBook)) {
-            syncBookSelectionUi(state.selectedBook);
             return showToast('지원되지 않는 교재입니다.', 'error');
         }
         try {
             await ensureBookDataLoaded(normalizedBook);
         } catch (error) {
             console.error(error);
-            syncBookSelectionUi(state.selectedBook);
             return showToast('교재 데이터를 불러오지 못했습니다.', 'error');
         }
         if ((state.bookDataByKey[normalizedBook] || []).length === 0) {
-            syncBookSelectionUi(state.selectedBook);
             return showToast('단어 데이터가 없습니다. 데이터를 다시 로드해 주세요.', 'error');
         }
 
@@ -742,7 +728,9 @@ document.addEventListener('DOMContentLoaded', () => {
             state.ui.testTypeOptions.dataset.twoOptions = 'false';
         }
 
-        syncBookSelectionUi(normalizedBook);
+        state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
+            item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
+        });
 
         setSectionOpen('toc', false);
         if (isMobileViewport()) {
@@ -1671,10 +1659,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        state.ui.bookLibrary.addEventListener('change', (e) => {
-            const bookInput = e.target.closest('input[type="radio"][name="book"][data-book]');
-            if (!bookInput || !state.ui.bookLibrary.contains(bookInput)) return;
-            const rawBookKey = bookInput.dataset.book;
+        state.ui.bookLibrary.addEventListener('click', (e) => {
+            const bookTarget = e.target.closest('.book-item, .book-option');
+            if (!bookTarget || !state.ui.bookLibrary.contains(bookTarget)) return;
+            const rawBookKey = bookTarget.dataset.book;
             if (!rawBookKey) return;
             void selectBook(rawBookKey);
         });
@@ -1784,7 +1772,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         syncSectionNavFromCards();
         setupEventListeners();
-        syncBookSelectionUi(state.selectedBook);
     };
 
     init();
