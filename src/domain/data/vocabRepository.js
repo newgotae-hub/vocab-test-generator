@@ -60,18 +60,87 @@ const getCsvField = (row, keys) => {
     return '';
 };
 
+const parseCsvRowsFallback = (csvText) => {
+    const text = String(csvText || '');
+    const table = [];
+    let row = [];
+    let field = '';
+    let index = 0;
+    let inQuotes = false;
+
+    while (index < text.length) {
+        const char = text[index];
+
+        if (char === '"') {
+            const nextChar = text[index + 1];
+            if (inQuotes && nextChar === '"') {
+                field += '"';
+                index += 2;
+                continue;
+            }
+            inQuotes = !inQuotes;
+            index += 1;
+            continue;
+        }
+
+        if (char === ',' && !inQuotes) {
+            row.push(field);
+            field = '';
+            index += 1;
+            continue;
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[index + 1] === '\n') {
+                index += 1;
+            }
+            row.push(field);
+            field = '';
+
+            if (row.some((cell) => normalizeSpacingText(cell))) {
+                table.push(row);
+            }
+            row = [];
+            index += 1;
+            continue;
+        }
+
+        field += char;
+        index += 1;
+    }
+
+    row.push(field);
+    if (row.some((cell) => normalizeSpacingText(cell))) {
+        table.push(row);
+    }
+    if (table.length === 0) return [];
+
+    const headers = table[0].map((value) => String(value || ''));
+    return table.slice(1).map((cells) => {
+        const output = {};
+        headers.forEach((header, headerIndex) => {
+            output[header] = cells[headerIndex] ?? '';
+        });
+        return output;
+    });
+};
+
 const parseCsvRows = (csvText) => new Promise((resolve, reject) => {
-    if (!window.Papa?.parse) {
-        reject(new Error('PapaParse 라이브러리를 찾을 수 없습니다.'));
+    if (window.Papa?.parse) {
+        window.Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data || []),
+            error: (error) => reject(error),
+        });
         return;
     }
 
-    window.Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => resolve(results.data || []),
-        error: (error) => reject(error),
-    });
+    try {
+        resolve(parseCsvRowsFallback(csvText));
+    } catch (error) {
+        reject(error);
+    }
 });
 
 const buildDayLabel = (index) => `DAY ${String(Math.floor(index / 50) + 1).padStart(2, '0')}`;
