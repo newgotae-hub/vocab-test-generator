@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const MAX_QUESTION_COUNT = 200;
+    const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
+    const GENERATOR_HISTORY_LIMIT = 20;
 
     // --- Library Instances ---
     let PDFDocument = null;
@@ -246,6 +248,27 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/\s+/g, ' ')
             .trim();
         return text || '어휘시험지';
+    };
+
+    const safeParseGeneratorHistory = (raw) => {
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            return parsed.filter((item) => item && typeof item === 'object').slice(0, GENERATOR_HISTORY_LIMIT);
+        } catch (_) {
+            return [];
+        }
+    };
+
+    const pushGeneratorHistoryEntry = (entry) => {
+        try {
+            const current = safeParseGeneratorHistory(localStorage.getItem(GENERATOR_HISTORY_KEY));
+            const next = [entry, ...current].slice(0, GENERATOR_HISTORY_LIMIT);
+            localStorage.setItem(GENERATOR_HISTORY_KEY, JSON.stringify(next));
+        } catch (error) {
+            console.warn('시험지 생성 기록 저장 실패:', error);
+        }
     };
 
     const toCompactSpacing = (value) => String(value || '').replace(/\s+/g, ' ').trim();
@@ -1015,6 +1038,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const answerDocx = await createDocx(questions, settings, true);
                 downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
             }
+
+            pushGeneratorHistoryEntry({
+                generatedAt: new Date().toISOString(),
+                config: {
+                    examTitle: settings.examTitle,
+                    bookKey: state.selectedBook,
+                    bookName: settings.bookName,
+                    outputFormat: settings.outputFormat,
+                    testType: settings.testType,
+                    numQuestions: settings.numQuestions,
+                    shouldShuffle: settings.shouldShuffle,
+                    selectedChapter: state.selectedChapter || '',
+                    selectedTocs: [...state.selectedTocs].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
+                    includeDerivatives: Boolean(state.includeDerivatives),
+                },
+                files: settings.outputFormat === 'PDF'
+                    ? [`${baseFileName}.pdf`, `${baseFileName}_답.pdf`]
+                    : [`${baseFileName}.docx`, `${baseFileName}_답.docx`],
+            });
         } catch(e) {
             showToast('시험지 생성 중 오류가 발생했습니다.', 'error');
             console.error(e);

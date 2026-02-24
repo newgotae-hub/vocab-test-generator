@@ -1,5 +1,6 @@
 import { initDashboardPage } from '/src/pages/dashboard.js';
 import { initGeneratorPage } from '/src/pages/generator.js';
+import { initMyPage } from '/src/pages/mypage.js';
 import { enforceAuthOrRedirect } from '/src/lib/authGuard.js';
 import { initAuthNavLinks } from '/src/lib/authNav.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
@@ -29,6 +30,7 @@ const markActiveNav = () => {
 const pageInits = {
     dashboard: initDashboardPage,
     generator: initGeneratorPage,
+    mypage: initMyPage,
 };
 
 const bootstrap = async () => {

@@ -2,6 +2,7 @@ import { supabase } from '/src/lib/supabaseClient.js';
 
 const PROTECTED_PAGES = new Set([
     'dashboard',
+    'mypage',
     'generator',
     'test',
     'cards',
