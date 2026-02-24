@@ -45,7 +45,11 @@ const bootstrap = async () => {
         return;
     }
 
-    await initAuthNavLinks();
+    await initAuthNavLinks({
+        loggedInLabel: '마이페이지',
+        loggedInPath: '/mypage/',
+        loggedInAction: 'mypage',
+    });
     markActiveNav();
     const initPage = pageInits[pageName];
     if (typeof initPage === 'function') {
