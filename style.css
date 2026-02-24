@@ -948,6 +948,15 @@ input:checked + .slider::before {
     min-height: 2.6rem;
 }
 
+.mypage-password-row {
+    margin-bottom: 0.1rem;
+}
+
+.mypage-security-danger-row {
+    justify-content: flex-end;
+    margin-top: -0.1rem;
+}
+
 .mypage-security-action--danger {
     grid-column: 1 / -1;
 }
@@ -994,6 +1003,15 @@ input:checked + .slider::before {
 .mypage-button--danger {
     border-color: #dc2626;
     background: #dc2626;
+}
+
+.mypage-button--minor {
+    width: auto;
+    min-height: auto;
+    border-radius: 8px;
+    padding: 0.36rem 0.66rem;
+    font-size: 0.78rem;
+    box-shadow: none;
 }
 
 .mypage-status-text {
@@ -2409,6 +2427,15 @@ body[data-page="auth"] #app {
 
     .mypage-security-action--danger {
         grid-column: auto;
+    }
+
+    .mypage-security-danger-row {
+        flex-direction: row;
+        justify-content: flex-start;
+    }
+
+    .mypage-button--minor {
+        width: auto;
     }
 
     .mypage-btn-fit,

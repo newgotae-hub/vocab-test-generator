@@ -220,7 +220,6 @@ const getUi = () => {
         passwordCancelBtn: document.getElementById('mypage-password-cancel'),
         securityStatus: document.getElementById('mypage-security-status'),
         logoutLocalBtn: document.getElementById('mypage-logout-local'),
-        logoutAllBtn: document.getElementById('mypage-logout-all'),
         deleteAccountBtn: document.getElementById('mypage-delete-account'),
 
         generatorSummary: document.getElementById('mypage-generator-summary'),
@@ -426,7 +425,7 @@ const handlePasswordSave = async (event, ui) => {
 const handleLogout = async (scope, ui) => {
     const confirmMessage = scope === 'global'
         ? '모든 기기에서 로그아웃하시겠습니까?'
-        : '이 기기에서 로그아웃하시겠습니까?';
+        : '로그아웃하시겠습니까?';
     if (!window.confirm(confirmMessage)) return;
 
     setStatus(ui.securityStatus, '로그아웃 중입니다...');
@@ -608,10 +607,6 @@ const bindEvents = (ui) => {
 
     ui.logoutLocalBtn?.addEventListener('click', () => {
         void handleLogout('local', ui);
-    });
-
-    ui.logoutAllBtn?.addEventListener('click', () => {
-        void handleLogout('global', ui);
     });
 
     ui.deleteAccountBtn?.addEventListener('click', () => {
