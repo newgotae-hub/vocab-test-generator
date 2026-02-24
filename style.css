@@ -194,6 +194,79 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     gap: 0;
 }
 
+/* Generator study stage: keep TOC + settings compact within one viewport */
+body[data-page="generator"]:not(.generator-book-stage) main {
+    min-height: calc(100dvh - 182px);
+    gap: 0.85rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) .left-column,
+body[data-page="generator"]:not(.generator-book-stage) .right-column {
+    gap: 0.85rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card,
+body[data-page="generator"]:not(.generator-book-stage) #sub-chapter-selection-card,
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card {
+    padding: 1rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card .config-group {
+    margin-bottom: 0.72rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card .test-type-options {
+    gap: 0.5rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card .test-type-option {
+    padding: 0.56rem 0.48rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card .test-type-option .label-main {
+    font-size: 0.85rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #test-config-card .test-type-option .label-sub {
+    font-size: 0.72rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 182px);
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card .subtitle {
+    margin-bottom: 0.58rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card .toc-checklist {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    padding: 0.34rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card.day-mode .toc-checklist {
+    max-height: none;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card .toc-checklist-item {
+    gap: 0.52rem;
+    padding: 0.52rem 0.56rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-selection-card .toc-checklist-item .badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.5rem;
+}
+
+body[data-page="generator"]:not(.generator-book-stage) #toc-summary {
+    margin-top: 0.45rem;
+    font-size: 0.84rem;
+}
+
 .card {
     position: relative;
     padding: 1.2rem;
