@@ -265,7 +265,7 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
                 <div class="mypage-history-head">
                     <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
                     ${hasArchive
-        ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>파일 다시 다운로드</button>`
+        ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>다운로드</button>`
         : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
                 </div>
                 <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
