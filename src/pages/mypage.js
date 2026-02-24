@@ -256,18 +256,22 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         const examTitle = normalizeSpacingText(config.examTitle) || '어휘 시험지';
         const outputFormat = normalizeSpacingText(config.outputFormat) || '-';
         const testType = normalizeSpacingText(config.testType) || '-';
-        const fileNames = Array.isArray(entry?.files) ? entry.files.join(', ') : '-';
+        const fileList = Array.isArray(entry?.files)
+            ? entry.files.map((name) => normalizeSpacingText(name)).filter(Boolean)
+            : [];
+        const fileSummary = fileList.length === 0
+            ? '-'
+            : fileList.length === 1
+                ? fileList[0]
+                : `${fileList[0]} 외 ${fileList.length - 1}개`;
         const hasArchive = Boolean(normalizeSpacingText(entry?.archiveId));
         const redownloadAttr = hasArchive ? `data-redownload-index="${index}"` : '';
+        const compactMeta = `생성 ${generatedAt} · 교재 ${getBookLabel(config.bookKey || config.bookName)} · ${outputFormat}/${testType} · ${questionCount}문항 · 범위 ${selectedCount}개 · 파일 ${fileSummary}`;
 
         return `
             <article class="test-history-item mypage-history-item" ${redownloadAttr}>
-                <strong>${index + 1}. ${escapeHtml(examTitle)}</strong>
-                <span>생성일: ${escapeHtml(generatedAt)}</span>
-                <span>교재: ${escapeHtml(getBookLabel(config.bookKey || config.bookName))}</span>
-                <span>형식: ${escapeHtml(outputFormat)} · 유형: ${escapeHtml(testType)} · 문항: ${questionCount}개</span>
-                <span>시험 범위: ${selectedCount}개 목차</span>
-                <span class="mypage-history-subtle">파일명: ${escapeHtml(fileNames)}</span>
+                <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
+                <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
                 <div class="mypage-action-row">
                     ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit" ${redownloadAttr}>파일 다시 다운로드</button>`
@@ -562,21 +566,21 @@ const handleGeneratorHistoryRegenerate = (event, ui) => {
 
 const handleClearGeneratorHistory = async (ui) => {
     if (state.generatorHistory.length === 0) {
-        setStatus(ui.generatorStatus, '삭제할 시험지 기록이 없습니다.');
+        setStatus(ui.securityStatus, '삭제할 시험지 기록이 없습니다.');
         return;
     }
     if (!window.confirm('내 시험지 기록을 모두 삭제하시겠습니까?\n재다운로드 파일도 함께 삭제됩니다.')) return;
 
     if (ui.generatorClearBtn) ui.generatorClearBtn.disabled = true;
-    setStatus(ui.generatorStatus, '시험지 기록을 삭제하는 중입니다...');
+    setStatus(ui.securityStatus, '시험지 기록을 삭제하는 중입니다...');
     try {
         localStorage.removeItem(GENERATOR_HISTORY_KEY);
         await clearGeneratorArchives();
         refreshHistoryUI(ui);
-        setStatus(ui.generatorStatus, '내 시험지 기록을 삭제했습니다.', 'success');
+        setStatus(ui.securityStatus, '내 시험지 기록을 삭제했습니다.', 'success');
     } catch (error) {
         console.error(error);
-        setStatus(ui.generatorStatus, '기록 삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
+        setStatus(ui.securityStatus, '기록 삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
     } finally {
         if (ui.generatorClearBtn) ui.generatorClearBtn.disabled = false;
     }

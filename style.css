@@ -1054,6 +1054,22 @@ input:checked + .slider::before {
     gap: 0.24rem;
 }
 
+.mypage-history-title {
+    margin: 0;
+    font-size: 0.93rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mypage-history-compact {
+    font-size: 0.83rem;
+    color: var(--text-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .mypage-history-subtle {
     color: var(--text-subtle);
 }
