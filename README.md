@@ -1,6 +1,6 @@
 # VOCA Plus (Phase 1)
 
-## Local Run (Static Server)
+## Local Run
 Use a static server (do not use `file://`).
 
 ```bash
@@ -41,7 +41,7 @@ npx supabase status -o env
 ```
 
 3. Replace `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `src/lib/supabaseClient.js` for that local stack.
-4. Run static server and open auth page:
+4. Start static server and open auth page:
 
 ```bash
 python3 -m http.server 4173
@@ -52,7 +52,7 @@ python3 -m http.server 4173
 
 Protected pages (`/dashboard/`, `/generator/`, `/test/`, `/cards/`, `/ranked/`, `/stats/`, `/game/`) require login and redirect to `/auth/` if no session exists.
 
-## Static Hosting Notes (No Rewrites)
+## Static Hosting Notes
 This MVP uses folder-based routes with `index.html` files:
 - `/index.html`
 - `/auth/index.html`
@@ -63,17 +63,20 @@ This MVP uses folder-based routes with `index.html` files:
 - `/cards/index.html`
 - `/stats/index.html`
 
-Because each route is a real folder page, direct access and browser refresh do not require History API rewrites.
+Because each route is a real folder page, direct access and browser refresh do not require SPA rewrites.
+
+## Cloudflare Pages Functions
+- API route is implemented at `functions/api/vocab/book.js`.
+- The route path is `/api/vocab/book`.
+- Vocabulary source data is bundled in `functions/private_data/vocabCsvData.js` and is not served as public static assets.
 
 ## Deployment
-Deploy as a plain static site from repository root.
-
-If using Firebase Hosting:
-- Set `public` to this project root (or a copied build folder containing the same files).
-- Keep default static file serving for folder indexes.
-- No rewrite rules are required for these routes.
+Deploy only to Cloudflare Pages.
+- Production: custom domain `voca.plus`
+- Optional preview: `*.pages.dev`
+- Do not use Firebase Hosting deployment for this repository.
 
 ## Assumptions
 - Existing generator logic remains in `/main.js` and is loaded only on `/generator/`.
-- Path-only compatibility fixes were applied in `/main.js` to use absolute paths (`/data/...`, `/assets/...`) so generator behavior is preserved after route split.
+- Vocabulary CSV rows are served only through authenticated endpoint `/api/vocab/book`.
 - No service worker is currently used in this repository.

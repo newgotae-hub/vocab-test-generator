@@ -1,9 +1,6 @@
+import { fetchVocabRows } from '/src/lib/vocabApi.js';
+
 const BOOK_KEYS = ['etymology', 'basic', 'advanced'];
-const CSV_PATHS = {
-    etymology: '/data/root.csv',
-    basic: '/data/DB-basic.csv',
-    advanced: '/data/DB-advanced.csv',
-};
 
 const bookCache = new Map();
 
@@ -323,12 +320,7 @@ export const loadBookDataset = async (bookKey) => {
         return bookCache.get(normalizedBookKey);
     }
 
-    const csvPath = CSV_PATHS[normalizedBookKey];
-    const response = await fetch(csvPath);
-    if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
-
-    const csvText = (await response.text()).replace(/^\uFEFF/, '');
-    const parsedRows = await parseCsvRows(csvText);
+    const parsedRows = await fetchVocabRows(normalizedBookKey);
     const mappedRows = mapBookRows(normalizedBookKey, parsedRows);
     const dataset = buildDataset(normalizedBookKey, mappedRows);
     bookCache.set(normalizedBookKey, dataset);

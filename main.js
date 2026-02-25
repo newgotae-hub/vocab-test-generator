@@ -524,6 +524,54 @@ document.addEventListener('DOMContentLoaded', () => {
             error: (error) => reject(error),
         });
     });
+    const readAccessTokenFromStorage = () => {
+        const storageList = [window.localStorage, window.sessionStorage];
+        for (const storage of storageList) {
+            if (!storage) continue;
+            const keys = Object.keys(storage).filter((key) => (
+                key.startsWith('sb-') && key.endsWith('-auth-token')
+            ));
+
+            for (const key of keys) {
+                try {
+                    const raw = storage.getItem(key);
+                    if (!raw) continue;
+                    const parsed = JSON.parse(raw);
+                    const token = normalizeSpacingText(
+                        parsed?.currentSession?.access_token
+                        || parsed?.session?.access_token
+                        || parsed?.access_token
+                    );
+                    if (token) return token;
+                } catch (_error) {
+                    // Ignore malformed auth cache entry.
+                }
+            }
+        }
+
+        return '';
+    };
+    const fetchBookRowsFromApi = async (bookKey) => {
+        const token = readAccessTokenFromStorage();
+        if (!token) throw new Error('인증 토큰을 찾을 수 없습니다. 다시 로그인해 주세요.');
+
+        const response = await fetch('/api/vocab/book', {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ bookKey }),
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.rows)) {
+            const message = normalizeSpacingText(payload?.error) || '교재 데이터를 불러오지 못했습니다.';
+            throw new Error(message);
+        }
+
+        return payload.rows;
+    };
     const getCsvField = (row, keys) => {
         if (!row || typeof row !== 'object') return '';
         const keyList = Array.isArray(keys) ? keys : [keys];
@@ -622,18 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!normalizedBook) throw new Error('잘못된 교재 키입니다.');
         if (state.loadedBooks.has(normalizedBook)) return;
 
-        const csvMap = {
-            etymology: '/data/root.csv',
-            basic: '/data/DB-basic.csv',
-            advanced: '/data/DB-advanced.csv',
-        };
-        const csvPath = csvMap[normalizedBook];
-        if (!csvPath) throw new Error(`지원되지 않는 교재입니다: ${bookKey}`);
-
-        const response = await fetch(csvPath);
-        if (!response.ok) throw new Error('CSV 파일을 불러오는 데 실패했습니다.');
-        const csvText = (await response.text()).replace(/^\uFEFF/, '');
-        const parsedRows = await parseCsvRows(csvText);
+        const parsedRows = await fetchBookRowsFromApi(normalizedBook);
 
         if (normalizedBook === 'etymology') {
             cacheBookData(normalizedBook, mapEtymologyRows(parsedRows));
