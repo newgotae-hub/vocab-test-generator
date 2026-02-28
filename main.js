@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loadedBooks: new Set(),
         isDataReady: false,
         koreanFont: null,
-        koreanFontBold: null,
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
@@ -834,15 +833,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                     state.koreanFont = await loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.ttf');
-                    try {
-                        state.koreanFontBold = await loadPdfFontBuffer('/assets/fonts/NotoSansKR-Bold.otf');
-                    } catch (boldError) {
-                        state.koreanFontBold = state.koreanFont;
-                        console.warn('한글 Bold 폰트 로드 실패(Regular로 대체):', boldError.message || boldError);
-                    }
                 } catch (fontError) {
                     state.koreanFont = null;
-                    state.koreanFontBold = null;
                     console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
                 }
             }
@@ -1334,17 +1326,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let font;
         try {
-            font = await pdfDoc.embedFont(state.koreanFont);
+            font = await pdfDoc.embedFont(state.koreanFont, { subset: true });
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
-        }
-        let fontBold = font;
-        if (state.koreanFontBold) {
-            try {
-                fontBold = await pdfDoc.embedFont(state.koreanFontBold);
-            } catch (_) {
-                fontBold = font;
-            }
         }
         let latinTitleFont = font;
         if (StandardFonts?.Helvetica) {
@@ -1667,7 +1651,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        return pdfDoc.save();
+        return pdfDoc.save({ useObjectStreams: true });
     };
 
     const createDocx = async (questions, options = {}, isAnswerSheet = false) => {
