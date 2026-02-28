@@ -7,8 +7,6 @@ const GENERATOR_HISTORY_LIMIT = 20;
 const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
 const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
-const SUPPORT_EMAIL = 'support@voca.plus';
-const COUNSEL_EMAIL = 'newgotae@naver.com';
 
 const BOOK_LABELS = {
     basic: '베이직',
@@ -427,34 +425,107 @@ const handleLogout = async (scope, ui) => {
     }
 };
 
-const handleDeleteAccountRequest = (ui) => {
+const getAccessToken = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data?.session?.access_token) {
+        throw new Error('로그인 세션이 만료되었습니다. 다시 로그인 후 시도해 주세요.');
+    }
+    return data.session.access_token;
+};
+
+const requestDeleteAccount = async () => {
+    const accessToken = await getAccessToken();
+    const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({}),
+    });
+
+    let payload = null;
+    try {
+        payload = await response.json();
+    } catch (_) {
+        payload = null;
+    }
+
+    if (!response.ok || !payload?.ok) {
+        const message = normalizeSpacingText(payload?.error) || '계정 탈퇴 처리에 실패했습니다.';
+        throw new Error(message);
+    }
+};
+
+const requestConsult = async (payloadBody) => {
+    const accessToken = await getAccessToken();
+    const response = await fetch('/api/consult', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payloadBody || {}),
+    });
+
+    let payload = null;
+    try {
+        payload = await response.json();
+    } catch (_) {
+        payload = null;
+    }
+
+    if (!response.ok || !payload?.ok) {
+        const message = normalizeSpacingText(payload?.error) || '상담 요청 전송에 실패했습니다.';
+        throw new Error(message);
+    }
+};
+
+const clearLocalAccountData = async () => {
+    localStorage.removeItem(TEST_HISTORY_KEY);
+    localStorage.removeItem(GENERATOR_HISTORY_KEY);
+    localStorage.removeItem(GENERATOR_RESTORE_REQUEST_KEY);
+    state.generatorHistory = [];
+    state.testHistory = [];
+
+    try {
+        await clearGeneratorArchives();
+    } catch (error) {
+        console.warn('로컬 시험지 보관함 정리 실패:', error);
+    }
+};
+
+const handleDeleteAccountRequest = async (ui) => {
     const typed = window.prompt('계정 탈퇴를 진행하려면 DELETE를 입력하세요.');
     if (typed === null) return;
     if (String(typed).trim() !== 'DELETE') {
         setStatus(ui.securityStatus, '탈퇴가 취소되었습니다. DELETE를 정확히 입력해 주세요.', 'error');
         return;
     }
-    if (!window.confirm('정말 계정 탈퇴 요청을 진행하시겠습니까?')) return;
+    if (!window.confirm('정말 계정을 즉시 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
 
-    const email = state.user?.email || '';
-    const userId = state.user?.id || '';
-    const subject = encodeURIComponent('[평가원기출VOCA] 계정 탈퇴 요청');
-    const body = encodeURIComponent(
-        [
-            '아래 계정의 탈퇴를 요청합니다.',
-            '',
-            `email: ${email}`,
-            `user_id: ${userId}`,
-            `requested_at: ${new Date().toISOString()}`,
-            '',
-            '추가 요청사항:',
-        ].join('\n'),
-    );
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
-    setStatus(ui.securityStatus, `메일 앱이 열렸습니다. ${SUPPORT_EMAIL}로 요청을 보내 주세요.`);
+    const deleteButton = ui.deleteAccountBtn;
+    if (deleteButton) deleteButton.disabled = true;
+    setStatus(ui.securityStatus, '회원 탈퇴 처리 중입니다...');
+
+    try {
+        await requestDeleteAccount();
+        await clearLocalAccountData();
+        setStatus(ui.securityStatus, '회원 탈퇴가 완료되었습니다. 초기 화면으로 이동합니다.', 'success');
+        try {
+            await supabase.auth.signOut({ scope: 'local' });
+        } catch (_) {
+            // 계정이 이미 삭제된 상태에서는 signOut이 실패할 수 있습니다.
+        }
+        window.location.replace('/');
+    } catch (error) {
+        setStatus(ui.securityStatus, error?.message || '회원 탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+    } finally {
+        if (deleteButton) deleteButton.disabled = false;
+    }
 };
 
-const handleSupportSubmit = (event, ui) => {
+const handleSupportSubmit = async (event, ui) => {
     event.preventDefault();
     const subjectRaw = normalizeSpacingText(ui.supportSubject?.value);
     const messageRaw = String(ui.supportMessage?.value || '').trim();
@@ -462,24 +533,33 @@ const handleSupportSubmit = (event, ui) => {
         setStatus(ui.supportStatus, '문의 제목과 내용을 모두 입력해 주세요.', 'error');
         return;
     }
+    if (!state.user) {
+        setStatus(ui.supportStatus, '로그인 상태를 확인할 수 없습니다. 다시 로그인해 주세요.', 'error');
+        return;
+    }
 
-    const email = state.user?.email || '';
-    const userId = state.user?.id || '';
-    const subject = encodeURIComponent(`[평가원기출VOCA 상담] ${subjectRaw}`);
-    const body = encodeURIComponent(
-        [
-            `email: ${email}`,
-            `user_id: ${userId}`,
-            `page: /mypage/`,
-            `created_at: ${new Date().toISOString()}`,
-            '',
-            '[상담 내용]',
-            messageRaw,
-        ].join('\n'),
-    );
-    const ccQuery = email ? `&cc=${encodeURIComponent(email)}` : '';
-    window.location.href = `mailto:${COUNSEL_EMAIL}?subject=${subject}${ccQuery}&body=${body}`;
-    setStatus(ui.supportStatus, email ? '상담 메일 작성 창을 열었습니다. 전송 주소와 참조(CC)가 자동으로 채워집니다.' : '상담 메일 작성 창을 열었습니다. 내용을 확인한 뒤 전송해 주세요.', 'success');
+    const submitButton = ui.supportForm?.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    setStatus(ui.supportStatus, '상담 요청을 전송하고 있습니다...');
+
+    try {
+        const metadata = state.user.user_metadata || {};
+        await requestConsult({
+            subject: subjectRaw,
+            message: messageRaw,
+            page: '/mypage/',
+            email: normalizeSpacingText(state.user.email),
+            userId: normalizeSpacingText(state.user.id),
+            displayName: normalizeSpacingText(metadata.display_name),
+        });
+        if (ui.supportSubject) ui.supportSubject.value = '';
+        if (ui.supportMessage) ui.supportMessage.value = '';
+        setStatus(ui.supportStatus, '상담 요청이 접수되었습니다. 입력하신 계정으로 회신드리겠습니다.', 'success');
+    } catch (error) {
+        setStatus(ui.supportStatus, error?.message || '상담 요청 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
 };
 
 const handleGeneratorHistoryDownload = async (event, ui) => {
@@ -620,7 +700,7 @@ const bindEvents = (ui) => {
     });
 
     ui.deleteAccountBtn?.addEventListener('click', () => {
-        handleDeleteAccountRequest(ui);
+        void handleDeleteAccountRequest(ui);
     });
 
     ui.generatorHistory?.addEventListener('click', (event) => {
@@ -638,7 +718,7 @@ const bindEvents = (ui) => {
     });
 
     ui.supportForm?.addEventListener('submit', (event) => {
-        handleSupportSubmit(event, ui);
+        void handleSupportSubmit(event, ui);
     });
 };
 

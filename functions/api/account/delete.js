@@ -11,7 +11,7 @@ const DEFAULT_ALLOWED_HOSTS = [
 const tokenAuthCache = new Map();
 const rateByUser = new Map();
 const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX_REQUESTS_PER_WINDOW = 6;
+const RATE_MAX_REQUESTS_PER_WINDOW = 8;
 
 const normalizeSpacingText = (value) => {
     if (value === null || value === undefined) return '';
@@ -21,15 +21,6 @@ const normalizeSpacingText = (value) => {
         .replace(/[\u0000-\u001F\u007F]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-};
-
-const escapeHtml = (value) => {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 };
 
 const json = (payload, status = 200) => {
@@ -94,7 +85,9 @@ const getAuthenticatedUser = async ({ request, env }) => {
 
     const now = Date.now();
     const cached = tokenAuthCache.get(token);
-    if (cached && cached.expiresAt > now) return cached.user;
+    if (cached && cached.expiresAt > now) {
+        return cached.user;
+    }
 
     const user = await fetchSupabaseUserByToken({ token, env });
     if (!user) return null;
@@ -121,79 +114,35 @@ const enforceRateLimit = (userId) => {
     return true;
 };
 
-const sendConsultMail = async ({ env, subject, message, user, page, displayName }) => {
-    const apiKey = normalizeSpacingText(env?.RESEND_API_KEY || '');
-    const mailFrom = normalizeSpacingText(env?.MAIL_FROM || '');
-    const mailTo = normalizeSpacingText(env?.MAIL_TO || '');
-    if (!apiKey || !mailFrom || !mailTo) {
-        throw new Error('MAIL_CONFIG_MISSING');
+const deleteSupabaseUser = async ({ userId, env }) => {
+    const supabaseUrl = normalizeSpacingText(env?.SUPABASE_URL) || DEFAULT_SUPABASE_URL;
+    const serviceRoleKey = normalizeSpacingText(env?.SUPABASE_SERVICE_ROLE_KEY || '');
+    if (!serviceRoleKey) {
+        throw new Error('SERVER_MISCONFIGURED');
     }
 
-    const email = normalizeSpacingText(user?.email);
-    const userId = normalizeSpacingText(user?.id);
-    const safeSubject = escapeHtml(subject);
-    const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
-    const safeDisplayName = escapeHtml(displayName || '-');
-    const safeEmail = escapeHtml(email || '-');
-    const safeUserId = escapeHtml(userId || '-');
-    const safePage = escapeHtml(page || '/mypage/');
-    const requestedAt = new Date().toISOString();
-
-    const html = [
-        '<h2>평가원기출VOCA 상담 요청</h2>',
-        '<ul>',
-        `<li><b>제목</b>: ${safeSubject}</li>`,
-        `<li><b>이름</b>: ${safeDisplayName}</li>`,
-        `<li><b>이메일</b>: ${safeEmail}</li>`,
-        `<li><b>user_id</b>: ${safeUserId}</li>`,
-        `<li><b>페이지</b>: ${safePage}</li>`,
-        `<li><b>요청 시각</b>: ${escapeHtml(requestedAt)}</li>`,
-        '</ul>',
-        '<h3>문의 내용</h3>',
-        `<p>${safeMessage}</p>`,
-    ].join('');
-
-    const text = [
-        '[평가원기출VOCA 상담 요청]',
-        `제목: ${subject}`,
-        `이름: ${displayName || '-'}`,
-        `이메일: ${email || '-'}`,
-        `user_id: ${userId || '-'}`,
-        `페이지: ${page || '/mypage/'}`,
-        `요청 시각: ${requestedAt}`,
-        '',
-        '[문의 내용]',
-        message,
-    ].join('\n');
-
-    const mailPayload = {
-        from: mailFrom,
-        to: [mailTo],
-        subject: `[평가원기출VOCA 상담] ${subject}`,
-        html,
-        text,
-    };
-    if (email) {
-        mailPayload.reply_to = email;
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
+    const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
         headers: {
-            authorization: `Bearer ${apiKey}`,
-            'content-type': 'application/json',
+            apikey: serviceRoleKey,
+            authorization: `Bearer ${serviceRoleKey}`,
         },
-        body: JSON.stringify(mailPayload),
     });
 
-    if (response.ok) return;
+    if (response.ok || response.status === 404) return;
 
-    const errorBody = await response.text().catch(() => '');
-    console.error('[api/consult] resend failed', response.status, errorBody);
     if (response.status === 401 || response.status === 403) {
-        throw new Error('MAIL_AUTH_FAILED');
+        throw new Error('SERVER_MISCONFIGURED');
     }
-    throw new Error('MAIL_SEND_FAILED');
+    if (response.status === 429) {
+        throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+    }
+
+    const payload = await response.json().catch(() => null);
+    const upstreamMessage = normalizeSpacingText(
+        payload?.msg || payload?.error_description || payload?.error || payload?.message,
+    );
+    throw new Error(upstreamMessage || '회원 탈퇴 처리 중 오류가 발생했습니다.');
 };
 
 export const onRequest = async (context) => {
@@ -218,33 +167,14 @@ export const onRequest = async (context) => {
             return json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }, 429);
         }
 
-        const body = await request.json().catch(() => ({}));
-        const subject = normalizeSpacingText(body?.subject);
-        const message = String(body?.message || '').trim();
-        const page = normalizeSpacingText(body?.page) || '/mypage/';
-        const displayName = normalizeSpacingText(body?.displayName || user?.user_metadata?.display_name);
-
-        if (!subject || !message) {
-            return json({ ok: false, error: '문의 제목과 내용을 모두 입력해 주세요.' }, 400);
-        }
-        if (subject.length > 120 || message.length > 4000) {
-            return json({ ok: false, error: '입력 길이가 너무 깁니다.' }, 400);
-        }
-
-        await sendConsultMail({ env, subject, message, user, page, displayName });
+        await deleteSupabaseUser({ userId: user.id, env });
         return json({ ok: true });
     } catch (error) {
         const message = normalizeSpacingText(error?.message);
-        if (message === 'MAIL_CONFIG_MISSING') {
-            return json({ ok: false, error: '메일 발송 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.' }, 500);
+        if (message === 'SERVER_MISCONFIGURED') {
+            return json({ ok: false, error: '서버 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.' }, 500);
         }
-        if (message === 'MAIL_AUTH_FAILED') {
-            return json({ ok: false, error: '메일 서비스 인증에 실패했습니다. 관리자에게 문의해 주세요.' }, 500);
-        }
-        if (message === 'MAIL_SEND_FAILED') {
-            return json({ ok: false, error: '메일 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.' }, 502);
-        }
-        console.error('[api/consult]', error);
-        return json({ ok: false, error: '상담 요청 처리 중 오류가 발생했습니다.' }, 500);
+        console.error('[api/account/delete]', error);
+        return json({ ok: false, error: message || '회원 탈퇴 처리 중 오류가 발생했습니다.' }, 500);
     }
 };
