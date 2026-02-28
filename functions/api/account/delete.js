@@ -125,6 +125,18 @@ const getServiceRoleKey = (env) => {
         const normalized = normalizeSpacingText(raw);
         if (normalized) return normalized;
     }
+
+    // Fallback: support slightly different variable names in Pages/Workers settings.
+    try {
+        const keys = Object.keys(env || {});
+        for (const key of keys) {
+            if (!/(SUPABASE.*SERVICE.*ROLE|SERVICE_ROLE)/i.test(String(key))) continue;
+            const normalized = normalizeSpacingText(env?.[key]);
+            if (normalized) return normalized;
+        }
+    } catch (_) {
+        // Ignore and return empty.
+    }
     return '';
 };
 
