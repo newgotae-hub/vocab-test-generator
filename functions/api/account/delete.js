@@ -114,11 +114,25 @@ const enforceRateLimit = (userId) => {
     return true;
 };
 
+const getServiceRoleKey = (env) => {
+    const candidates = [
+        env?.SUPABASE_SERVICE_ROLE_KEY,
+        env?.SUPABASE_SERVICE_ROLE,
+        env?.SUPABASE_SERVICE_KEY,
+        env?.SERVICE_ROLE_KEY,
+    ];
+    for (const raw of candidates) {
+        const normalized = normalizeSpacingText(raw);
+        if (normalized) return normalized;
+    }
+    return '';
+};
+
 const deleteSupabaseUser = async ({ userId, env }) => {
     const supabaseUrl = normalizeSpacingText(env?.SUPABASE_URL) || DEFAULT_SUPABASE_URL;
-    const serviceRoleKey = normalizeSpacingText(env?.SUPABASE_SERVICE_ROLE_KEY || '');
+    const serviceRoleKey = getServiceRoleKey(env);
     if (!serviceRoleKey) {
-        throw new Error('SERVER_MISCONFIGURED');
+        throw new Error('SERVER_MISSING_SERVICE_ROLE_KEY');
     }
 
     const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
@@ -132,7 +146,7 @@ const deleteSupabaseUser = async ({ userId, env }) => {
     if (response.ok || response.status === 404) return;
 
     if (response.status === 401 || response.status === 403) {
-        throw new Error('SERVER_MISCONFIGURED');
+        throw new Error('SERVER_INVALID_SERVICE_ROLE_KEY');
     }
     if (response.status === 429) {
         throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -171,8 +185,17 @@ export const onRequest = async (context) => {
         return json({ ok: true });
     } catch (error) {
         const message = normalizeSpacingText(error?.message);
-        if (message === 'SERVER_MISCONFIGURED') {
-            return json({ ok: false, error: '서버 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.' }, 500);
+        if (message === 'SERVER_MISSING_SERVICE_ROLE_KEY') {
+            return json({
+                ok: false,
+                error: '회원탈퇴 서버 키가 없습니다. Cloudflare Secrets에 SUPABASE_SERVICE_ROLE_KEY(또는 SUPABASE_SERVICE_ROLE)를 등록해 주세요.',
+            }, 500);
+        }
+        if (message === 'SERVER_INVALID_SERVICE_ROLE_KEY') {
+            return json({
+                ok: false,
+                error: '회원탈퇴 서버 키가 유효하지 않습니다. Cloudflare Secrets의 SUPABASE_SERVICE_ROLE_KEY 값을 확인해 주세요.',
+            }, 500);
         }
         console.error('[api/account/delete]', error);
         return json({ ok: false, error: message || '회원 탈퇴 처리 중 오류가 발생했습니다.' }, 500);
