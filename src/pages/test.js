@@ -468,12 +468,18 @@ const renderReviewList = () => {
     }
 
     ui.reviewList.innerHTML = items.map((item, index) => {
-        const selectedLabel = item.isCorrect ? '선택한 보기' : '선택한 보기 (오답)';
+        const selectedAnswer = escapeHtml(item.chosenAnswer || '미응답');
+        const correctAnswer = escapeHtml(item.correctAnswer || '-');
         return `
-            <div class="test-review-item">
-                <p><strong>${index + 1}. ${escapeHtml(item.prompt)}</strong></p>
-                <p>${selectedLabel}: ${escapeHtml(item.chosenAnswer || '미응답')}</p>
-                <p>정답: ${escapeHtml(item.correctAnswer || '-')}</p>
+            <div class="test-review-item test-review-item--compact">
+                <p class="test-review-prompt"><strong>${index + 1}. ${escapeHtml(item.prompt)}</strong></p>
+                <p class="test-review-compare">
+                    <span class="test-review-label">선택한 보기</span>
+                    <span class="test-review-value test-review-value--wrong">${selectedAnswer}</span>
+                    <span class="test-review-sep">/</span>
+                    <span class="test-review-label">정답</span>
+                    <span class="test-review-value test-review-value--correct">${correctAnswer}</span>
+                </p>
             </div>
         `;
     }).join('');
