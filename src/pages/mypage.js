@@ -270,6 +270,24 @@ const clearGeneratorArchives = async () => {
     }
 };
 
+const deleteGeneratorArchive = async (archiveIdRaw) => {
+    const archiveId = normalizeSpacingText(archiveIdRaw);
+    if (!archiveId || !window.indexedDB) return;
+    const db = await openGeneratorArchiveDb();
+    try {
+        const tx = db.transaction(GENERATOR_ARCHIVE_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(GENERATOR_ARCHIVE_STORE_NAME);
+        await requestToPromise(store.delete(archiveId));
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB 트랜잭션에 실패했습니다.'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB 트랜잭션이 중단되었습니다.'));
+        });
+    } finally {
+        db.close();
+    }
+};
+
 const getUi = () => {
     const securityStatusEl = document.getElementById('mypage-security-status');
     return {
@@ -338,9 +356,12 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
             <article class="test-history-item mypage-history-item">
                 <div class="mypage-history-head">
                     <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
-                    ${hasArchive
+                    <div class="mypage-history-actions">
+                        ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>다운로드</button>`
         : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
+                        <button type="button" class="mypage-history-delete" data-delete-generator-index="${index}" aria-label="내 시험지 기록 삭제">X</button>
+                    </div>
                 </div>
                 <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
             </article>
@@ -371,7 +392,10 @@ const renderTestHistory = (container, summaryEl, history) => {
             <article class="test-history-item mypage-history-item">
                 <div class="mypage-history-head">
                     <strong class="mypage-history-title">${escapeHtml(compactLine)}</strong>
-                    <button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-test-detail-index="${index}">자세히보기</button>
+                    <div class="mypage-history-actions">
+                        <button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-test-detail-index="${index}">자세히보기</button>
+                        <button type="button" class="mypage-history-delete" data-delete-test-index="${index}" aria-label="온라인 테스트 기록 삭제">X</button>
+                    </div>
                 </div>
             </article>
         `;
@@ -905,6 +929,29 @@ const handleClearGeneratorHistory = async (ui) => {
     }
 };
 
+const handleDeleteGeneratorHistoryItem = async (index, ui) => {
+    if (!Number.isInteger(index) || index < 0 || index >= state.generatorHistory.length) {
+        setStatus(ui.securityStatus, '기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.', 'error');
+        return;
+    }
+    if (!window.confirm('이 시험지 기록을 삭제하시겠습니까?')) return;
+
+    const target = state.generatorHistory[index];
+    const archiveId = normalizeSpacingText(target?.archiveId);
+    try {
+        if (archiveId) {
+            await deleteGeneratorArchive(archiveId);
+        }
+        state.generatorHistory = state.generatorHistory.filter((_, itemIndex) => itemIndex !== index);
+        localStorage.setItem(GENERATOR_HISTORY_KEY, JSON.stringify(state.generatorHistory.slice(0, GENERATOR_HISTORY_LIMIT)));
+        refreshHistoryUI(ui);
+        setStatus(ui.securityStatus, '시험지 기록 1건을 삭제했습니다.', 'success');
+    } catch (error) {
+        console.error(error);
+        setStatus(ui.securityStatus, '기록 삭제에 실패했습니다. 다시 시도해 주세요.', 'error');
+    }
+};
+
 const handleClearTestHistory = async (ui) => {
     if (state.testHistory.length === 0) {
         setStatus(ui.securityStatus, '삭제할 온라인 테스트 기록이 없습니다.');
@@ -924,6 +971,19 @@ const handleClearTestHistory = async (ui) => {
     } finally {
         if (ui.testClearBtn) ui.testClearBtn.disabled = false;
     }
+};
+
+const handleDeleteTestHistoryItem = (index, ui) => {
+    if (!Number.isInteger(index) || index < 0 || index >= state.testHistory.length) {
+        setStatus(ui.securityStatus, '기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.', 'error');
+        return;
+    }
+    if (!window.confirm('이 온라인 테스트 기록을 삭제하시겠습니까?')) return;
+
+    state.testHistory = state.testHistory.filter((_, itemIndex) => itemIndex !== index);
+    localStorage.setItem(TEST_HISTORY_KEY, JSON.stringify(state.testHistory.slice(0, TEST_HISTORY_LIMIT)));
+    refreshHistoryUI(ui);
+    setStatus(ui.securityStatus, '온라인 테스트 기록 1건을 삭제했습니다.', 'success');
 };
 
 const bindEvents = (ui) => {
@@ -955,12 +1015,24 @@ const bindEvents = (ui) => {
     });
 
     ui.generatorHistory?.addEventListener('click', (event) => {
+        const deleteTrigger = event.target?.closest?.('[data-delete-generator-index]');
+        if (deleteTrigger) {
+            const index = Number.parseInt(deleteTrigger.dataset.deleteGeneratorIndex, 10);
+            void handleDeleteGeneratorHistoryItem(index, ui);
+            return;
+        }
         const handled = handleGeneratorHistoryRegenerate(event, ui);
         if (handled) return;
         void handleGeneratorHistoryDownload(event, ui);
     });
 
     ui.testHistory?.addEventListener('click', (event) => {
+        const deleteTrigger = event.target?.closest?.('[data-delete-test-index]');
+        if (deleteTrigger) {
+            const index = Number.parseInt(deleteTrigger.dataset.deleteTestIndex, 10);
+            handleDeleteTestHistoryItem(index, ui);
+            return;
+        }
         const trigger = event.target?.closest?.('[data-test-detail-index]');
         if (!trigger) return;
         const index = Number.parseInt(trigger.dataset.testDetailIndex, 10);

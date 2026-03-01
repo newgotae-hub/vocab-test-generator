@@ -1144,6 +1144,12 @@ input:checked + .slider::before {
     gap: 0.55rem;
 }
 
+.mypage-history-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .mypage-history-title {
     margin: 0;
     font-size: 0.94rem;
@@ -1183,6 +1189,24 @@ input:checked + .slider::before {
     background: #fff;
     color: #334155;
     box-shadow: 0 6px 16px -14px rgba(51, 65, 85, 0.5);
+}
+
+.mypage-history-delete {
+    width: 2.05rem;
+    min-width: 2.05rem;
+    min-height: 2.05rem;
+    border-radius: 999px;
+    border: 1px solid #ef4444;
+    background: #fff;
+    color: #b91c1c;
+    font-weight: 900;
+    font-size: 0.82rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.mypage-history-delete:hover {
+    background: #fef2f2;
 }
 
 .mypage-history-subtle {
