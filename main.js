@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const delimiterMatch = trimmed.match(/([^,;/]+)(?=[,;/]|$)/);
         return normalizeSpacingText((delimiterMatch?.[1] || trimmed));
     };
-    const normalizePdfWordText = (text) => normalizeSpacingText(text).replace(/\s+/g, '');
+    const normalizePdfWordText = (text) => normalizeSpacingText(text);
     const hasKoreanText = (value) => /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ''));
     const formatPdfExamTitle = (value) => {
         const normalized = normalizeSpacingText(value || '어휘 시험지') || '어휘 시험지';
@@ -1788,6 +1788,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const renderTwoColumnSection = (values, isAnswerSheet = false, forceNewPage = false) => {
             let pointer = 0;
+            const isMixedLayout = normalizeSpacingText(options?.testType).toUpperCase() === 'MIXED';
 
             if (forceNewPage) {
                 page = pdfDoc.addPage();
@@ -1803,12 +1804,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawSectionHeader(page, isAnswerSheet);
 
                 const countThisPage = Math.min(values.length - pointer, itemsPerPage);
-                const leftColumnCount = Math.ceil(countThisPage / 2);
-                const rightColumnCount = Math.floor(countThisPage / 2);
+                const leftColumnCount = isMixedLayout
+                    ? Math.ceil(countThisPage / 2)
+                    : Math.min(rowsPerColumn, countThisPage);
+                const rightColumnCount = countThisPage - leftColumnCount;
 
                 for (let i = 0; i < countThisPage; i += 1) {
-                    const row = Math.floor(i / 2);
-                    const col = i % 2;
+                    let row;
+                    let col;
+                    if (isMixedLayout) {
+                        row = Math.floor(i / 2);
+                        col = i % 2;
+                    } else if (i < leftColumnCount) {
+                        row = i;
+                        col = 0;
+                    } else {
+                        row = i - leftColumnCount;
+                        col = 1;
+                    }
                     const x = col === 1 ? rightColumnX : leftColumnX;
                     const rowGap = isAnswerSheet ? lineHeight * answerLineHeightScale : lineHeight;
                     const y = listTopY - row * rowGap;
@@ -1816,7 +1829,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const itemIndex = pointer + i;
                     const numberText = `${itemIndex + 1}.`;
-                const itemText = `${numberTextDotSpacing}${String(values[itemIndex])}`;
+                    const itemText = `${numberTextDotSpacing}${String(values[itemIndex])}`;
                     const itemY = y - rowTextOffset;
 
                     drawRegularText(page, numberText, {
