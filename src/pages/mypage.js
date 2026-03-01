@@ -263,6 +263,7 @@ const clearGeneratorArchives = async () => {
 };
 
 const getUi = () => {
+    const securityStatusEl = document.getElementById('mypage-security-status');
     return {
         heroEmail: document.getElementById('mypage-hero-email'),
         purchaseBadge: document.getElementById('mypage-purchase-badge'),
@@ -273,7 +274,7 @@ const getUi = () => {
         purchaseCodeInput: document.getElementById('mypage-purchase-code'),
         purchaseVerifyBtn: document.getElementById('mypage-purchase-verify'),
         purchaseSummary: document.getElementById('mypage-purchase-summary'),
-        purchaseStatus: document.getElementById('mypage-purchase-status'),
+        purchaseStatus: document.getElementById('mypage-purchase-status') || securityStatusEl,
 
         createdAt: document.getElementById('mypage-created-at'),
         lastSignin: document.getElementById('mypage-last-signin'),
@@ -284,7 +285,7 @@ const getUi = () => {
         passwordInput: document.getElementById('mypage-password'),
         passwordConfirmInput: document.getElementById('mypage-password-confirm'),
         passwordCancelBtn: document.getElementById('mypage-password-cancel'),
-        securityStatus: document.getElementById('mypage-security-status'),
+        securityStatus: securityStatusEl,
         logoutLocalBtn: document.getElementById('mypage-logout-local'),
         testClearBtn: document.getElementById('mypage-test-clear'),
         deleteAccountBtn: document.getElementById('mypage-delete-account'),

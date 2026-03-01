@@ -96,22 +96,6 @@
                                 <h2>내 정보</h2>
                             </summary>
                             <div class="mypage-accordion-body">
-                                <hr class="mypage-section-divider">
-                                <h3 class="mypage-inline-heading">책구매 인증</h3>
-                                <p class="subtitle mypage-accordion-subtitle">인증 상태를 확인하고 마스터코드로 인증을 완료할 수 있습니다.</p>
-                                <p id="mypage-purchase-summary" class="mypage-inline-summary">인증 상태 확인 중...</p>
-                                <form id="mypage-purchase-form" class="mypage-form mypage-verify-form">
-                                    <label class="mypage-field">
-                                        <span>마스터코드</span>
-                                        <div class="mypage-verify-row">
-                                            <input id="mypage-purchase-code" class="text-input" type="password" maxlength="120" autocomplete="off" placeholder="마스터코드를 입력하세요">
-                                            <button id="mypage-purchase-verify" type="submit" class="button-primary mypage-btn-fit">책구매 인증하기</button>
-                                        </div>
-                                    </label>
-                                </form>
-                                <p id="mypage-purchase-status" class="mypage-status-text" aria-live="polite"></p>
-
-                                <hr class="mypage-section-divider">
                                 <h3 class="mypage-inline-heading">계정 보안</h3>
                                 <p class="subtitle mypage-accordion-subtitle">비밀번호를 변경하고 로그인 세션을 관리하세요.</p>
                                 <dl class="mypage-meta-list">
@@ -128,6 +112,12 @@
                                         <dd id="mypage-auth-provider">-</dd>
                                     </div>
                                 </dl>
+                                <form id="mypage-purchase-form" class="mypage-form mypage-verify-form">
+                                    <div class="mypage-verify-row">
+                                        <input id="mypage-purchase-code" class="text-input" type="password" maxlength="120" autocomplete="off" placeholder="코드입력">
+                                        <button id="mypage-purchase-verify" type="submit" class="button-primary mypage-btn-fit">인증</button>
+                                    </div>
+                                </form>
                                 <div class="mypage-account-inline-actions">
                                     <button id="mypage-password-open" type="button" class="mypage-button mypage-button--ghost">비밀번호 변경</button>
                                     <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">로그아웃</button>
