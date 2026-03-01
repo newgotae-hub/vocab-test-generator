@@ -269,10 +269,6 @@ const getUi = () => {
         generatorCount: document.getElementById('mypage-generator-count'),
         testCount: document.getElementById('mypage-test-count'),
 
-        profileForm: document.getElementById('mypage-profile-form'),
-        profileEmail: document.getElementById('mypage-email'),
-        profileName: document.getElementById('mypage-display-name'),
-        profileStatus: document.getElementById('mypage-profile-status'),
         purchaseForm: document.getElementById('mypage-purchase-form'),
         purchaseCodeInput: document.getElementById('mypage-purchase-code'),
         purchaseVerifyBtn: document.getElementById('mypage-purchase-verify'),
@@ -388,10 +384,7 @@ const renderAccountInfo = (ui) => {
     const user = state.user;
     if (!user) return;
 
-    const metadata = user.user_metadata || {};
     if (ui.heroEmail) ui.heroEmail.textContent = user.email || '-';
-    if (ui.profileEmail) ui.profileEmail.value = user.email || '';
-    if (ui.profileName) ui.profileName.value = normalizeSpacingText(metadata.display_name);
 
     if (ui.createdAt) ui.createdAt.textContent = formatLocalDatetime(user.created_at);
     if (ui.lastSignin) ui.lastSignin.textContent = formatLocalDatetime(user.last_sign_in_at);
@@ -453,32 +446,6 @@ const togglePasswordForm = (ui, shouldOpen) => {
     if (ui.passwordEmailInput) {
         ui.passwordEmailInput.focus();
     }
-};
-
-const handleProfileSave = async (event, ui) => {
-    event.preventDefault();
-    if (!state.user) return;
-
-    const displayName = normalizeSpacingText(ui.profileName?.value);
-
-    setStatus(ui.profileStatus, '저장 중입니다...');
-    const { error } = await supabase.auth.updateUser({
-        data: {
-            display_name: displayName,
-        },
-    });
-
-    if (error) {
-        setStatus(ui.profileStatus, error.message || '내 정보 저장에 실패했습니다.', 'error');
-        return;
-    }
-
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-        state.user = data.user;
-        renderAccountInfo(ui);
-    }
-    setStatus(ui.profileStatus, '내 정보가 저장되었습니다.', 'success');
 };
 
 const handlePasswordSave = async (event, ui) => {
@@ -894,10 +861,6 @@ const handleClearTestHistory = async (ui) => {
 };
 
 const bindEvents = (ui) => {
-    ui.profileForm?.addEventListener('submit', (event) => {
-        void handleProfileSave(event, ui);
-    });
-
     ui.passwordOpenBtn?.addEventListener('click', () => {
         setStatus(ui.securityStatus, '');
         togglePasswordForm(ui, true);

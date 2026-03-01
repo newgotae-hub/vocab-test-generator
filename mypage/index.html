@@ -96,34 +96,20 @@
                                 <h2>내 정보</h2>
                             </summary>
                             <div class="mypage-accordion-body">
-                                <p class="subtitle mypage-accordion-subtitle">이름과 계정 기본 정보를 관리합니다.</p>
-                                <form id="mypage-profile-form" class="mypage-form">
-                                    <label class="mypage-field">
-                                        <span>이메일</span>
-                                        <input id="mypage-email" class="text-input" type="email" readonly>
-                                    </label>
-                                    <label class="mypage-field">
-                                        <span>이름</span>
-                                        <input id="mypage-display-name" class="text-input" type="text" maxlength="40" placeholder="이름을 입력하세요">
-                                    </label>
-                                    <div class="mypage-action-row">
-                                        <button id="mypage-profile-save" type="submit" class="button-primary mypage-btn-fit">내 정보 저장</button>
-                                    </div>
-                                    <p id="mypage-profile-status" class="mypage-status-text" aria-live="polite"></p>
-                                </form>
+                                <p class="subtitle mypage-accordion-subtitle">책구매 인증과 계정 보안을 관리합니다.</p>
 
                                 <hr class="mypage-section-divider">
                                 <h3 class="mypage-inline-heading">책구매 인증</h3>
                                 <p class="subtitle mypage-accordion-subtitle">인증 상태를 확인하고 마스터코드로 인증을 완료할 수 있습니다.</p>
                                 <p id="mypage-purchase-summary" class="mypage-inline-summary">인증 상태 확인 중...</p>
-                                <form id="mypage-purchase-form" class="mypage-form">
+                                <form id="mypage-purchase-form" class="mypage-form mypage-verify-form">
                                     <label class="mypage-field">
                                         <span>마스터코드</span>
-                                        <input id="mypage-purchase-code" class="text-input" type="password" maxlength="120" autocomplete="off" placeholder="마스터코드를 입력하세요">
+                                        <div class="mypage-verify-row">
+                                            <input id="mypage-purchase-code" class="text-input" type="password" maxlength="120" autocomplete="off" placeholder="마스터코드를 입력하세요">
+                                            <button id="mypage-purchase-verify" type="submit" class="button-primary mypage-btn-fit">책구매 인증하기</button>
+                                        </div>
                                     </label>
-                                    <div class="mypage-action-row">
-                                        <button id="mypage-purchase-verify" type="submit" class="button-primary mypage-btn-fit">책구매 인증하기</button>
-                                    </div>
                                 </form>
                                 <p id="mypage-purchase-status" class="mypage-status-text" aria-live="polite"></p>
 
@@ -144,8 +130,10 @@
                                         <dd id="mypage-auth-provider">-</dd>
                                     </div>
                                 </dl>
-                                <div class="mypage-action-row mypage-password-row">
-                                    <button id="mypage-password-open" type="button" class="mypage-button mypage-btn-fit">비밀번호 변경</button>
+                                <div class="mypage-account-inline-actions">
+                                    <button id="mypage-password-open" type="button" class="mypage-button mypage-button--ghost">비밀번호 변경</button>
+                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">로그아웃</button>
+                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger">회원탈퇴</button>
                                 </div>
                                 <form id="mypage-password-form" class="mypage-form hidden">
                                     <label class="mypage-field">
@@ -168,10 +156,8 @@
                                     </div>
                                 </form>
                                 <div class="mypage-security-actions">
-                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">로그아웃</button>
                                     <button id="mypage-generator-clear" type="button" class="mypage-button mypage-button--ghost">내 시험지 기록 삭제</button>
                                     <button id="mypage-test-clear" type="button" class="mypage-button mypage-button--ghost">내 테스트 기록 삭제</button>
-                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger">계정 탈퇴</button>
                                 </div>
                                 <p id="mypage-security-status" class="mypage-status-text" aria-live="polite"></p>
                                 <p class="subtitle mypage-accordion-subtitle">탈퇴 시 계정과 기록이 즉시 삭제되며 복구할 수 없습니다.</p>

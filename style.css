@@ -956,9 +956,34 @@ input:checked + .slider::before {
     gap: 0.55rem;
 }
 
-.mypage-security-actions {
+.mypage-verify-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.mypage-verify-row .text-input {
+    flex: 1 1 auto;
+}
+
+.mypage-verify-row .mypage-btn-fit {
+    white-space: nowrap;
+}
+
+.mypage-account-inline-actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.mypage-account-inline-actions .mypage-button {
+    width: 100%;
+    min-height: 2.6rem;
+}
+
+.mypage-security-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.55rem;
 }
 
@@ -2464,6 +2489,10 @@ body[data-page="auth"] #app {
         flex-direction: column;
     }
 
+    .mypage-account-inline-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .mypage-security-actions {
         grid-template-columns: 1fr;
     }
@@ -2475,6 +2504,10 @@ body[data-page="auth"] #app {
     .mypage-btn-fit,
     .mypage-button {
         width: 100%;
+    }
+
+    .mypage-verify-row .mypage-btn-fit {
+        width: auto;
     }
 
     .mypage-history-head .mypage-history-btn {
