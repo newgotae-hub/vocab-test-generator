@@ -264,14 +264,10 @@ const clearGeneratorArchives = async () => {
 
 const getUi = () => {
     return {
-        heroEmail: document.getElementById('mypage-hero-email'),
+        purchaseBadge: document.getElementById('mypage-purchase-badge'),
         generatorCount: document.getElementById('mypage-generator-count'),
         testCount: document.getElementById('mypage-test-count'),
 
-        profileForm: document.getElementById('mypage-profile-form'),
-        profileEmail: document.getElementById('mypage-email'),
-        profileName: document.getElementById('mypage-display-name'),
-        profileStatus: document.getElementById('mypage-profile-status'),
         purchaseForm: document.getElementById('mypage-purchase-form'),
         purchaseCodeInput: document.getElementById('mypage-purchase-code'),
         purchaseVerifyBtn: document.getElementById('mypage-purchase-verify'),
@@ -387,11 +383,6 @@ const renderAccountInfo = (ui) => {
     const user = state.user;
     if (!user) return;
 
-    const metadata = user.user_metadata || {};
-    if (ui.heroEmail) ui.heroEmail.textContent = user.email || '-';
-    if (ui.profileEmail) ui.profileEmail.value = user.email || '';
-    if (ui.profileName) ui.profileName.value = normalizeSpacingText(metadata.display_name);
-
     if (ui.createdAt) ui.createdAt.textContent = formatLocalDatetime(user.created_at);
     if (ui.lastSignin) ui.lastSignin.textContent = formatLocalDatetime(user.last_sign_in_at);
     if (ui.authProvider) {
@@ -405,6 +396,7 @@ const renderPurchaseSummary = (ui) => {
 
     if (state.isBookPurchaseVerified) {
         ui.purchaseSummary.textContent = '인증 상태: 완료 (제한 없음)';
+        if (ui.purchaseBadge) ui.purchaseBadge.textContent = '완료';
         if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = true;
         if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = true;
         return;
@@ -412,6 +404,7 @@ const renderPurchaseSummary = (ui) => {
 
     if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = false;
     if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = false;
+    if (ui.purchaseBadge) ui.purchaseBadge.textContent = '미인증';
     const limit = Number.isInteger(state.dailyDownloadLimit) && state.dailyDownloadLimit > 0
         ? state.dailyDownloadLimit
         : 1;
@@ -446,32 +439,6 @@ const togglePasswordForm = (ui, shouldOpen) => {
     if (ui.passwordEmailInput) {
         ui.passwordEmailInput.focus();
     }
-};
-
-const handleProfileSave = async (event, ui) => {
-    event.preventDefault();
-    if (!state.user) return;
-
-    const displayName = normalizeSpacingText(ui.profileName?.value);
-
-    setStatus(ui.profileStatus, '저장 중입니다...');
-    const { error } = await supabase.auth.updateUser({
-        data: {
-            display_name: displayName,
-        },
-    });
-
-    if (error) {
-        setStatus(ui.profileStatus, error.message || '내 정보 저장에 실패했습니다.', 'error');
-        return;
-    }
-
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-        state.user = data.user;
-        renderAccountInfo(ui);
-    }
-    setStatus(ui.profileStatus, '내 정보가 저장되었습니다.', 'success');
 };
 
 const handlePasswordSave = async (event, ui) => {
@@ -887,10 +854,6 @@ const handleClearTestHistory = async (ui) => {
 };
 
 const bindEvents = (ui) => {
-    ui.profileForm?.addEventListener('submit', (event) => {
-        void handleProfileSave(event, ui);
-    });
-
     ui.passwordOpenBtn?.addEventListener('click', () => {
         setStatus(ui.securityStatus, '');
         togglePasswordForm(ui, true);
