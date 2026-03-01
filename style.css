@@ -1059,6 +1059,11 @@ input:checked + .slider::before {
     color: #b91c1c;
 }
 
+#mypage-generator-status:empty {
+    display: none;
+    min-height: 0;
+}
+
 .mypage-meta-list {
     margin: 0;
     padding: 0;
