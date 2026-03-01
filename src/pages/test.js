@@ -487,9 +487,13 @@ const toAutoMinutesText = (minutes) => {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 };
 
+const getAutoTimeLimitMinutes = (questionCount) => {
+    const safeCount = Math.max(1, Number.parseInt(questionCount, 10) || 1);
+    return safeCount * 30 / 60;
+};
+
 const syncTimeLimitFromQuestionCount = () => {
-    const seconds = state.questionCount * 30;
-    const minutes = seconds / 60;
+    const minutes = getAutoTimeLimitMinutes(state.questionCount);
     state.timeLimitMinutes = minutes;
     ui.timeLimitInput.value = toAutoMinutesText(minutes);
 };
@@ -695,13 +699,18 @@ const beginTestWithPool = (pool, questionLimit = state.questionCount) => {
         return;
     }
 
+    const configuredMinutes = Number(state.timeLimitMinutes);
+    const fallbackMinutes = getAutoTimeLimitMinutes(requestedCount);
+    const effectiveTimeLimitMinutes = configuredMinutes > 0 ? configuredMinutes : fallbackMinutes;
+    state.timeLimitMinutes = effectiveTimeLimitMinutes;
+
     const startedAtMs = Date.now();
     state.session = {
         questions,
         answers: new Array(questions.length).fill(''),
         index: 0,
         startedAtMs,
-        timerEndMs: startedAtMs + state.timeLimitMinutes * 60 * 1000,
+        timerEndMs: startedAtMs + effectiveTimeLimitMinutes * 60 * 1000,
         timerId: null,
         isSubmitting: false,
         autoSubmitted: false,
@@ -780,6 +789,10 @@ const ensureScopeForRetry = async () => {
         const maxAllowed = Math.min(state.scopePool.length, getQuestionSelectionLimit());
         const configuredCount = Number.parseInt(config.questionCount, 10) || state.result.total || maxAllowed;
         state.questionCount = Math.max(1, Math.min(maxAllowed, configuredCount));
+        const configuredMinutes = Number(config.timeLimitMinutes);
+        state.timeLimitMinutes = configuredMinutes > 0
+            ? configuredMinutes
+            : getAutoTimeLimitMinutes(state.questionCount);
         return true;
     } catch (error) {
         console.error(error);
