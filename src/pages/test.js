@@ -81,9 +81,9 @@ const ui = {
     submitBtn: document.getElementById('test-submit-btn'),
 
     resultHeadline: document.getElementById('result-headline'),
-    resultContext: document.getElementById('result-context'),
     resultMetrics: document.getElementById('result-metrics'),
-    reviewList: document.getElementById('result-review-list'),
+    reviewListCorrect: document.getElementById('result-review-list-correct'),
+    reviewListWrong: document.getElementById('result-review-list-wrong'),
 
     retryWrongBtn: document.getElementById('retry-wrong-btn'),
     retryScopeBtn: document.getElementById('retry-scope-btn'),
@@ -425,55 +425,37 @@ const renderTocChecklist = (tocs) => {
     }).join('');
 };
 
-const getBookLabel = (bookKeyRaw) => {
-    const key = normalizeSpacingText(bookKeyRaw).toLowerCase();
-    if (key === 'basic') return '베이직';
-    if (key === 'advanced') return '어드밴스드';
-    if (key === 'etymology') return '어원편';
-    return normalizeSpacingText(bookKeyRaw) || '-';
-};
-
-const getExamTypeLabel = (examTypeRaw) => {
-    const examType = normalizeSpacingText(examTypeRaw).toUpperCase();
-    if (examType === 'E2K') return 'ENG → KOR';
-    if (examType === 'K2E') return 'KOR → ENG';
-    if (examType === 'MIXED') return 'MIXED';
-    return examType || '-';
-};
-
-const buildResultContextText = (config, result) => {
-    const bookLabel = getBookLabel(config?.bookKey);
-    const examTypeLabel = getExamTypeLabel(config?.examType);
-    const questionCount = Number(result?.total || config?.questionCount || 0);
-    return `${bookLabel} · ${examTypeLabel} · ${questionCount}문항`;
-};
-
 const renderReviewList = () => {
-    if (!ui.reviewList || !state.result) return;
+    if (!state.result || !ui.reviewListCorrect || !ui.reviewListWrong) return;
 
-    const items = state.result.reviewItems.filter((item) => !item.isCorrect);
+    const renderItems = (items, emptyMessage, wrongTone = false) => {
+        if (!Array.isArray(items) || items.length === 0) {
+            return `<p class="subtitle">${emptyMessage}</p>`;
+        }
 
-    if (items.length === 0) {
-        ui.reviewList.innerHTML = '<p class="subtitle">오답이 없습니다.</p>';
-        return;
-    }
+        return items.map((item, index) => {
+            const selectedAnswer = escapeHtml(item.chosenAnswer || '미응답');
+            const correctAnswer = escapeHtml(item.correctAnswer || '-');
+            return `
+                <div class="test-review-item test-review-item--compact">
+                    <p class="test-review-prompt"><strong>${index + 1}. ${escapeHtml(item.prompt)}</strong></p>
+                    <p class="test-review-compare">
+                        <span class="test-review-label">선택한 보기</span>
+                        <span class="test-review-value ${wrongTone ? 'test-review-value--wrong' : ''}">${selectedAnswer}</span>
+                        <span class="test-review-sep">/</span>
+                        <span class="test-review-label">정답</span>
+                        <span class="test-review-value test-review-value--correct">${correctAnswer}</span>
+                    </p>
+                </div>
+            `;
+        }).join('');
+    };
 
-    ui.reviewList.innerHTML = items.map((item, index) => {
-        const selectedAnswer = escapeHtml(item.chosenAnswer || '미응답');
-        const correctAnswer = escapeHtml(item.correctAnswer || '-');
-        return `
-            <div class="test-review-item test-review-item--compact">
-                <p class="test-review-prompt"><strong>${index + 1}. ${escapeHtml(item.prompt)}</strong></p>
-                <p class="test-review-compare">
-                    <span class="test-review-label">선택한 보기</span>
-                    <span class="test-review-value test-review-value--wrong">${selectedAnswer}</span>
-                    <span class="test-review-sep">/</span>
-                    <span class="test-review-label">정답</span>
-                    <span class="test-review-value test-review-value--correct">${correctAnswer}</span>
-                </p>
-            </div>
-        `;
-    }).join('');
+    const correctItems = state.result.reviewItems.filter((item) => item.isCorrect);
+    const wrongItems = state.result.reviewItems.filter((item) => !item.isCorrect);
+
+    ui.reviewListCorrect.innerHTML = renderItems(correctItems, '정답 문항이 없습니다.');
+    ui.reviewListWrong.innerHTML = renderItems(wrongItems, '오답이 없습니다.', true);
 };
 
 const clampQuestionCount = ({ forceToPool = false } = {}) => {
@@ -740,9 +722,6 @@ const renderResult = () => {
 
     const result = state.result;
     ui.resultHeadline.textContent = `${result.correct}/${result.total} 정답 (${result.accuracy.toFixed(1)}%)`;
-    if (ui.resultContext) {
-        ui.resultContext.textContent = buildResultContextText(result.config || {}, result);
-    }
 
     ui.resultMetrics.innerHTML = `
         <div class="test-metric-item"><strong>정답</strong><span>${result.correct} / ${result.total}</span></div>
