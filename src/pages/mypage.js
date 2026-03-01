@@ -147,17 +147,12 @@ const getPurchaseVerifiedFromUser = (user) => {
     const appMetadata = user.app_metadata || {};
     const userMetadata = user.user_metadata || {};
 
-    for (const key of PURCHASE_VERIFIED_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(appMetadata, key)) {
-            return parseBooleanLike(appMetadata[key]);
-        }
-    }
-    for (const key of PURCHASE_VERIFIED_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(userMetadata, key)) {
-            return parseBooleanLike(userMetadata[key]);
-        }
-    }
-    return false;
+    const hasVerifiedFlag = (metadata) => PURCHASE_VERIFIED_KEYS.some((key) => (
+        Object.prototype.hasOwnProperty.call(metadata, key)
+        && parseBooleanLike(metadata[key])
+    ));
+
+    return hasVerifiedFlag(appMetadata) || hasVerifiedFlag(userMetadata);
 };
 
 const getTodayDateKey = () => {
@@ -276,8 +271,6 @@ const getUi = () => {
         profileForm: document.getElementById('mypage-profile-form'),
         profileEmail: document.getElementById('mypage-email'),
         profileName: document.getElementById('mypage-display-name'),
-        profileSchool: document.getElementById('mypage-school'),
-        profileGrade: document.getElementById('mypage-grade'),
         profileStatus: document.getElementById('mypage-profile-status'),
         purchaseForm: document.getElementById('mypage-purchase-form'),
         purchaseCodeInput: document.getElementById('mypage-purchase-code'),
@@ -398,8 +391,6 @@ const renderAccountInfo = (ui) => {
     if (ui.heroEmail) ui.heroEmail.textContent = user.email || '-';
     if (ui.profileEmail) ui.profileEmail.value = user.email || '';
     if (ui.profileName) ui.profileName.value = normalizeSpacingText(metadata.display_name);
-    if (ui.profileSchool) ui.profileSchool.value = normalizeSpacingText(metadata.school_name);
-    if (ui.profileGrade) ui.profileGrade.value = normalizeSpacingText(metadata.grade);
 
     if (ui.createdAt) ui.createdAt.textContent = formatLocalDatetime(user.created_at);
     if (ui.lastSignin) ui.lastSignin.textContent = formatLocalDatetime(user.last_sign_in_at);
@@ -462,15 +453,11 @@ const handleProfileSave = async (event, ui) => {
     if (!state.user) return;
 
     const displayName = normalizeSpacingText(ui.profileName?.value);
-    const schoolName = normalizeSpacingText(ui.profileSchool?.value);
-    const grade = normalizeSpacingText(ui.profileGrade?.value);
 
     setStatus(ui.profileStatus, '저장 중입니다...');
     const { error } = await supabase.auth.updateUser({
         data: {
             display_name: displayName,
-            school_name: schoolName,
-            grade,
         },
     });
 

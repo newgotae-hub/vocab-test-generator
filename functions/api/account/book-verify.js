@@ -8,6 +8,14 @@ const DEFAULT_ALLOWED_HOSTS = [
     '*.pages.dev',
 ];
 const DEFAULT_MASTER_CODE_HASH = '240be9219065a0b7102d40c8ea174f8772ddb1dd89081a8ab0fc7d6e0850ce73'; // sha256("juntaekko")
+const PURCHASE_VERIFIED_KEYS = [
+    'book_purchase_verified',
+    'bookPurchaseVerified',
+    'purchase_verified',
+    'purchaseVerified',
+    'is_book_purchase_verified',
+    'isBookPurchaseVerified',
+];
 
 const tokenAuthCache = new Map();
 const rateByUser = new Map();
@@ -26,6 +34,8 @@ const normalizeSpacingText = (value) => {
         .replace(/\s+/g, ' ')
         .trim();
 };
+
+const normalizeMasterCode = (value) => normalizeSpacingText(value).toLowerCase();
 
 const json = (payload, status = 200) => {
     return new Response(JSON.stringify(payload), {
@@ -151,8 +161,11 @@ const parseBooleanLike = (value) => {
 const isUserAlreadyVerified = (user) => {
     const appMetadata = user?.app_metadata || {};
     const userMetadata = user?.user_metadata || {};
-    return parseBooleanLike(appMetadata.book_purchase_verified)
-        || parseBooleanLike(userMetadata.book_purchase_verified);
+    const hasVerifiedFlag = (metadata) => PURCHASE_VERIFIED_KEYS.some((key) => (
+        Object.prototype.hasOwnProperty.call(metadata, key)
+        && parseBooleanLike(metadata[key])
+    ));
+    return hasVerifiedFlag(appMetadata) || hasVerifiedFlag(userMetadata);
 };
 
 const toHex = (arrayBuffer) => {
@@ -184,7 +197,7 @@ const resolveMasterCodeHash = async (env) => {
         return hashFromEnv;
     }
 
-    const plainFromEnv = normalizeSpacingText(env?.BOOK_PURCHASE_MASTER_CODE);
+    const plainFromEnv = normalizeMasterCode(env?.BOOK_PURCHASE_MASTER_CODE);
     if (plainFromEnv) {
         return await sha256Hex(plainFromEnv);
     }
@@ -281,7 +294,7 @@ export const onRequest = async (context) => {
             return json({ ok: false, error: '인증 코드를 확인해 주세요.' }, 400);
         }
 
-        const submittedHash = await sha256Hex(code);
+        const submittedHash = await sha256Hex(normalizeMasterCode(code));
         const expectedHash = await resolveMasterCodeHash(env);
 
         if (!secureEquals(submittedHash, expectedHash)) {

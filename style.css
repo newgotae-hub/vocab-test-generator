@@ -898,6 +898,19 @@ input:checked + .slider::before {
     text-align: center;
 }
 
+.mypage-section-divider {
+    width: 100%;
+    margin: 0.1rem 0 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+}
+
+.mypage-inline-heading {
+    margin: 0;
+    font-size: 1rem;
+    text-align: center;
+}
+
 .mypage-panel-head h2 {
     margin: 0 0 0.4rem;
 }

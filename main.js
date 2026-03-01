@@ -244,17 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const appMetadata = user.app_metadata || {};
         const userMetadata = user.user_metadata || {};
 
-        for (const key of PURCHASE_VERIFIED_KEYS) {
-            if (Object.prototype.hasOwnProperty.call(appMetadata, key)) {
-                return parseBooleanLike(appMetadata[key]);
-            }
-        }
-        for (const key of PURCHASE_VERIFIED_KEYS) {
-            if (Object.prototype.hasOwnProperty.call(userMetadata, key)) {
-                return parseBooleanLike(userMetadata[key]);
-            }
-        }
-        return false;
+        const hasVerifiedFlag = (metadata) => PURCHASE_VERIFIED_KEYS.some((key) => (
+            Object.prototype.hasOwnProperty.call(metadata, key)
+            && parseBooleanLike(metadata[key])
+        ));
+
+        return hasVerifiedFlag(appMetadata) || hasVerifiedFlag(userMetadata);
     };
     const applyEntitlementState = (payload, fallbackUserId = '') => {
         if (!payload || typeof payload !== 'object') return;
