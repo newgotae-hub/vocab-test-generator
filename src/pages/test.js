@@ -88,7 +88,6 @@ const ui = {
 
     retryWrongBtn: document.getElementById('retry-wrong-btn'),
     retryScopeBtn: document.getElementById('retry-scope-btn'),
-    goSetupBtn: document.getElementById('go-setup-btn'),
 };
 
 const normalizeSpacingText = (value) => normalizeText(value);
@@ -469,11 +468,12 @@ const renderReviewList = () => {
     }
 
     ui.reviewList.innerHTML = items.map((item, index) => {
+        const selectedLabel = item.isCorrect ? '선택한 보기' : '선택한 보기 (오답)';
         return `
             <div class="test-review-item">
                 <p><strong>${index + 1}. ${escapeHtml(item.prompt)}</strong></p>
+                <p>${selectedLabel}: ${escapeHtml(item.chosenAnswer || '미응답')}</p>
                 <p>정답: ${escapeHtml(item.correctAnswer || '-')}</p>
-                <p>선택: ${escapeHtml(item.chosenAnswer || '미응답')}</p>
             </div>
         `;
     }).join('');
@@ -754,16 +754,58 @@ const renderResult = () => {
     `;
 
     const wrongCount = result.reviewItems.filter((item) => !item.isCorrect).length;
-    if (result.isRestored) {
-        ui.retryWrongBtn.disabled = true;
-        ui.retryScopeBtn.disabled = true;
-    } else {
-        ui.retryWrongBtn.disabled = wrongCount === 0;
-        ui.retryScopeBtn.disabled = false;
-    }
+    ui.retryWrongBtn.disabled = wrongCount === 0;
+    ui.retryScopeBtn.disabled = false;
 
     renderReviewList();
     renderRecentTests();
+};
+
+const ensureScopeForRetry = async () => {
+    if (state.scopePool.length > 0 && state.bookPool.length > 0 && !state.result?.isRestored) return true;
+    if (!state.result?.config) return false;
+
+    const config = state.result.config || {};
+    const bookKey = normalizeSpacingText(config.bookKey) || state.bookKey;
+    const isEtymology = bookKey === 'etymology';
+    const chapterId = isEtymology ? normalizeSpacingText(config.chapterId) : '';
+    const selectedTocs = sortTocs([...(config.selectedTocs || [])]).filter(Boolean);
+    const includeDerivatives = !isEtymology && Boolean(config.includeDerivatives) && state.isBookPurchaseVerified;
+
+    try {
+        await loadBookDataset(bookKey);
+        const scopePool = await getScopePool({
+            bookKey,
+            chapterId,
+            selectedTocs,
+            includeDerivatives,
+        });
+        const bookPool = await getAllBookPool({
+            bookKey,
+            includeDerivatives,
+        });
+
+        if (!Array.isArray(scopePool) || scopePool.length === 0) {
+            return false;
+        }
+
+        state.bookKey = bookKey;
+        state.chapterId = chapterId;
+        state.selectedTocs = new Set(selectedTocs);
+        state.includeDerivatives = includeDerivatives;
+        state.scopePool = scopePool;
+        state.bookPool = Array.isArray(bookPool) ? bookPool : [];
+        state.examType = normalizeSpacingText(config.examType) || state.examType;
+        state.shuffleQuestions = Boolean(config.shuffleQuestions);
+
+        const maxAllowed = Math.min(state.scopePool.length, getQuestionSelectionLimit());
+        const configuredCount = Number.parseInt(config.questionCount, 10) || state.result.total || maxAllowed;
+        state.questionCount = Math.max(1, Math.min(maxAllowed, configuredCount));
+        return true;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
 };
 
 const restoreResultFromHistoryEntry = (entry) => {
@@ -890,8 +932,14 @@ const startTestFromSetup = () => {
     beginTestWithPool(state.scopePool, state.questionCount);
 };
 
-const retryWrongOnly = () => {
+const retryWrongOnly = async () => {
     if (!state.result) return;
+    const prepared = await ensureScopeForRetry();
+    if (!prepared) {
+        showToast('다시 풀기 범위를 불러오지 못했습니다.', 'error');
+        return;
+    }
+
     const wrongSet = new Set(state.result.wrongCardIds || []);
     const wrongPool = state.scopePool.filter((entry) => wrongSet.has(entry.cardId));
 
@@ -903,9 +951,10 @@ const retryWrongOnly = () => {
     beginTestWithPool(wrongPool, Math.min(state.questionCount, wrongPool.length));
 };
 
-const retrySameScope = () => {
-    if (state.scopePool.length === 0) {
-        showToast('현재 범위 데이터가 없습니다.', 'error');
+const retrySameScope = async () => {
+    const prepared = await ensureScopeForRetry();
+    if (!prepared) {
+        showToast('현재 범위 데이터를 불러오지 못했습니다.', 'error');
         return;
     }
 
@@ -1103,15 +1152,11 @@ const bindEvents = () => {
     });
 
     ui.retryWrongBtn?.addEventListener('click', () => {
-        retryWrongOnly();
+        void retryWrongOnly();
     });
 
     ui.retryScopeBtn?.addEventListener('click', () => {
-        retrySameScope();
-    });
-
-    ui.goSetupBtn?.addEventListener('click', () => {
-        setVisibleSection('setup');
+        void retrySameScope();
     });
 
     const handleOpenHistoryClick = (event) => {
