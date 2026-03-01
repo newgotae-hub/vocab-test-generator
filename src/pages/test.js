@@ -1066,7 +1066,10 @@ const bindEvents = () => {
                 if (nextScopeSize > questionLimit) {
                     checkbox.checked = false;
                     checkbox.closest('.toc-checklist-item')?.classList.remove('selected-item');
-                    showToast(`한 번에 최대 ${questionLimit}개 단어까지만 선택할 수 있습니다.`, 'error');
+                    const limitMessage = state.isBookPurchaseVerified
+                        ? `한 번에 최대 ${questionLimit}개 단어까지만 선택할 수 있습니다.`
+                        : '구매 인증 전에는 한 번에 최대 50개 단어까지만 선택할 수 있습니다.';
+                    showToast(limitMessage, 'error');
                     return;
                 }
             } catch (error) {
