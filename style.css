@@ -1149,7 +1149,7 @@ input:checked + .slider::before {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    margin-right: 2.2rem;
+    margin-right: 1.25rem;
 }
 
 .mypage-history-title {
@@ -1195,20 +1195,22 @@ input:checked + .slider::before {
 
 .mypage-history-delete {
     position: absolute;
-    top: 0.42rem;
-    right: 0.42rem;
-    width: 1.68rem;
-    min-width: 1.68rem;
-    min-height: 1.68rem;
+    top: 0;
+    right: 0;
+    transform: translate(42%, -42%);
+    width: 1.16rem;
+    min-width: 1.16rem;
+    min-height: 1.16rem;
     padding: 0;
     border-radius: 999px;
     border: 1px solid #ef4444;
     background: #fff;
     color: #b91c1c;
     font-weight: 900;
-    font-size: 0.7rem;
+    font-size: 0.55rem;
     line-height: 1;
     cursor: pointer;
+    z-index: 3;
 }
 
 .mypage-history-delete:hover {
