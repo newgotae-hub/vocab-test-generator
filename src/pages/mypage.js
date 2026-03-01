@@ -132,6 +132,13 @@ const getProviderLabel = (providerRaw) => {
     return providerRaw;
 };
 
+const getCurrentAuthProvider = () => {
+    const provider = normalizeSpacingText(
+        state.user?.app_metadata?.provider || state.session?.user?.app_metadata?.provider || 'email',
+    ).toLowerCase();
+    return provider || 'email';
+};
+
 const parseBooleanLike = (value) => {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'number') return value === 1;
@@ -389,9 +396,17 @@ const renderAccountInfo = (ui) => {
 
     if (ui.createdAt) ui.createdAt.textContent = formatLocalDatetime(user.created_at);
     if (ui.lastSignin) ui.lastSignin.textContent = formatLocalDatetime(user.last_sign_in_at);
+    const provider = getCurrentAuthProvider();
     if (ui.authProvider) {
-        const provider = user?.app_metadata?.provider || state.session?.user?.app_metadata?.provider || 'email';
         ui.authProvider.textContent = getProviderLabel(provider);
+    }
+    const canChangePassword = provider === 'email';
+    if (ui.passwordOpenBtn) {
+        ui.passwordOpenBtn.classList.toggle('hidden', !canChangePassword);
+        ui.passwordOpenBtn.disabled = !canChangePassword;
+    }
+    if (!canChangePassword) {
+        togglePasswordForm(ui, false);
     }
 };
 
@@ -463,6 +478,12 @@ const togglePasswordForm = (ui, shouldOpen) => {
 
 const handlePasswordSave = async (event, ui) => {
     event.preventDefault();
+    if (getCurrentAuthProvider() !== 'email') {
+        setStatus(ui.securityStatus, 'Google/Kakao 로그인 계정은 비밀번호 변경을 지원하지 않습니다.', 'error');
+        togglePasswordForm(ui, false);
+        return;
+    }
+
     const typedEmail = normalizeSpacingText(ui.passwordEmailInput?.value).toLowerCase();
     const accountEmail = normalizeSpacingText(state.user?.email).toLowerCase();
     const password = String(ui.passwordInput?.value || '');
@@ -875,6 +896,11 @@ const handleClearTestHistory = async (ui) => {
 
 const bindEvents = (ui) => {
     ui.passwordOpenBtn?.addEventListener('click', () => {
+        if (getCurrentAuthProvider() !== 'email') {
+            setStatus(ui.securityStatus, 'Google/Kakao 로그인 계정은 비밀번호 변경을 지원하지 않습니다.', 'error');
+            togglePasswordForm(ui, false);
+            return;
+        }
         setStatus(ui.securityStatus, '');
         togglePasswordForm(ui, true);
     });
