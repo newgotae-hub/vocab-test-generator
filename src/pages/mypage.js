@@ -403,13 +403,25 @@ const renderPurchaseSummary = (ui) => {
             ui.purchaseSummary.textContent = '인증 상태: 완료 (제한 없음)';
         }
         if (ui.purchaseBadge) ui.purchaseBadge.textContent = '완료';
-        if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = true;
-        if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = true;
+        if (ui.purchaseCodeInput) {
+            ui.purchaseCodeInput.disabled = true;
+            ui.purchaseCodeInput.placeholder = '인증 완료';
+        }
+        if (ui.purchaseVerifyBtn) {
+            ui.purchaseVerifyBtn.disabled = true;
+            ui.purchaseVerifyBtn.textContent = '인증완료';
+        }
         return;
     }
 
-    if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = false;
-    if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = false;
+    if (ui.purchaseCodeInput) {
+        ui.purchaseCodeInput.disabled = false;
+        ui.purchaseCodeInput.placeholder = '책 구매 인증하기';
+    }
+    if (ui.purchaseVerifyBtn) {
+        ui.purchaseVerifyBtn.disabled = false;
+        ui.purchaseVerifyBtn.textContent = '인증하기';
+    }
     if (ui.purchaseBadge) ui.purchaseBadge.textContent = '미인증';
     const limit = Number.isInteger(state.dailyDownloadLimit) && state.dailyDownloadLimit > 0
         ? state.dailyDownloadLimit
