@@ -68,7 +68,10 @@
                 </div>
                 <div class="mypage-hero-metrics">
                     <div class="mypage-metric mypage-metric--email">
-                        <strong>계정 이메일</strong>
+                        <div class="mypage-email-head">
+                            <strong>계정 이메일</strong>
+                            <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost mypage-logout-top">로그아웃</button>
+                        </div>
                         <span id="mypage-hero-email">-</span>
                     </div>
                     <div class="mypage-hero-metrics-row">
@@ -119,8 +122,6 @@
                                 </form>
                                 <div class="mypage-account-inline-actions">
                                     <button id="mypage-password-open" type="button" class="mypage-button mypage-button--ghost hidden">비밀번호 변경</button>
-                                    <button id="mypage-logout-local" type="button" class="mypage-button mypage-button--ghost">로그아웃</button>
-                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger">회원탈퇴</button>
                                 </div>
                                 <form id="mypage-password-form" class="mypage-form hidden">
                                     <label class="mypage-field">
@@ -137,12 +138,13 @@
                                             <input id="mypage-password-confirm" class="text-input" type="password" minlength="8" autocomplete="new-password" placeholder="한 번 더 입력">
                                         </label>
                                     </div>
-                                    <div class="mypage-action-row">
+                                    <div class="mypage-action-row mypage-action-row--two">
                                         <button id="mypage-password-save" type="submit" class="button-primary mypage-btn-fit">비밀번호 변경</button>
                                         <button id="mypage-password-cancel" type="button" class="mypage-button mypage-button--ghost mypage-btn-fit">닫기</button>
                                     </div>
                                 </form>
                                 <div class="mypage-security-actions">
+                                    <button id="mypage-delete-account" type="button" class="mypage-button mypage-button--danger">회원탈퇴</button>
                                     <button id="mypage-generator-clear" type="button" class="mypage-button mypage-button--ghost">내 시험지 기록 삭제</button>
                                     <button id="mypage-test-clear" type="button" class="mypage-button mypage-button--ghost">내 테스트 기록 삭제</button>
                                 </div>
