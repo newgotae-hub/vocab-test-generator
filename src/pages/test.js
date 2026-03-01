@@ -90,6 +90,7 @@ const ui = {
 };
 
 const normalizeSpacingText = (value) => normalizeText(value);
+const toCardKey = (value) => normalizeSpacingText(value);
 const EXIT_CONFIRM_MESSAGE = '시험이 아직 제출되지 않았습니다.\n저장되지 않을 수 있습니다. 정말 나가시겠습니까?';
 
 const CHAPTER_LABELS = {
@@ -843,7 +844,12 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
 
     const timeSpentMs = Math.max(0, Date.now() - state.session.startedAtMs);
     const accuracy = total > 0 ? (correct / total) * 100 : 0;
-    const wrongCardIds = [...new Set(reviewItems.filter((item) => !item.isCorrect).map((item) => item.cardId))];
+    const wrongCardIds = [...new Set(
+        reviewItems
+            .filter((item) => !item.isCorrect)
+            .map((item) => toCardKey(item.cardId))
+            .filter(Boolean),
+    )];
 
     const sessionConfig = {
         ...state.session.configSnapshot,
@@ -914,8 +920,13 @@ const retryWrongOnly = async () => {
         return;
     }
 
-    const wrongSet = new Set(state.result.wrongCardIds || []);
-    const wrongPool = state.scopePool.filter((entry) => wrongSet.has(entry.cardId));
+    const wrongIdsRaw = Array.isArray(state.result.wrongCardIds) && state.result.wrongCardIds.length > 0
+        ? state.result.wrongCardIds
+        : state.result.reviewItems
+            .filter((item) => !item?.isCorrect)
+            .map((item) => item?.cardId);
+    const wrongSet = new Set(wrongIdsRaw.map((id) => toCardKey(id)).filter(Boolean));
+    const wrongPool = state.scopePool.filter((entry) => wrongSet.has(toCardKey(entry?.cardId)));
 
     if (wrongPool.length === 0) {
         showToast('재응시할 오답 문항이 없습니다.', 'info');
