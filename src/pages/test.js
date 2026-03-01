@@ -83,7 +83,6 @@ const ui = {
     resultHeadline: document.getElementById('result-headline'),
     resultContext: document.getElementById('result-context'),
     resultMetrics: document.getElementById('result-metrics'),
-    reviewFilterInputs: document.querySelectorAll('input[name="review-filter"]'),
     reviewList: document.getElementById('result-review-list'),
 
     retryWrongBtn: document.getElementById('retry-wrong-btn'),
@@ -449,21 +448,13 @@ const buildResultContextText = (config, result) => {
     return `${bookLabel} · ${examTypeLabel} · ${questionCount}문항`;
 };
 
-const getSelectedReviewFilter = () => {
-    const checked = [...ui.reviewFilterInputs].find((input) => input.checked);
-    return checked?.value === 'all' ? 'all' : 'wrong';
-};
-
 const renderReviewList = () => {
     if (!ui.reviewList || !state.result) return;
 
-    const filter = getSelectedReviewFilter();
-    const items = filter === 'all'
-        ? state.result.reviewItems
-        : state.result.reviewItems.filter((item) => !item.isCorrect);
+    const items = state.result.reviewItems.filter((item) => !item.isCorrect);
 
     if (items.length === 0) {
-        ui.reviewList.innerHTML = '<p class="subtitle">표시할 항목이 없습니다.</p>';
+        ui.reviewList.innerHTML = '<p class="subtitle">오답이 없습니다.</p>';
         return;
     }
 
@@ -838,8 +829,6 @@ const restoreResultFromHistoryEntry = (entry) => {
         isRestored: true,
     };
 
-    const wrongFilterInput = [...ui.reviewFilterInputs].find((input) => input.value === 'wrong');
-    if (wrongFilterInput) wrongFilterInput.checked = true;
     renderResult();
     setVisibleSection('result');
     return true;
@@ -1149,12 +1138,6 @@ const bindEvents = () => {
 
     ui.submitBtn?.addEventListener('click', async () => {
         await submitCurrentTest({ autoSubmitted: false });
-    });
-
-    ui.reviewFilterInputs.forEach((input) => {
-        input.addEventListener('change', () => {
-            renderReviewList();
-        });
     });
 
     ui.retryWrongBtn?.addEventListener('click', () => {
