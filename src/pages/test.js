@@ -730,7 +730,9 @@ const renderResult = () => {
         <div class="test-metric-item"><strong>소요 시간</strong><span>${formatDuration(result.timeSpentMs)}</span></div>
     `;
 
-    const wrongCount = result.reviewItems.filter((item) => !item.isCorrect).length;
+    const wrongCount = Array.isArray(result.wrongCardIds) && result.wrongCardIds.length > 0
+        ? result.wrongCardIds.length
+        : result.reviewItems.filter((item) => !item.isCorrect).length;
     ui.retryWrongBtn.disabled = wrongCount === 0;
     ui.retryScopeBtn.disabled = false;
 
@@ -916,7 +918,9 @@ const retryWrongOnly = async () => {
     if (!state.result) return;
     const prepared = await ensureScopeForRetry();
     if (!prepared) {
-        showToast('다시 풀기 범위를 불러오지 못했습니다.', 'error');
+        showToast('기록 복원이 불완전하여 온라인 테스트 설정 화면으로 이동합니다.', 'info');
+        setVisibleSection('setup');
+        await loadScopeControls({ resetSelection: true });
         return;
     }
 
@@ -929,7 +933,8 @@ const retryWrongOnly = async () => {
     const wrongPool = state.scopePool.filter((entry) => wrongSet.has(toCardKey(entry?.cardId)));
 
     if (wrongPool.length === 0) {
-        showToast('재응시할 오답 문항이 없습니다.', 'info');
+        showToast('오답 문항 매칭에 실패해 같은 범위로 시작합니다.', 'info');
+        beginTestWithPool(state.scopePool, state.questionCount);
         return;
     }
 
