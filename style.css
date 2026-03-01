@@ -995,7 +995,8 @@ input:checked + .slider::before {
 .mypage-logout-top {
     position: absolute;
     right: 0.62rem;
-    top: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
     min-height: 2rem;
     padding: 0.4rem 0.72rem;
     border-radius: 999px;
@@ -1044,6 +1045,10 @@ input:checked + .slider::before {
 .mypage-button:hover {
     transform: translateY(-1px);
     filter: brightness(1.06);
+}
+
+.mypage-button.mypage-logout-top:hover {
+    transform: translateY(calc(-50% - 1px));
 }
 
 .mypage-button:focus-visible,
