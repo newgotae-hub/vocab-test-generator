@@ -1140,7 +1140,7 @@ input:checked + .slider::before {
 
 .mypage-history-head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 0.55rem;
 }
@@ -1148,8 +1148,9 @@ input:checked + .slider::before {
 .mypage-history-actions {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.35rem;
-    margin-right: 1.25rem;
+    margin-right: 0.65rem;
 }
 
 .mypage-history-title {
