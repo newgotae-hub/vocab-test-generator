@@ -575,11 +575,15 @@ const handleLogout = async (scope, ui) => {
         : '로그아웃하시겠습니까?';
     if (!window.confirm(confirmMessage)) return;
 
-    setStatus(ui.securityStatus, '로그아웃 중입니다...');
+    setStatus(ui.securityStatus, '');
+    if (ui.logoutLocalBtn) ui.logoutLocalBtn.disabled = true;
     try {
-        await supabase.auth.signOut({ scope });
+        await Promise.race([
+            supabase.auth.signOut({ scope }),
+            new Promise((resolve) => window.setTimeout(resolve, 260)),
+        ]);
     } finally {
-        window.location.href = '/auth/';
+        window.location.replace('/auth/');
     }
 };
 
