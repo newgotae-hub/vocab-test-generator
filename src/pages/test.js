@@ -1200,8 +1200,8 @@ const initialize = async () => {
     if (initializeResultViewIfNeeded()) {
         return;
     }
-    await loadScopeControls({ resetSelection: true });
     setVisibleSection('setup');
+    await loadScopeControls({ resetSelection: true });
 };
 
 
