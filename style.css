@@ -987,14 +987,15 @@ input:checked + .slider::before {
     min-height: 2.6rem;
 }
 
-.mypage-email-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.55rem;
+.mypage-metric--email {
+    position: relative;
+    padding-right: 6.4rem;
 }
 
 .mypage-logout-top {
+    position: absolute;
+    right: 0.62rem;
+    top: 0.5rem;
     min-height: 2rem;
     padding: 0.4rem 0.72rem;
     border-radius: 999px;
@@ -2578,6 +2579,10 @@ body[data-page="auth"] #app {
     }
 
     .mypage-verify-row .mypage-btn-fit {
+        width: auto;
+    }
+
+    .mypage-metric--email .mypage-logout-top {
         width: auto;
     }
 
