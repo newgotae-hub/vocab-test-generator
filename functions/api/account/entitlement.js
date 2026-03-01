@@ -8,7 +8,6 @@ const DEFAULT_ALLOWED_HOSTS = [
     '*.pages.dev',
 ];
 
-const tokenAuthCache = new Map();
 const rateByUser = new Map();
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_MAX_REQUESTS_PER_WINDOW = 30;
@@ -91,21 +90,7 @@ const fetchSupabaseUserByToken = async ({ token, env }) => {
 const getAuthenticatedUser = async ({ request, env }) => {
     const token = getBearerToken(request);
     if (!token) return null;
-
-    const now = Date.now();
-    const cached = tokenAuthCache.get(token);
-    if (cached && cached.expiresAt > now) {
-        return cached.user;
-    }
-
-    const user = await fetchSupabaseUserByToken({ token, env });
-    if (!user) return null;
-
-    tokenAuthCache.set(token, {
-        user,
-        expiresAt: now + 30 * 1000,
-    });
-    return user;
+    return fetchSupabaseUserByToken({ token, env });
 };
 
 const enforceRateLimit = (userId) => {

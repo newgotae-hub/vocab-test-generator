@@ -393,7 +393,6 @@ const refreshHistoryUI = (ui) => {
 const renderAccountInfo = (ui) => {
     const user = state.user;
     if (!user) return;
-    state.isBookPurchaseVerified = getPurchaseVerifiedFromUser(user);
 
     const metadata = user.user_metadata || {};
     if (ui.heroEmail) ui.heroEmail.textContent = user.email || '-';

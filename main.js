@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         if (state.ui.includeDerivativesGroup) {
-            const shouldHide = state.selectedBook === 'etymology' || isDerivativeBlocked;
+            const shouldHide = state.selectedBook === 'etymology';
             state.ui.includeDerivativesGroup.classList.toggle('hidden', shouldHide);
         }
     };

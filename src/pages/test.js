@@ -189,7 +189,7 @@ const syncDerivativeAccessUi = () => {
         }
     }
     const isEtymology = state.bookKey === 'etymology';
-    const shouldHideDerivatives = isEtymology || !state.isBookPurchaseVerified;
+    const shouldHideDerivatives = isEtymology;
     ui.includeDerivativesGroup?.classList.toggle('hidden', shouldHideDerivatives);
 };
 
