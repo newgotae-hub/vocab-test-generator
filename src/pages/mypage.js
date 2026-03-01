@@ -7,6 +7,7 @@ const GENERATOR_HISTORY_LIMIT = 20;
 const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
 const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
+const TEST_RESULT_RESTORE_KEY = 'voca_plus_test_result_restore_v1';
 const ENTITLEMENT_API_PATH = '/api/account/entitlement';
 const BOOK_VERIFY_API_PATH = '/api/account/book-verify';
 const DOWNLOAD_LIMIT_MESSAGE = '책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.';
@@ -368,10 +369,41 @@ const renderTestHistory = (container, summaryEl, history) => {
 
         return `
             <article class="test-history-item mypage-history-item">
-                <strong class="mypage-history-title">${escapeHtml(compactLine)}</strong>
+                <div class="mypage-history-head">
+                    <strong class="mypage-history-title">${escapeHtml(compactLine)}</strong>
+                    <button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-test-detail-index="${index}">자세히보기</button>
+                </div>
             </article>
         `;
     }).join('');
+};
+
+const getTestHistoryEntryId = (entry, index = 0) => {
+    const existing = normalizeSpacingText(entry?.id);
+    if (existing) return existing;
+    const finishedAt = normalizeSpacingText(entry?.finishedAt);
+    if (finishedAt) return `${finishedAt}:${index}`;
+    return `history:${index}`;
+};
+
+const openTestHistoryDetail = (historyEntry, index = 0, ui) => {
+    if (!historyEntry || typeof historyEntry !== 'object') {
+        setStatus(ui.securityStatus, '기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.', 'error');
+        return;
+    }
+
+    const payload = {
+        id: getTestHistoryEntryId(historyEntry, index),
+        historyEntry,
+        requestedAt: new Date().toISOString(),
+    };
+    try {
+        localStorage.setItem(TEST_RESULT_RESTORE_KEY, JSON.stringify(payload));
+        window.location.href = '/test/';
+    } catch (error) {
+        console.error(error);
+        setStatus(ui.securityStatus, '기록을 여는 중 오류가 발생했습니다. 다시 시도해 주세요.', 'error');
+    }
 };
 
 const refreshHistoryUI = (ui) => {
@@ -926,6 +958,17 @@ const bindEvents = (ui) => {
         const handled = handleGeneratorHistoryRegenerate(event, ui);
         if (handled) return;
         void handleGeneratorHistoryDownload(event, ui);
+    });
+
+    ui.testHistory?.addEventListener('click', (event) => {
+        const trigger = event.target?.closest?.('[data-test-detail-index]');
+        if (!trigger) return;
+        const index = Number.parseInt(trigger.dataset.testDetailIndex, 10);
+        if (!Number.isInteger(index) || index < 0 || index >= state.testHistory.length) {
+            setStatus(ui.securityStatus, '기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.', 'error');
+            return;
+        }
+        openTestHistoryDetail(state.testHistory[index], index, ui);
     });
 
     ui.generatorClearBtn?.addEventListener('click', () => {

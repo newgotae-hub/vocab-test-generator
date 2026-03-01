@@ -11,6 +11,7 @@ import { buildQuestionSet } from '/src/domain/engine/questionSetBuilder.js';
 import { supabase } from '/src/lib/supabaseClient.js';
 
 const HISTORY_KEY = 'voca_plus_test_history_v1';
+const TEST_RESULT_RESTORE_KEY = 'voca_plus_test_result_restore_v1';
 const HISTORY_LIMIT = 10;
 const MAX_QUESTION_COUNT = 200;
 const UNVERIFIED_MAX_QUESTION_COUNT = 50;
@@ -86,16 +87,14 @@ const ui = {
     confirmCancelBtn: document.getElementById('confirm-cancel-btn'),
 
     resultHeadline: document.getElementById('result-headline'),
+    resultContext: document.getElementById('result-context'),
     resultMetrics: document.getElementById('result-metrics'),
-    verificationCode: document.getElementById('verification-code'),
-    copyCodeBtn: document.getElementById('copy-code-btn'),
-    copySummaryBtn: document.getElementById('copy-summary-btn'),
-    resultSummaryText: document.getElementById('result-summary-text'),
     reviewFilterInputs: document.querySelectorAll('input[name="review-filter"]'),
     reviewList: document.getElementById('result-review-list'),
 
     retryWrongBtn: document.getElementById('retry-wrong-btn'),
     retryScopeBtn: document.getElementById('retry-scope-btn'),
+    goSetupBtn: document.getElementById('go-setup-btn'),
 };
 
 const normalizeSpacingText = (value) => normalizeText(value);
@@ -351,6 +350,31 @@ const pushHistoryEntry = (entry) => {
     renderRecentTests();
 };
 
+const consumeResultRestoreRequest = () => {
+    const raw = localStorage.getItem(TEST_RESULT_RESTORE_KEY);
+    if (!raw) return null;
+    localStorage.removeItem(TEST_RESULT_RESTORE_KEY);
+    try {
+        const parsed = JSON.parse(raw);
+        return parsed?.historyEntry && typeof parsed.historyEntry === 'object'
+            ? parsed.historyEntry
+            : null;
+    } catch (_) {
+        return null;
+    }
+};
+
+const openHistoryResult = (indexRaw) => {
+    const index = Number.parseInt(indexRaw, 10);
+    if (!Number.isInteger(index) || index < 0 || index >= state.history.length) {
+        showToast('기록을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    const entry = state.history[index];
+    restoreResultFromHistoryEntry(entry);
+    setVisibleSection('result');
+};
+
 const renderRecentTests = () => {
     const render = (container) => {
         if (!container) return;
@@ -366,7 +390,7 @@ const renderRecentTests = () => {
                     <strong>${index + 1}. ${escapeHtml(formatLocalDatetime(item.finishedAt))}</strong>
                     <span>교재: ${escapeHtml(item?.config?.bookKey || '-')}</span>
                     <span>점수: ${item?.summary?.correct || 0}/${item?.summary?.total || 0} (${accuracy}%)</span>
-                    <span>인증코드: ${escapeHtml(item?.verificationCode || '-')}</span>
+                    <button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit" data-open-history-index="${index}">자세히 보기</button>
                 </div>
             `;
         }).join('');
@@ -410,76 +434,27 @@ const renderTocChecklist = (tocs) => {
     }).join('');
 };
 
-const toCanonicalObject = (value) => {
-    if (Array.isArray(value)) return value.map(toCanonicalObject);
-    if (!value || typeof value !== 'object') return value;
-
-    const sortedKeys = Object.keys(value).sort((a, b) => a.localeCompare(b));
-    const output = {};
-    sortedKeys.forEach((key) => {
-        output[key] = toCanonicalObject(value[key]);
-    });
-    return output;
+const getBookLabel = (bookKeyRaw) => {
+    const key = normalizeSpacingText(bookKeyRaw).toLowerCase();
+    if (key === 'basic') return '베이직';
+    if (key === 'advanced') return '어드밴스드';
+    if (key === 'etymology') return '어원편';
+    return normalizeSpacingText(bookKeyRaw) || '-';
 };
 
-const canonicalStringify = (value) => JSON.stringify(toCanonicalObject(value));
-
-const fallbackHashHex = (text) => {
-    let hashA = 2166136261 >>> 0;
-    let hashB = 2246822519 >>> 0;
-
-    for (let i = 0; i < text.length; i += 1) {
-        const code = text.charCodeAt(i);
-        hashA ^= code;
-        hashA = Math.imul(hashA, 16777619) >>> 0;
-        hashB ^= code;
-        hashB = Math.imul(hashB, 1597334677) >>> 0;
-    }
-
-    const merged = `${hashA.toString(16).padStart(8, '0')}${hashB.toString(16).padStart(8, '0')}${(text.length >>> 0).toString(16).padStart(8, '0')}`;
-    return merged;
+const getExamTypeLabel = (examTypeRaw) => {
+    const examType = normalizeSpacingText(examTypeRaw).toUpperCase();
+    if (examType === 'E2K') return 'ENG → KOR';
+    if (examType === 'K2E') return 'KOR → ENG';
+    if (examType === 'MIXED') return 'MIXED';
+    return examType || '-';
 };
 
-const sha256Hex = async (text) => {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(text);
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-};
-
-const getVerificationCode = async (payload) => {
-    const canonical = canonicalStringify(payload);
-
-    try {
-        if (globalThis.crypto?.subtle && typeof TextEncoder !== 'undefined') {
-            const hex = await sha256Hex(canonical);
-            return hex.slice(0, 12).toUpperCase();
-        }
-    } catch (_) {
-        // Fallback below.
-    }
-
-    return fallbackHashHex(canonical).slice(0, 12).toUpperCase();
-};
-
-const buildSummaryText = ({ result, config }) => {
-    const finishedAtLocal = formatLocalDatetime(result.finishedAt);
-    const lines = [
-        `finishedAt: ${finishedAtLocal}`,
-        `bookKey: ${config.bookKey}`,
-        `chapterId: ${config.chapterId || '-'}`,
-        `selectedTocs: ${config.selectedTocs.length}`,
-        `includeDerivatives: ${config.includeDerivatives ? 'on' : 'off'}`,
-        `examType: ${config.examType}`,
-        `questionCount: ${result.total}`,
-        `timeLimitMinutes: ${config.timeLimitMinutes}`,
-        `score: ${result.correct}/${result.total} (${result.accuracy.toFixed(1)}%)`,
-        `timeSpent: ${formatDuration(result.timeSpentMs)}`,
-        `autoSubmitted: ${result.autoSubmitted ? 'yes' : 'no'}`,
-        `verificationCode: ${result.verificationCode}`,
-    ];
-
-    return lines.join('\n');
+const buildResultContextText = (config, result) => {
+    const bookLabel = getBookLabel(config?.bookKey);
+    const examTypeLabel = getExamTypeLabel(config?.examType);
+    const questionCount = Number(result?.total || config?.questionCount || 0);
+    return `${bookLabel} · ${examTypeLabel} · ${questionCount}문항`;
 };
 
 const getSelectedReviewFilter = () => {
@@ -773,49 +748,63 @@ const beginTestWithPool = (pool, questionLimit = state.questionCount) => {
     startTimer();
 };
 
-const buildVerificationPayload = (result, sessionConfig, reviewItems, answers) => {
-    return {
-        finishedAt: result.finishedAt,
-        config: {
-            ...sessionConfig,
-            selectedTocs: sortTocs([...(sessionConfig.selectedTocs || [])]),
-        },
-        questions: reviewItems.map((item) => ({
-            cardId: item.cardId,
-            direction: item.direction,
-            prompt: item.prompt,
-        })),
-        answers: answers.map((value) => normalizeSpacingText(value || '')),
-        score: {
-            correct: result.correct,
-            total: result.total,
-            accuracy: result.accuracy,
-            timeSpentMs: result.timeSpentMs,
-        },
-    };
-};
-
 const renderResult = () => {
     if (!state.result) return;
 
     const result = state.result;
     ui.resultHeadline.textContent = `${result.correct}/${result.total} 정답 (${result.accuracy.toFixed(1)}%)`;
+    if (ui.resultContext) {
+        ui.resultContext.textContent = buildResultContextText(result.config || {}, result);
+    }
 
     ui.resultMetrics.innerHTML = `
         <div class="test-metric-item"><strong>정답</strong><span>${result.correct} / ${result.total}</span></div>
         <div class="test-metric-item"><strong>정확도</strong><span>${result.accuracy.toFixed(1)}%</span></div>
         <div class="test-metric-item"><strong>소요 시간</strong><span>${formatDuration(result.timeSpentMs)}</span></div>
-        <div class="test-metric-item"><strong>자동 제출</strong><span>${result.autoSubmitted ? '예' : '아니오'}</span></div>
     `;
 
-    ui.verificationCode.textContent = result.verificationCode;
-    ui.resultSummaryText.value = result.summaryText;
-
     const wrongCount = result.reviewItems.filter((item) => !item.isCorrect).length;
-    ui.retryWrongBtn.disabled = wrongCount === 0;
+    if (result.isRestored) {
+        ui.retryWrongBtn.disabled = true;
+        ui.retryScopeBtn.disabled = true;
+    } else {
+        ui.retryWrongBtn.disabled = wrongCount === 0;
+        ui.retryScopeBtn.disabled = false;
+    }
 
     renderReviewList();
     renderRecentTests();
+};
+
+const restoreResultFromHistoryEntry = (entry) => {
+    if (!entry || typeof entry !== 'object') return false;
+
+    const summary = entry.summary || {};
+    const reviewItems = Array.isArray(entry.reviewItems) ? entry.reviewItems : [];
+    const wrongCardIds = Array.isArray(entry.wrongCardIds)
+        ? [...new Set(entry.wrongCardIds.map((id) => normalizeSpacingText(id)).filter(Boolean))]
+        : [...new Set(reviewItems.filter((item) => !item?.isCorrect).map((item) => normalizeSpacingText(item?.cardId)).filter(Boolean))];
+
+    state.session = null;
+    state.result = {
+        startedAt: normalizeSpacingText(entry.startedAt) || '',
+        finishedAt: normalizeSpacingText(entry.finishedAt) || new Date().toISOString(),
+        correct: Number(summary.correct || 0),
+        total: Number(summary.total || 0),
+        accuracy: Number(summary.accuracy || 0),
+        timeSpentMs: Number(summary.timeSpentMs || 0),
+        autoSubmitted: Boolean(summary.autoSubmitted),
+        wrongCardIds,
+        reviewItems,
+        config: entry.config || {},
+        isRestored: true,
+    };
+
+    const wrongFilterInput = [...ui.reviewFilterInputs].find((input) => input.value === 'wrong');
+    if (wrongFilterInput) wrongFilterInput.checked = true;
+    renderResult();
+    setVisibleSection('result');
+    return true;
 };
 
 const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
@@ -864,19 +853,17 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
         timeSpentMs,
         autoSubmitted,
         wrongCardIds,
+        isRestored: false,
     };
 
-    const verificationPayload = buildVerificationPayload(result, sessionConfig, reviewItems, state.session.answers);
-    const verificationCode = await getVerificationCode(verificationPayload);
-
-    result.verificationCode = verificationCode;
     result.reviewItems = reviewItems;
-    result.summaryText = buildSummaryText({ result, config: sessionConfig });
+    result.config = sessionConfig;
 
     state.result = result;
     state.allowUnsafeExit = false;
 
     pushHistoryEntry({
+        id: `${result.finishedAt}:${sessionConfig.bookKey}:${sessionConfig.examType}`,
         startedAt: result.startedAt,
         finishedAt: result.finishedAt,
         config: sessionConfig,
@@ -888,7 +875,7 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
             autoSubmitted: result.autoSubmitted,
         },
         wrongCardIds: result.wrongCardIds,
-        verificationCode: result.verificationCode,
+        reviewItems,
     });
 
     renderResult();
@@ -952,38 +939,6 @@ const retrySameScope = () => {
     }
 
     beginTestWithPool(state.scopePool, state.questionCount);
-};
-
-const copyText = async (text) => {
-    const value = String(text || '');
-    if (!value) return false;
-
-    try {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(value);
-            return true;
-        }
-    } catch (_) {
-        // fallback below
-    }
-
-    const temp = document.createElement('textarea');
-    temp.value = value;
-    temp.setAttribute('readonly', 'true');
-    temp.style.position = 'fixed';
-    temp.style.opacity = '0';
-    document.body.appendChild(temp);
-    temp.select();
-
-    let copied = false;
-    try {
-        copied = document.execCommand('copy');
-    } catch (_) {
-        copied = false;
-    }
-
-    temp.remove();
-    return copied;
 };
 
 const bindEvents = () => {
@@ -1206,17 +1161,45 @@ const bindEvents = () => {
         retrySameScope();
     });
 
-    ui.copyCodeBtn?.addEventListener('click', async () => {
-        if (!state.result?.verificationCode) return;
-        const copied = await copyText(state.result.verificationCode);
-        showToast(copied ? '인증코드를 복사했습니다.' : '복사에 실패했습니다.', copied ? 'info' : 'error');
+    ui.goSetupBtn?.addEventListener('click', () => {
+        setVisibleSection('setup');
     });
 
-    ui.copySummaryBtn?.addEventListener('click', async () => {
-        if (!state.result?.summaryText) return;
-        const copied = await copyText(state.result.summaryText);
-        showToast(copied ? '결과 요약을 복사했습니다.' : '복사에 실패했습니다.', copied ? 'info' : 'error');
-    });
+    const handleOpenHistoryClick = (event) => {
+        const trigger = event.target.closest('[data-open-history-index]');
+        if (!trigger) return;
+        openHistoryResult(trigger.dataset.openHistoryIndex);
+    };
+
+    ui.recentSetup?.addEventListener('click', handleOpenHistoryClick);
+    ui.recentResult?.addEventListener('click', handleOpenHistoryClick);
+};
+
+const tryRestoreResultFromStorage = () => {
+    const historyEntry = consumeResultRestoreRequest();
+    if (!historyEntry) return false;
+    if (!restoreResultFromHistoryEntry(historyEntry)) {
+        showToast('기록 복원에 실패했습니다.', 'error');
+        return false;
+    }
+    showToast('선택한 기록을 불러왔습니다.', 'info');
+    return true;
+};
+
+const tryRestoreResultFromQuery = () => {
+    const url = new URL(window.location.href);
+    const historyIndexRaw = normalizeSpacingText(url.searchParams.get('historyIndex'));
+    if (!historyIndexRaw) return false;
+
+    const index = Number.parseInt(historyIndexRaw, 10);
+    if (!Number.isInteger(index) || index < 0 || index >= state.history.length) return false;
+    return restoreResultFromHistoryEntry(state.history[index]);
+};
+
+const initializeResultViewIfNeeded = () => {
+    if (tryRestoreResultFromStorage()) return true;
+    if (tryRestoreResultFromQuery()) return true;
+    return false;
 };
 
 const initialize = async () => {
@@ -1231,9 +1214,13 @@ const initialize = async () => {
 
     bindEvents();
 
+    if (initializeResultViewIfNeeded()) {
+        return;
+    }
     await loadScopeControls({ resetSelection: true });
     setVisibleSection('setup');
 };
+
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
