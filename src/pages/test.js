@@ -52,7 +52,6 @@ const ui = {
     setupView: document.getElementById('test-setup-view'),
     setupHistoryView: document.getElementById('test-history-setup'),
     runView: document.getElementById('test-run-view'),
-    confirmView: document.getElementById('test-confirm-view'),
     resultView: document.getElementById('test-result-view'),
     resultHistoryView: document.getElementById('test-history-result'),
 
@@ -79,12 +78,7 @@ const ui = {
     pronounceBtn: document.getElementById('test-pronounce-btn'),
     questionPrompt: document.getElementById('test-question-prompt'),
     choiceList: document.getElementById('test-choice-list'),
-    nextBtn: document.getElementById('test-next-btn'),
-
-    confirmUnansweredText: document.getElementById('confirm-unanswered-text'),
-    confirmJumpBtn: document.getElementById('confirm-jump-btn'),
-    confirmSubmitBtn: document.getElementById('confirm-submit-btn'),
-    confirmCancelBtn: document.getElementById('confirm-cancel-btn'),
+    submitBtn: document.getElementById('test-submit-btn'),
 
     resultHeadline: document.getElementById('result-headline'),
     resultContext: document.getElementById('result-context'),
@@ -313,7 +307,6 @@ const setVisibleSection = (view) => {
     const viewMap = {
         setup: [ui.setupView, ui.setupHistoryView],
         run: [ui.runView],
-        confirm: [ui.confirmView],
         result: [ui.resultView, ui.resultHistoryView],
     };
 
@@ -660,9 +653,6 @@ const renderCurrentQuestion = () => {
         `;
     }).join('');
 
-    if (ui.nextBtn) {
-        ui.nextBtn.classList.add('hidden');
-    }
 };
 
 const stopTimer = () => {
@@ -882,25 +872,6 @@ const submitCurrentTest = async ({ autoSubmitted = false } = {}) => {
     setVisibleSection('result');
 };
 
-const openConfirmView = () => {
-    if (!state.session) return;
-    stopSpeech();
-
-    const unansweredCount = state.session.answers.filter((answer) => !normalizeSpacingText(answer)).length;
-    ui.confirmUnansweredText.textContent = `미응답 ${unansweredCount}개`;
-    ui.confirmJumpBtn.disabled = unansweredCount === 0;
-
-    setVisibleSection('confirm');
-};
-
-const jumpToFirstUnanswered = () => {
-    if (!state.session) return;
-    const firstIndex = state.session.answers.findIndex((answer) => !normalizeSpacingText(answer));
-    state.session.index = firstIndex >= 0 ? firstIndex : 0;
-    setVisibleSection('run');
-    renderCurrentQuestion();
-};
-
 const startTestFromSetup = () => {
     if (state.scopePool.length === 0) {
         showToast('선택된 범위에 출제 가능한 단어가 없습니다.', 'error');
@@ -1113,7 +1084,7 @@ const bindEvents = () => {
 
         const isLast = state.session.index >= state.session.questions.length - 1;
         if (isLast) {
-            openConfirmView();
+            submitCurrentTest({ autoSubmitted: true });
             return;
         }
 
@@ -1121,30 +1092,8 @@ const bindEvents = () => {
         renderCurrentQuestion();
     });
 
-    ui.nextBtn?.addEventListener('click', () => {
-        if (!state.session) return;
-
-        const isLast = state.session.index >= state.session.questions.length - 1;
-        if (isLast) {
-            openConfirmView();
-            return;
-        }
-
-        state.session.index += 1;
-        renderCurrentQuestion();
-    });
-
-    ui.confirmJumpBtn?.addEventListener('click', () => {
-        jumpToFirstUnanswered();
-    });
-
-    ui.confirmSubmitBtn?.addEventListener('click', async () => {
+    ui.submitBtn?.addEventListener('click', async () => {
         await submitCurrentTest({ autoSubmitted: false });
-    });
-
-    ui.confirmCancelBtn?.addEventListener('click', () => {
-        setVisibleSection('run');
-        renderCurrentQuestion();
     });
 
     ui.reviewFilterInputs.forEach((input) => {
