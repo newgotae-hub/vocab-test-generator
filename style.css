@@ -803,6 +803,12 @@ input:checked + .slider::before {
     gap: 0.58rem;
 }
 
+.mypage-hero-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.58rem;
+}
+
 .mypage-metric {
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -2372,10 +2378,6 @@ body[data-page="auth"] #app {
 
     .mypage-hero {
         grid-template-columns: 1fr;
-    }
-
-    .mypage-hero-metrics {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .test-actions {

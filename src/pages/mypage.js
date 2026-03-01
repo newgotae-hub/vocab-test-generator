@@ -265,6 +265,7 @@ const clearGeneratorArchives = async () => {
 const getUi = () => {
     return {
         heroEmail: document.getElementById('mypage-hero-email'),
+        purchaseBadge: document.getElementById('mypage-purchase-badge'),
         generatorCount: document.getElementById('mypage-generator-count'),
         testCount: document.getElementById('mypage-test-count'),
 
@@ -401,10 +402,13 @@ const renderAccountInfo = (ui) => {
 };
 
 const renderPurchaseSummary = (ui) => {
-    if (!ui.purchaseSummary) return;
+    if (!ui.purchaseSummary && !ui.purchaseBadge) return;
 
     if (state.isBookPurchaseVerified) {
-        ui.purchaseSummary.textContent = '인증 상태: 완료 (제한 없음)';
+        if (ui.purchaseSummary) {
+            ui.purchaseSummary.textContent = '인증 상태: 완료 (제한 없음)';
+        }
+        if (ui.purchaseBadge) ui.purchaseBadge.textContent = '완료';
         if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = true;
         if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = true;
         return;
@@ -412,12 +416,15 @@ const renderPurchaseSummary = (ui) => {
 
     if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = false;
     if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = false;
+    if (ui.purchaseBadge) ui.purchaseBadge.textContent = '미인증';
     const limit = Number.isInteger(state.dailyDownloadLimit) && state.dailyDownloadLimit > 0
         ? state.dailyDownloadLimit
         : 1;
     const used = Math.max(0, Number.parseInt(state.dailyDownloadUsed, 10) || 0);
     const remaining = Math.max(0, limit - used);
-    ui.purchaseSummary.textContent = `인증 상태: 미인증 · 시험지 다운로드 잔여 ${remaining}/${limit}회`;
+    if (ui.purchaseSummary) {
+        ui.purchaseSummary.textContent = `인증 상태: 미인증 · 시험지 다운로드 잔여 ${remaining}/${limit}회`;
+    }
 };
 
 const syncEntitlementState = (payload) => {
