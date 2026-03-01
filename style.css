@@ -1192,17 +1192,19 @@ input:checked + .slider::before {
 }
 
 .mypage-history-delete {
-    width: 2.05rem;
-    min-width: 2.05rem;
+    width: auto;
+    min-width: 3.1rem;
     min-height: 2.05rem;
+    padding: 0.38rem 0.72rem;
     border-radius: 999px;
     border: 1px solid #ef4444;
     background: #fff;
     color: #b91c1c;
-    font-weight: 900;
-    font-size: 0.82rem;
+    font-weight: 800;
+    font-size: 0.78rem;
     line-height: 1;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .mypage-history-delete:hover {

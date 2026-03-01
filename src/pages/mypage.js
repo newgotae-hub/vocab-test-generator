@@ -360,7 +360,7 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
                         ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>다운로드</button>`
         : '<button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-regenerate-index="' + index + '">동일 설정으로 다시 생성</button>'}
-                        <button type="button" class="mypage-history-delete" data-delete-generator-index="${index}" aria-label="내 시험지 기록 삭제">X</button>
+                        <button type="button" class="mypage-history-delete" data-delete-generator-index="${index}" aria-label="내 시험지 기록 삭제">삭제</button>
                     </div>
                 </div>
                 <span class="mypage-history-compact">${escapeHtml(compactMeta)}</span>
@@ -394,7 +394,7 @@ const renderTestHistory = (container, summaryEl, history) => {
                     <strong class="mypage-history-title">${escapeHtml(compactLine)}</strong>
                     <div class="mypage-history-actions">
                         <button type="button" class="mypage-button mypage-button--ghost mypage-btn-fit mypage-history-btn" data-test-detail-index="${index}">자세히보기</button>
-                        <button type="button" class="mypage-history-delete" data-delete-test-index="${index}" aria-label="온라인 테스트 기록 삭제">X</button>
+                        <button type="button" class="mypage-history-delete" data-delete-test-index="${index}" aria-label="온라인 테스트 기록 삭제">삭제</button>
                     </div>
                 </div>
             </article>
