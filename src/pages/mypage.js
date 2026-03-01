@@ -7,6 +7,19 @@ const GENERATOR_HISTORY_LIMIT = 20;
 const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
 const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
 const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
+const ENTITLEMENT_API_PATH = '/api/account/entitlement';
+const BOOK_VERIFY_API_PATH = '/api/account/book-verify';
+const DOWNLOAD_LIMIT_MESSAGE = '책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.';
+const GENERATOR_DAILY_DOWNLOAD_COUNT_KEY = 'voca_plus_generator_daily_download_count_v1';
+const UNVERIFIED_DAILY_DOWNLOAD_LIMIT = 1;
+const PURCHASE_VERIFIED_KEYS = [
+    'book_purchase_verified',
+    'bookPurchaseVerified',
+    'purchase_verified',
+    'purchaseVerified',
+    'is_book_purchase_verified',
+    'isBookPurchaseVerified',
+];
 
 const BOOK_LABELS = {
     basic: '베이직',
@@ -19,6 +32,10 @@ const state = {
     session: null,
     generatorHistory: [],
     testHistory: [],
+    isBookPurchaseVerified: false,
+    dailyDownloadLimit: 1,
+    dailyDownloadUsed: 0,
+    canDownload: true,
 };
 
 const normalizeSpacingText = (value) => {
@@ -115,6 +132,61 @@ const getProviderLabel = (providerRaw) => {
     return providerRaw;
 };
 
+const parseBooleanLike = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    const normalized = normalizeSpacingText(value).toLowerCase();
+    if (!normalized) return false;
+    if (['1', 'true', 'yes', 'y', 'verified', '인증', '완료'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'n', 'unverified', '미인증'].includes(normalized)) return false;
+    return false;
+};
+
+const getPurchaseVerifiedFromUser = (user) => {
+    if (!user || typeof user !== 'object') return false;
+    const appMetadata = user.app_metadata || {};
+    const userMetadata = user.user_metadata || {};
+
+    for (const key of PURCHASE_VERIFIED_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(appMetadata, key)) {
+            return parseBooleanLike(appMetadata[key]);
+        }
+    }
+    for (const key of PURCHASE_VERIFIED_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(userMetadata, key)) {
+            return parseBooleanLike(userMetadata[key]);
+        }
+    }
+    return false;
+};
+
+const getTodayDateKey = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getFallbackDailyDownloadStorageKey = () => {
+    const userId = normalizeSpacingText(state.user?.id) || 'anonymous';
+    return `${GENERATOR_DAILY_DOWNLOAD_COUNT_KEY}:${userId}:${getTodayDateKey()}`;
+};
+
+const getFallbackDailyDownloadCount = () => {
+    const raw = localStorage.getItem(getFallbackDailyDownloadStorageKey());
+    const count = Number.parseInt(raw, 10);
+    if (!Number.isInteger(count) || count < 0) return 0;
+    return count;
+};
+
+const consumeFallbackDailyDownloadQuota = () => {
+    const current = getFallbackDailyDownloadCount();
+    if (current >= UNVERIFIED_DAILY_DOWNLOAD_LIMIT) return false;
+    localStorage.setItem(getFallbackDailyDownloadStorageKey(), String(current + 1));
+    return true;
+};
+
 const setStatus = (el, message, tone = 'info') => {
     if (!el) return;
     el.textContent = message || '';
@@ -207,6 +279,11 @@ const getUi = () => {
         profileSchool: document.getElementById('mypage-school'),
         profileGrade: document.getElementById('mypage-grade'),
         profileStatus: document.getElementById('mypage-profile-status'),
+        purchaseForm: document.getElementById('mypage-purchase-form'),
+        purchaseCodeInput: document.getElementById('mypage-purchase-code'),
+        purchaseVerifyBtn: document.getElementById('mypage-purchase-verify'),
+        purchaseSummary: document.getElementById('mypage-purchase-summary'),
+        purchaseStatus: document.getElementById('mypage-purchase-status'),
 
         createdAt: document.getElementById('mypage-created-at'),
         lastSignin: document.getElementById('mypage-last-signin'),
@@ -316,6 +393,7 @@ const refreshHistoryUI = (ui) => {
 const renderAccountInfo = (ui) => {
     const user = state.user;
     if (!user) return;
+    state.isBookPurchaseVerified = getPurchaseVerifiedFromUser(user);
 
     const metadata = user.user_metadata || {};
     if (ui.heroEmail) ui.heroEmail.textContent = user.email || '-';
@@ -330,6 +408,36 @@ const renderAccountInfo = (ui) => {
         const provider = user?.app_metadata?.provider || state.session?.user?.app_metadata?.provider || 'email';
         ui.authProvider.textContent = getProviderLabel(provider);
     }
+};
+
+const renderPurchaseSummary = (ui) => {
+    if (!ui.purchaseSummary) return;
+
+    if (state.isBookPurchaseVerified) {
+        ui.purchaseSummary.textContent = '인증 상태: 완료 (제한 없음)';
+        if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = true;
+        if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = true;
+        return;
+    }
+
+    if (ui.purchaseCodeInput) ui.purchaseCodeInput.disabled = false;
+    if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = false;
+    const limit = Number.isInteger(state.dailyDownloadLimit) && state.dailyDownloadLimit > 0
+        ? state.dailyDownloadLimit
+        : 1;
+    const used = Math.max(0, Number.parseInt(state.dailyDownloadUsed, 10) || 0);
+    const remaining = Math.max(0, limit - used);
+    ui.purchaseSummary.textContent = `인증 상태: 미인증 · 시험지 다운로드 잔여 ${remaining}/${limit}회`;
+};
+
+const syncEntitlementState = (payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    state.isBookPurchaseVerified = Boolean(payload.isBookPurchaseVerified);
+    const limitRaw = Number.parseInt(payload.dailyDownloadLimit, 10);
+    state.dailyDownloadLimit = Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1;
+    const usedRaw = Number.parseInt(payload.dailyDownloadUsed, 10);
+    state.dailyDownloadUsed = Number.isInteger(usedRaw) && usedRaw >= 0 ? usedRaw : 0;
+    state.canDownload = Boolean(payload.canDownload);
 };
 
 const resetPasswordForm = (ui) => {
@@ -431,6 +539,48 @@ const getAccessToken = async () => {
         throw new Error('로그인 세션이 만료되었습니다. 다시 로그인 후 시도해 주세요.');
     }
     return data.session.access_token;
+};
+
+const requestEntitlement = async (action = 'status') => {
+    const accessToken = await getAccessToken();
+    const response = await fetch(ENTITLEMENT_API_PATH, {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ action }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+        const message = normalizeSpacingText(payload?.error) || '권한 정보를 불러오지 못했습니다.';
+        throw new Error(message);
+    }
+
+    syncEntitlementState(payload);
+    return payload;
+};
+
+const requestBookPurchaseVerify = async (masterCode) => {
+    const accessToken = await getAccessToken();
+    const response = await fetch(BOOK_VERIFY_API_PATH, {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+            masterCode: normalizeSpacingText(masterCode),
+        }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+        const message = normalizeSpacingText(payload?.error) || '책구매 인증에 실패했습니다.';
+        throw new Error(message);
+    }
+    return payload;
 };
 
 const requestDeleteAccount = async () => {
@@ -562,6 +712,55 @@ const handleSupportSubmit = async (event, ui) => {
     }
 };
 
+const refreshEntitlementForUi = async (ui) => {
+    try {
+        await requestEntitlement('status');
+    } catch (error) {
+        // Fallback to user metadata-based rendering.
+        state.isBookPurchaseVerified = getPurchaseVerifiedFromUser(state.user);
+        const usedFallback = state.isBookPurchaseVerified ? 0 : getFallbackDailyDownloadCount();
+        state.dailyDownloadLimit = UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+        state.dailyDownloadUsed = usedFallback;
+        state.canDownload = state.isBookPurchaseVerified || usedFallback < UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+        if (ui?.purchaseStatus) {
+            setStatus(ui.purchaseStatus, error?.message || '인증 상태를 확인하지 못했습니다.', 'error');
+        }
+    }
+    renderPurchaseSummary(ui);
+};
+
+const handleBookPurchaseVerify = async (event, ui) => {
+    event.preventDefault();
+    const typedCode = normalizeSpacingText(ui.purchaseCodeInput?.value);
+    if (!typedCode) {
+        setStatus(ui.purchaseStatus, '마스터코드를 입력해 주세요.', 'error');
+        return;
+    }
+
+    if (ui.purchaseVerifyBtn) ui.purchaseVerifyBtn.disabled = true;
+    setStatus(ui.purchaseStatus, '책구매 인증을 확인하고 있습니다...');
+
+    try {
+        await requestBookPurchaseVerify(typedCode);
+        if (ui.purchaseCodeInput) ui.purchaseCodeInput.value = '';
+
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+            state.user = userData.user;
+        }
+
+        await refreshEntitlementForUi(ui);
+        renderAccountInfo(ui);
+        setStatus(ui.purchaseStatus, '책구매 인증이 완료되었습니다. 이제 제한 없이 이용할 수 있습니다.', 'success');
+    } catch (error) {
+        setStatus(ui.purchaseStatus, error?.message || '책구매 인증에 실패했습니다.', 'error');
+    } finally {
+        if (ui.purchaseVerifyBtn && !state.isBookPurchaseVerified) {
+            ui.purchaseVerifyBtn.disabled = false;
+        }
+    }
+};
+
 const handleGeneratorHistoryDownload = async (event, ui) => {
     const trigger = event.target?.closest?.('button[data-redownload-index]');
     if (!trigger) return;
@@ -589,11 +788,33 @@ const handleGeneratorHistoryDownload = async (event, ui) => {
             return;
         }
 
+        let canDownload = false;
+        try {
+            const entitlement = await requestEntitlement('consume_generator_download');
+            canDownload = Boolean(entitlement?.isBookPurchaseVerified) || Boolean(entitlement?.consumed);
+        } catch (quotaError) {
+            canDownload = state.isBookPurchaseVerified || consumeFallbackDailyDownloadQuota();
+            const usedFallback = state.isBookPurchaseVerified ? 0 : getFallbackDailyDownloadCount();
+            state.dailyDownloadUsed = usedFallback;
+            state.canDownload = state.isBookPurchaseVerified || usedFallback < UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+            if (!canDownload) {
+                renderPurchaseSummary(ui);
+                setStatus(ui.generatorStatus, DOWNLOAD_LIMIT_MESSAGE, 'error');
+                return;
+            }
+        }
+        if (!canDownload) {
+            renderPurchaseSummary(ui);
+            setStatus(ui.generatorStatus, DOWNLOAD_LIMIT_MESSAGE, 'error');
+            return;
+        }
+
         for (const file of files) {
             const fileName = normalizeSpacingText(file?.name) || '시험지';
             downloadBlob(file?.blob, fileName);
             await sleep(420);
         }
+        renderPurchaseSummary(ui);
         setStatus(ui.generatorStatus, '과거 시험지 다운로드를 시작했습니다.', 'success');
     } catch (error) {
         setStatus(ui.generatorStatus, '파일 다운로드에 실패했습니다. 다시 시도해 주세요.', 'error');
@@ -616,6 +837,9 @@ const handleGeneratorHistoryRegenerate = (event, ui) => {
     }
 
     const requestPayload = buildGeneratorRestoreRequest(historyEntry);
+    if (!state.isBookPurchaseVerified && requestPayload?.config) {
+        requestPayload.config.includeDerivatives = false;
+    }
     const bookKey = normalizeSpacingText(requestPayload?.config?.bookKey).toLowerCase();
     if (!bookKey || requestPayload.config.selectedTocs.length === 0) {
         setStatus(ui.generatorStatus, '설정 정보가 부족하여 자동 재생성이 어렵습니다. 생성 페이지에서 다시 선택해 주세요.', 'error');
@@ -720,6 +944,10 @@ const bindEvents = (ui) => {
     ui.supportForm?.addEventListener('submit', (event) => {
         void handleSupportSubmit(event, ui);
     });
+
+    ui.purchaseForm?.addEventListener('submit', (event) => {
+        void handleBookPurchaseVerify(event, ui);
+    });
 };
 
 export const initMyPage = async () => {
@@ -736,4 +964,6 @@ export const initMyPage = async () => {
     state.session = sessionData?.session || null;
     state.user = userData?.user || state.session?.user || null;
     renderAccountInfo(ui);
+    renderPurchaseSummary(ui);
+    await refreshEntitlementForUi(ui);
 };

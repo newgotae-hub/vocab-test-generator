@@ -8,10 +8,21 @@ import {
     normalizeText,
 } from '/src/domain/data/vocabRepository.js';
 import { buildQuestionSet } from '/src/domain/engine/questionSetBuilder.js';
+import { supabase } from '/src/lib/supabaseClient.js';
 
 const HISTORY_KEY = 'voca_plus_test_history_v1';
 const HISTORY_LIMIT = 10;
 const MAX_QUESTION_COUNT = 200;
+const UNVERIFIED_MAX_QUESTION_COUNT = 50;
+const ENTITLEMENT_API_PATH = '/api/account/entitlement';
+const PURCHASE_VERIFIED_KEYS = [
+    'book_purchase_verified',
+    'bookPurchaseVerified',
+    'purchase_verified',
+    'purchaseVerified',
+    'is_book_purchase_verified',
+    'isBookPurchaseVerified',
+];
 
 const state = {
     bookKey: 'basic',
@@ -32,6 +43,8 @@ const state = {
     allowUnsafeExit: false,
 
     isUpdatingScope: false,
+    isBookPurchaseVerified: false,
+    purchasePolicyNoticeShown: false,
 };
 
 const ui = {
@@ -133,6 +146,87 @@ const showToast = (message, type = 'info', duration = 2200) => {
         toast.classList.remove('is-visible');
         window.setTimeout(() => toast.remove(), 190);
     }, Math.max(900, duration));
+};
+
+const parseBooleanLike = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+
+    const normalized = normalizeSpacingText(value).toLowerCase();
+    if (!normalized) return false;
+    if (['1', 'true', 'yes', 'y', 'verified', '인증', '완료'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'n', 'unverified', '미인증'].includes(normalized)) return false;
+    return false;
+};
+
+const getPurchaseVerifiedFromUser = (user) => {
+    if (!user || typeof user !== 'object') return false;
+    const appMetadata = user.app_metadata || {};
+    const userMetadata = user.user_metadata || {};
+
+    for (const key of PURCHASE_VERIFIED_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(appMetadata, key)) {
+            return parseBooleanLike(appMetadata[key]);
+        }
+    }
+    for (const key of PURCHASE_VERIFIED_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(userMetadata, key)) {
+            return parseBooleanLike(userMetadata[key]);
+        }
+    }
+    return false;
+};
+
+const getQuestionSelectionLimit = () => (
+    state.isBookPurchaseVerified ? MAX_QUESTION_COUNT : UNVERIFIED_MAX_QUESTION_COUNT
+);
+
+const syncDerivativeAccessUi = () => {
+    if (!state.isBookPurchaseVerified) {
+        state.includeDerivatives = false;
+        if (ui.includeDerivativesToggle) {
+            ui.includeDerivativesToggle.checked = false;
+        }
+    }
+    const isEtymology = state.bookKey === 'etymology';
+    const shouldHideDerivatives = isEtymology || !state.isBookPurchaseVerified;
+    ui.includeDerivativesGroup?.classList.toggle('hidden', shouldHideDerivatives);
+};
+
+const loadPurchaseAccess = async () => {
+    try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData?.session?.access_token) {
+            throw new Error('NO_SESSION');
+        }
+
+        const response = await fetch(ENTITLEMENT_API_PATH, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ action: 'status' }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (response.ok && payload?.ok) {
+            state.isBookPurchaseVerified = Boolean(payload.isBookPurchaseVerified);
+            return;
+        }
+    } catch (_) {
+        // Fallback below.
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    const user = data?.user || null;
+    state.isBookPurchaseVerified = getPurchaseVerifiedFromUser(user);
+};
+
+const showPurchasePolicyNoticeIfNeeded = () => {
+    if (state.isBookPurchaseVerified || state.purchasePolicyNoticeShown) return;
+    state.purchasePolicyNoticeShown = true;
+    showToast('책구매 인증 전에는 온라인 학습에서 파생어 학습이 제한됩니다.', 'info', 3000);
 };
 
 const isSpeechSupported = () => {
@@ -424,7 +518,7 @@ const renderReviewList = () => {
 
 const clampQuestionCount = ({ forceToPool = false } = {}) => {
     const poolSize = state.scopePool.length;
-    const cappedMax = Math.min(poolSize, MAX_QUESTION_COUNT);
+    const cappedMax = Math.min(poolSize, getQuestionSelectionLimit());
     const currentValue = Number.parseInt(ui.questionCountInput?.value || '0', 10) || 0;
 
     ui.questionCountInput.max = String(cappedMax);
@@ -518,7 +612,7 @@ const loadScopeControls = async ({ resetSelection = false } = {}) => {
 
     const isEtymology = state.bookKey === 'etymology';
     ui.chapterGroup.classList.toggle('hidden', !isEtymology);
-    ui.includeDerivativesGroup.classList.toggle('hidden', isEtymology);
+    syncDerivativeAccessUi();
 
     if (isEtymology) {
         const chapters = await getAvailableChaptersForEtymology();
@@ -642,7 +736,7 @@ const createSessionConfigSnapshot = () => {
 };
 
 const beginTestWithPool = (pool, questionLimit = state.questionCount) => {
-    const maxAllowed = Math.min(pool.length, MAX_QUESTION_COUNT);
+    const maxAllowed = Math.min(pool.length, getQuestionSelectionLimit());
     const requestedCount = Math.min(
         maxAllowed,
         Math.max(1, Number.parseInt(questionLimit, 10) || maxAllowed),
@@ -831,7 +925,7 @@ const startTestFromSetup = () => {
         return;
     }
 
-    const maxAllowed = Math.min(state.scopePool.length, MAX_QUESTION_COUNT);
+    const maxAllowed = Math.min(state.scopePool.length, getQuestionSelectionLimit());
     state.questionCount = Math.min(
         maxAllowed,
         Math.max(1, Number.parseInt(ui.questionCountInput.value, 10) || maxAllowed),
@@ -968,10 +1062,11 @@ const bindEvents = () => {
                     includeDerivatives: state.includeDerivatives,
                 });
 
-                if (nextScopeSize > MAX_QUESTION_COUNT) {
+                const questionLimit = getQuestionSelectionLimit();
+                if (nextScopeSize > questionLimit) {
                     checkbox.checked = false;
                     checkbox.closest('.toc-checklist-item')?.classList.remove('selected-item');
-                    showToast(`한 번에 최대 ${MAX_QUESTION_COUNT}개 단어까지만 선택할 수 있습니다.`, 'error');
+                    showToast(`한 번에 최대 ${questionLimit}개 단어까지만 선택할 수 있습니다.`, 'error');
                     return;
                 }
             } catch (error) {
@@ -993,15 +1088,22 @@ const bindEvents = () => {
 
     ui.includeDerivativesToggle?.addEventListener('change', async () => {
         const nextIncludeDerivatives = Boolean(ui.includeDerivativesToggle.checked);
+        if (nextIncludeDerivatives && !state.isBookPurchaseVerified) {
+            ui.includeDerivativesToggle.checked = false;
+            state.includeDerivatives = false;
+            showToast('책구매 인증 전에는 온라인 학습에서 파생어를 추가할 수 없습니다.', 'error');
+            return;
+        }
         if (nextIncludeDerivatives) {
             try {
                 const nextScopeSize = await getScopeSizeForSelection({
                     selectedTocs: state.selectedTocs,
                     includeDerivatives: true,
                 });
-                if (nextScopeSize > MAX_QUESTION_COUNT) {
+                const questionLimit = getQuestionSelectionLimit();
+                if (nextScopeSize > questionLimit) {
                     ui.includeDerivativesToggle.checked = false;
-                    showToast(`파생어 포함 시 ${MAX_QUESTION_COUNT}개를 초과하여 적용할 수 없습니다.`, 'error');
+                    showToast(`파생어 포함 시 ${questionLimit}개를 초과하여 적용할 수 없습니다.`, 'error');
                     return;
                 }
             } catch (error) {
@@ -1120,6 +1222,9 @@ const bindEvents = () => {
 };
 
 const initialize = async () => {
+    await loadPurchaseAccess();
+    syncDerivativeAccessUi();
+    showPurchasePolicyNoticeIfNeeded();
     loadHistory();
     renderRecentTests();
 

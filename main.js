@@ -1,10 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
     const MAX_QUESTION_COUNT = 200;
+    const UNVERIFIED_MAX_QUESTION_COUNT = 50;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
     const GENERATOR_HISTORY_LIMIT = 20;
     const GENERATOR_ARCHIVE_DB_NAME = 'voca_plus_generator_archive_v1';
     const GENERATOR_ARCHIVE_STORE_NAME = 'archives';
     const GENERATOR_RESTORE_REQUEST_KEY = 'voca_plus_generator_restore_request_v1';
+    const ENTITLEMENT_API_PATH = '/api/account/entitlement';
+    const GENERATOR_DAILY_DOWNLOAD_COUNT_KEY = 'voca_plus_generator_daily_download_count_v1';
+    const UNVERIFIED_DAILY_DOWNLOAD_LIMIT = 1;
+    const PURCHASE_VERIFIED_KEYS = [
+        'book_purchase_verified',
+        'bookPurchaseVerified',
+        'purchase_verified',
+        'purchaseVerified',
+        'is_book_purchase_verified',
+        'isBookPurchaseVerified',
+    ];
 
     // --- Library Instances ---
     let PDFDocument = null;
@@ -43,6 +55,14 @@ document.addEventListener('DOMContentLoaded', () => {
         includeDerivatives: false,
         emptyWordWarningShown: false,
         isExamTitleCustomized: false,
+        purchasePolicyNoticeShown: false,
+        purchaseAccess: {
+            userId: '',
+            isBookPurchaseVerified: false,
+            dailyDownloadLimit: 1,
+            dailyDownloadUsed: 0,
+            canDownload: true,
+        },
         get selectedWords() {
             return getSelectedWordsForTocs(this.selectedTocs);
         },
@@ -163,6 +183,200 @@ document.addEventListener('DOMContentLoaded', () => {
         if (value === 'basic' || value === '베이직' || value === '베이식') return 'basic';
         if (value === 'advanced' || value === '어드밴스드' || value === '어드밴스') return 'advanced';
         return value;
+    };
+    const parseBooleanLike = (value) => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'number') return value === 1;
+
+        const normalized = normalizeSpacingText(value).toLowerCase();
+        if (!normalized) return false;
+        if (['1', 'true', 'yes', 'y', 'verified', '인증', '완료'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'n', 'unverified', '미인증'].includes(normalized)) return false;
+        return false;
+    };
+    const readAuthSessionSnapshotFromStorage = () => {
+        const storageList = [window.localStorage, window.sessionStorage];
+        for (const storage of storageList) {
+            if (!storage) continue;
+            const keys = Object.keys(storage).filter((key) => (
+                key.startsWith('sb-') && key.endsWith('-auth-token')
+            ));
+
+            for (const key of keys) {
+                try {
+                    const raw = storage.getItem(key);
+                    if (!raw) continue;
+                    const parsed = JSON.parse(raw);
+                    const session = parsed?.currentSession || parsed?.session || null;
+                    const user = session?.user || parsed?.currentUser || parsed?.user || null;
+                    const accessToken = normalizeSpacingText(
+                        session?.access_token
+                        || parsed?.currentSession?.access_token
+                        || parsed?.session?.access_token
+                        || parsed?.access_token
+                    );
+                    const userId = normalizeSpacingText(
+                        user?.id
+                        || session?.user?.id
+                    );
+
+                    if (accessToken || userId || user) {
+                        return {
+                            accessToken,
+                            userId,
+                            user,
+                        };
+                    }
+                } catch (_error) {
+                    // Ignore malformed auth cache entry.
+                }
+            }
+        }
+
+        return {
+            accessToken: '',
+            userId: '',
+            user: null,
+        };
+    };
+    const getPurchaseVerifiedFromUser = (user) => {
+        if (!user || typeof user !== 'object') return false;
+        const appMetadata = user.app_metadata || {};
+        const userMetadata = user.user_metadata || {};
+
+        for (const key of PURCHASE_VERIFIED_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(appMetadata, key)) {
+                return parseBooleanLike(appMetadata[key]);
+            }
+        }
+        for (const key of PURCHASE_VERIFIED_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(userMetadata, key)) {
+                return parseBooleanLike(userMetadata[key]);
+            }
+        }
+        return false;
+    };
+    const applyEntitlementState = (payload, fallbackUserId = '') => {
+        if (!payload || typeof payload !== 'object') return;
+        state.purchaseAccess.userId = normalizeSpacingText(payload.userId || fallbackUserId);
+        state.purchaseAccess.isBookPurchaseVerified = Boolean(payload.isBookPurchaseVerified);
+        const limitRaw = Number.parseInt(payload.dailyDownloadLimit, 10);
+        state.purchaseAccess.dailyDownloadLimit = Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1;
+        const usedRaw = Number.parseInt(payload.dailyDownloadUsed, 10);
+        state.purchaseAccess.dailyDownloadUsed = Number.isInteger(usedRaw) && usedRaw >= 0 ? usedRaw : 0;
+        state.purchaseAccess.canDownload = Boolean(payload.canDownload);
+    };
+    const requestEntitlementByToken = async ({ token, action = 'status' }) => {
+        const normalizedToken = normalizeSpacingText(token);
+        if (!normalizedToken) throw new Error('인증 토큰이 필요합니다.');
+
+        const response = await fetch(ENTITLEMENT_API_PATH, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${normalizedToken}`,
+            },
+            body: JSON.stringify({ action }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+            const message = normalizeSpacingText(payload?.error) || '권한 정보를 불러오지 못했습니다.';
+            throw new Error(message);
+        }
+        return payload;
+    };
+    const syncPurchaseAccess = async () => {
+        const snapshot = readAuthSessionSnapshotFromStorage();
+        const fallbackUserId = normalizeSpacingText(snapshot?.userId);
+        const fallbackVerified = getPurchaseVerifiedFromUser(snapshot?.user);
+        state.purchaseAccess.userId = fallbackUserId;
+        state.purchaseAccess.isBookPurchaseVerified = fallbackVerified;
+        const fallbackUsed = fallbackVerified ? 0 : getFallbackDailyDownloadCount(fallbackUserId);
+        state.purchaseAccess.dailyDownloadLimit = UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+        state.purchaseAccess.dailyDownloadUsed = fallbackUsed;
+        state.purchaseAccess.canDownload = fallbackVerified || fallbackUsed < UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+
+        const token = normalizeSpacingText(snapshot?.accessToken);
+        if (!token) return null;
+        try {
+            const payload = await requestEntitlementByToken({ token, action: 'status' });
+            applyEntitlementState(payload, fallbackUserId);
+            return payload;
+        } catch (error) {
+            console.warn('권한 상태 동기화 실패:', error);
+            return null;
+        }
+    };
+    const isBookPurchaseVerified = () => Boolean(state.purchaseAccess.isBookPurchaseVerified);
+    const getQuestionSelectionLimit = () => (
+        isBookPurchaseVerified() ? MAX_QUESTION_COUNT : UNVERIFIED_MAX_QUESTION_COUNT
+    );
+    const getTodayDateKey = () => {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    const getFallbackDailyDownloadStorageKey = (userId = '') => {
+        const normalizedUserId = normalizeSpacingText(userId) || 'anonymous';
+        return `${GENERATOR_DAILY_DOWNLOAD_COUNT_KEY}:${normalizedUserId}:${getTodayDateKey()}`;
+    };
+    const getFallbackDailyDownloadCount = (userId = '') => {
+        const raw = localStorage.getItem(getFallbackDailyDownloadStorageKey(userId));
+        const count = Number.parseInt(raw, 10);
+        if (!Number.isInteger(count) || count < 0) return 0;
+        return count;
+    };
+    const consumeFallbackDailyDownloadQuota = (userId = '') => {
+        const current = getFallbackDailyDownloadCount(userId);
+        if (current >= UNVERIFIED_DAILY_DOWNLOAD_LIMIT) return false;
+        localStorage.setItem(getFallbackDailyDownloadStorageKey(userId), String(current + 1));
+        return true;
+    };
+    const hasReachedDailyDownloadLimit = () => {
+        return !isBookPurchaseVerified() && !Boolean(state.purchaseAccess.canDownload);
+    };
+    const consumeDailyDownloadQuota = async () => {
+        if (isBookPurchaseVerified()) return true;
+        const snapshot = readAuthSessionSnapshotFromStorage();
+        const token = normalizeSpacingText(snapshot?.accessToken);
+        const fallbackUserId = normalizeSpacingText(snapshot?.userId);
+        if (!token) {
+            const consumedFallback = consumeFallbackDailyDownloadQuota(fallbackUserId);
+            const used = getFallbackDailyDownloadCount(fallbackUserId);
+            state.purchaseAccess.dailyDownloadUsed = used;
+            state.purchaseAccess.canDownload = used < UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+            return consumedFallback;
+        }
+        try {
+            const payload = await requestEntitlementByToken({
+                token,
+                action: 'consume_generator_download',
+            });
+            applyEntitlementState(payload, normalizeSpacingText(snapshot?.userId));
+            return Boolean(payload?.isBookPurchaseVerified) || Boolean(payload?.consumed);
+        } catch (error) {
+            console.warn('다운로드 쿼터 소모 실패:', error);
+            const consumedFallback = consumeFallbackDailyDownloadQuota(fallbackUserId);
+            const used = getFallbackDailyDownloadCount(fallbackUserId);
+            state.purchaseAccess.dailyDownloadUsed = used;
+            state.purchaseAccess.canDownload = used < UNVERIFIED_DAILY_DOWNLOAD_LIMIT;
+            return consumedFallback;
+        }
+    };
+    const syncDerivativeAccessUi = () => {
+        const isDerivativeBlocked = !isBookPurchaseVerified();
+        if (isDerivativeBlocked) {
+            state.includeDerivatives = false;
+            if (state.ui.includeDerivatives) {
+                state.ui.includeDerivatives.checked = false;
+            }
+        }
+        if (state.ui.includeDerivativesGroup) {
+            const shouldHide = state.selectedBook === 'etymology' || isDerivativeBlocked;
+            state.ui.includeDerivativesGroup.classList.toggle('hidden', shouldHide);
+        }
     };
 
     const getGeneratorRestoreRequest = () => {
@@ -456,9 +670,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const hint = state.ui.numQuestionsHint;
         if (!hint) return;
 
+        const questionLimit = getQuestionSelectionLimit();
         const selectedTotal = state.selectedWords.length;
-        if (selectedTotal > MAX_QUESTION_COUNT) {
-            hint.textContent = `한 번에 최대 ${MAX_QUESTION_COUNT}문항까지 생성할 수 있습니다.`;
+        if (selectedTotal > questionLimit) {
+            hint.textContent = `한 번에 최대 ${questionLimit}문항까지 생성할 수 있습니다.`;
             hint.classList.remove('hidden');
             return;
         }
@@ -506,6 +721,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.setTimeout(() => toast.remove(), 190);
         }, Math.max(900, duration));
     };
+    const showPurchasePolicyNoticeIfNeeded = () => {
+        if (isBookPurchaseVerified() || state.purchasePolicyNoticeShown) return;
+        state.purchasePolicyNoticeShown = true;
+        showToast('책구매 인증 전에는 시험지 하루 1회 다운로드, 최대 50문항, 파생어 제외가 적용됩니다.', 'info', 3400);
+    };
     const base64ToBlob = (base64, mimeType) => {
         const binary = atob(base64);
         const len = binary.length;
@@ -523,33 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
             error: (error) => reject(error),
         });
     });
-    const readAccessTokenFromStorage = () => {
-        const storageList = [window.localStorage, window.sessionStorage];
-        for (const storage of storageList) {
-            if (!storage) continue;
-            const keys = Object.keys(storage).filter((key) => (
-                key.startsWith('sb-') && key.endsWith('-auth-token')
-            ));
-
-            for (const key of keys) {
-                try {
-                    const raw = storage.getItem(key);
-                    if (!raw) continue;
-                    const parsed = JSON.parse(raw);
-                    const token = normalizeSpacingText(
-                        parsed?.currentSession?.access_token
-                        || parsed?.session?.access_token
-                        || parsed?.access_token
-                    );
-                    if (token) return token;
-                } catch (_error) {
-                    // Ignore malformed auth cache entry.
-                }
-            }
-        }
-
-        return '';
-    };
+    const readAccessTokenFromStorage = () => normalizeSpacingText(readAuthSessionSnapshotFromStorage()?.accessToken);
     const fetchBookRowsFromApi = async (bookKey) => {
         const token = readAccessTokenFromStorage();
         if (!token) throw new Error('인증 토큰을 찾을 수 없습니다. 다시 로그인해 주세요.');
@@ -772,13 +966,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const enforceTocSelectionLimit = (checkbox, { notify = true } = {}) => {
         if (!checkbox?.checked) return true;
 
+        const questionLimit = getQuestionSelectionLimit();
         const selectedTocs = getCheckedTocsFromChecklist();
         const totalWords = getSelectedWordsForTocs(selectedTocs).length;
-        if (totalWords <= MAX_QUESTION_COUNT) return true;
+        if (totalWords <= questionLimit) return true;
 
         checkbox.checked = false;
         if (notify) {
-            showToast(`한 번에 최대 ${MAX_QUESTION_COUNT}개 단어까지만 선택할 수 있습니다.`, 'error');
+            showToast(`한 번에 최대 ${questionLimit}개 단어까지만 선택할 수 있습니다.`, 'error');
         }
         return false;
     };
@@ -875,9 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.ui.includeDerivatives) {
             state.ui.includeDerivatives.checked = false;
         }
-        if (state.ui.includeDerivativesGroup) {
-            state.ui.includeDerivativesGroup.classList.toggle('hidden', normalizedBook === 'etymology');
-        }
+        syncDerivativeAccessUi();
         state.ui.tocSelectionCard?.classList.toggle('day-mode', normalizedBook !== 'etymology');
 
         const mixedTypeOption = state.ui.testTypeOptions
@@ -1046,7 +1239,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
         }
-        const maxQuestions = Math.min(totalWords, MAX_QUESTION_COUNT);
+        const questionLimit = getQuestionSelectionLimit();
+        const maxQuestions = Math.min(totalWords, questionLimit);
         state.ui.numQuestions.value = String(maxQuestions);
         state.ui.numQuestions.max = String(maxQuestions);
         setNumQuestionsHint(state.ui.numQuestions.value);
@@ -1063,11 +1257,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasSelection = totalWords > 0;
         const shouldShowSettings = hasSelection;
         setSectionOpen('settings', shouldShowSettings);
-        state.ui.generateBtn.disabled = !hasSelection;
+        state.ui.generateBtn.disabled = !hasSelection || hasReachedDailyDownloadLimit();
     };
     
     const modifyAllTocs = (shouldSelect) => {
         if (state.selectedBook === 'etymology' && !state.selectedChapter) return;
+        const questionLimit = getQuestionSelectionLimit();
 
         const checkboxes = [...state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]')];
         if (!shouldSelect) {
@@ -1088,19 +1283,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (blocked) {
-            showToast(`총 단어 수가 ${MAX_QUESTION_COUNT}개를 넘어서 전체 선택을 중단했습니다.`, 'info');
+            showToast(`총 단어 수가 ${questionLimit}개를 넘어서 전체 선택을 중단했습니다.`, 'info');
         }
         updateUiState();
     };
 
     const generateTest = async () => {
         if (state.selectedWords.length === 0) return showToast('먼저 목차를 선택해 주세요.', 'error');
+        await syncPurchaseAccess();
+        syncDerivativeAccessUi();
+        showPurchasePolicyNoticeIfNeeded();
+        if (!isBookPurchaseVerified() && state.includeDerivatives) {
+            state.includeDerivatives = false;
+            if (state.ui.includeDerivatives) {
+                state.ui.includeDerivatives.checked = false;
+            }
+            updateUiState();
+            return showToast('책구매 인증 전에는 파생어 시험지를 만들 수 없습니다.', 'error');
+        }
+        if (hasReachedDailyDownloadLimit()) {
+            return showToast('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.', 'error');
+        }
 
+        const questionLimit = getQuestionSelectionLimit();
         const requested = parseInt(state.ui.numQuestions.value, 10) || 0;
         const numQuestions = Math.min(
             requested,
             state.selectedWords.length,
-            MAX_QUESTION_COUNT
+            questionLimit
         );
         if (numQuestions <= 0) return showToast('문항 수는 1 이상이어야 합니다.', 'error');
         let examTitle = getExamTitle();
@@ -1167,29 +1377,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
                 const questionBlob = new Blob([questionPdfBytes], { type: 'application/pdf' });
-                downloadBlob(questionBlob, `${baseFileName}.pdf`);
                 generatedFiles.push({ name: `${baseFileName}.pdf`, type: 'application/pdf', blob: questionBlob });
-                await sleep(DOWNLOAD_GAP_MS);
                 const answerPdfBytes = await createPdf(questions, settings, true);
                 const answerBlob = new Blob([answerPdfBytes], { type: 'application/pdf' });
-                downloadBlob(answerBlob, `${baseFileName}_답.pdf`);
                 generatedFiles.push({ name: `${baseFileName}_답.pdf`, type: 'application/pdf', blob: answerBlob });
             } else {
                 const questionDocx = await createDocx(questions, settings, false);
-                downloadBlob(questionDocx.blob, `${baseFileName}.docx`);
                 generatedFiles.push({
                     name: `${baseFileName}.docx`,
                     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     blob: questionDocx.blob,
                 });
-                await sleep(DOWNLOAD_GAP_MS);
                 const answerDocx = await createDocx(questions, settings, true);
-                downloadBlob(answerDocx.blob, `${baseFileName}_답.docx`);
                 generatedFiles.push({
                     name: `${baseFileName}_답.docx`,
                     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     blob: answerDocx.blob,
                 });
+            }
+
+            if (!(await consumeDailyDownloadQuota())) {
+                throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
+            }
+            for (let i = 0; i < generatedFiles.length; i += 1) {
+                const file = generatedFiles[i];
+                downloadBlob(file.blob, file.name);
+                if (i < generatedFiles.length - 1) {
+                    await sleep(DOWNLOAD_GAP_MS);
+                }
             }
 
             let archiveId = '';
@@ -1219,8 +1434,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 historyEntry.archiveId = archiveId;
             }
             await pushGeneratorHistoryEntry(historyEntry);
+            updateUiState();
         } catch(e) {
-            showToast('시험지 생성 중 오류가 발생했습니다.', 'error');
+            const message = normalizeSpacingText(e?.message) || '시험지 생성 중 오류가 발생했습니다.';
+            showToast(message, 'error');
             console.error(e);
         }
     };
@@ -1269,10 +1486,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUiState();
         }
 
-        if (state.ui.includeDerivatives && bookKey !== 'etymology') {
+        if (state.ui.includeDerivatives && bookKey !== 'etymology' && isBookPurchaseVerified()) {
             const shouldIncludeDerivatives = Boolean(config.includeDerivatives);
             state.ui.includeDerivatives.checked = shouldIncludeDerivatives;
             state.ui.includeDerivatives.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (state.ui.includeDerivatives) {
+            state.ui.includeDerivatives.checked = false;
+            state.includeDerivatives = false;
         }
 
         const examTitle = normalizeSpacingText(config.examTitle);
@@ -2001,14 +2221,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.ui.includeDerivatives) {
             state.ui.includeDerivatives.addEventListener('change', (e) => {
                 const nextIncludeDerivatives = Boolean(e.target.checked);
+                if (nextIncludeDerivatives && !isBookPurchaseVerified()) {
+                    state.includeDerivatives = false;
+                    state.ui.includeDerivatives.checked = false;
+                    showToast('책구매 인증 전에는 파생어 시험지 제작이 제한됩니다.', 'error');
+                    return;
+                }
                 const previousIncludeDerivatives = state.includeDerivatives;
                 state.includeDerivatives = nextIncludeDerivatives;
+                const questionLimit = getQuestionSelectionLimit();
 
                 const totalWords = getSelectedWordsForTocs(state.selectedTocs).length;
-                if (totalWords > MAX_QUESTION_COUNT) {
+                if (totalWords > questionLimit) {
                     state.includeDerivatives = previousIncludeDerivatives;
                     state.ui.includeDerivatives.checked = previousIncludeDerivatives;
-                    showToast(`파생어 포함 시 ${MAX_QUESTION_COUNT}개를 초과하여 적용할 수 없습니다.`, 'error');
+                    showToast(`파생어 포함 시 ${questionLimit}개를 초과하여 적용할 수 없습니다.`, 'error');
                     if (state.selectedBook && state.selectedBook !== 'etymology') {
                         renderTocChecklist();
                     }
@@ -2051,6 +2278,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     const init = () => {
+        const purchaseTask = syncPurchaseAccess()
+            .finally(() => {
+                syncDerivativeAccessUi();
+                showPurchasePolicyNoticeIfNeeded();
+                updateUiState();
+            });
         syncGeneratorBookStageLayout();
         const loadTask = loadData();
         ensureMobileSettingsAtBottom();
@@ -2059,7 +2292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         syncSectionNavFromCards();
         setupEventListeners();
-        void loadTask.then(() => applyGeneratorRestoreRequest());
+        void Promise.all([loadTask, purchaseTask]).then(() => applyGeneratorRestoreRequest());
     };
 
     init();
