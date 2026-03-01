@@ -799,7 +799,7 @@ input:checked + .slider::before {
 
 .mypage-hero-metrics {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.58rem;
 }
 
@@ -2453,6 +2453,7 @@ body[data-page="auth"] #app {
         grid-template-columns: 1fr;
     }
 
+    .mypage-hero-metrics,
     .mypage-field-grid {
         grid-template-columns: 1fr;
     }
