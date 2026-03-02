@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VOCA favicon">
   <defs>
     <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1e3a8a"/>
-      <stop offset="1" stop-color="#1d4ed8"/>
+      <stop offset="0" stop-color="#1f1f1f"/>
+      <stop offset="1" stop-color="#000000"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#bg)"/>
   <rect x="4" y="4" width="56" height="56" rx="12" fill="none" stroke="#ffffff" stroke-opacity="0.22"/>
   <path d="M17 15L28 49H35L47 15H39L31.5 40L24.5 15Z" fill="#ffffff"/>
+  <circle cx="45" cy="46" r="3.2" fill="#ffffff"/>
 </svg>
