@@ -7,6 +7,6 @@
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#bg)"/>
   <rect x="4" y="4" width="56" height="56" rx="12" fill="none" stroke="#ffffff" stroke-opacity="0.22"/>
-  <path d="M15 15L26 49H33L45 15H37L29.5 40L22.5 15Z" fill="#ffffff"/>
-  <circle cx="46" cy="33" r="3.2" fill="#ffffff"/>
+  <path d="M13 15L24 49H31L43 15H35L27.5 40L20.5 15Z" fill="#ffffff"/>
+  <circle cx="50" cy="47" r="4.3" fill="#ffffff"/>
 </svg>
