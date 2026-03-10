@@ -35,6 +35,9 @@ const pageInits = {
 
 const bootstrap = async () => {
     const pageName = document.body?.dataset?.page || '';
+    if (document.body) {
+        document.body.dataset.authReady = 'false';
+    }
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'error' && callbackResult.message) {
         window.alert(callbackResult.message);
@@ -43,6 +46,10 @@ const bootstrap = async () => {
     const canAccessPage = await enforceAuthOrRedirect(pageName);
     if (!canAccessPage) {
         return;
+    }
+
+    if (document.body) {
+        document.body.dataset.authReady = 'true';
     }
 
     await initAuthNavLinks({
