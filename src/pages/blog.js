@@ -12,11 +12,11 @@ const state = {
     posts: [],
     selectedSlug: '',
     isAdmin: false,
+    isComposerOpen: false,
 };
 
 const elements = {
     list: document.getElementById('blog-post-list'),
-    selected: document.getElementById('blog-selected-post'),
     status: document.getElementById('blog-page-status'),
     adminShell: document.getElementById('blog-admin-shell'),
 };
@@ -36,13 +36,13 @@ const paragraphsToHtml = (content) => {
         .map((paragraph) => paragraph.trim())
         .filter(Boolean);
 
-    return blocks.map((paragraph) => `<p class="text-base leading-8 text-slate-600">${escapeHtml(paragraph)}</p>`).join('');
+    return blocks.map((paragraph) => `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(paragraph)}</p>`).join('');
 };
 
 const setStatus = (message = '', tone = 'neutral') => {
     if (!elements.status) return;
     elements.status.textContent = message;
-    elements.status.className = 'mb-8 text-sm';
+    elements.status.className = 'mt-8 text-sm';
 
     if (!message) {
         elements.status.classList.add('hidden');
@@ -61,81 +61,89 @@ const setStatus = (message = '', tone = 'neutral') => {
     elements.status.classList.add('text-slate-500');
 };
 
-const getSelectedPost = () => {
-    if (!state.posts.length) return null;
-    return state.posts.find((post) => post.slug === state.selectedSlug) || state.posts[0];
+const getPostDateLabel = (post) => {
+    return formatBlogDate(post?.publishedAt || post?.createdAt) || '날짜 미정';
 };
 
-const renderSelectedPost = () => {
-    if (!elements.selected) return;
-
-    const post = getSelectedPost();
-    if (!post) {
-        elements.selected.innerHTML = `
-            <article class="rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center">
-                <p class="text-sm text-slate-400">아직 공개된 글이 없습니다.</p>
-            </article>
-        `;
-        return;
-    }
-
-    const imageMarkup = post.coverImageUrl
-        ? `
-            <div class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50">
-                <img src="${escapeHtml(post.coverImageUrl)}" alt="${escapeHtml(post.coverImageAlt || post.title)}" loading="lazy" decoding="async" class="h-full w-full object-cover">
-            </div>
-        `
-        : '';
-
-    elements.selected.innerHTML = `
-        <article class="rounded-[2rem] border border-slate-200 bg-white p-8 md:p-10 shadow-[0_24px_90px_-60px_rgba(15,23,42,0.35)]">
-            <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                <span>${escapeHtml(post.category)}</span>
-                <span class="h-1 w-1 rounded-full bg-slate-300"></span>
-                <span>${escapeHtml(formatBlogDate(post.publishedAt || post.createdAt))}</span>
-            </div>
-            <h2 class="mt-5 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 leading-tight">${escapeHtml(post.title)}</h2>
-            <p class="mt-5 text-lg leading-8 text-slate-500">${escapeHtml(post.summary)}</p>
-            <div class="mt-8 space-y-6">
-                ${imageMarkup}
-                <div class="space-y-5">${paragraphsToHtml(post.content)}</div>
-            </div>
-            <div class="mt-10 flex items-center justify-between gap-4 border-t border-slate-100 pt-6">
-                <p class="text-sm text-slate-500">${escapeHtml(post.authorName || '평가원기출VOCA')}</p>
-                <a href="${escapeHtml(getBlogPostUrl(post.slug))}" class="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors">이 글 링크 복사용 주소</a>
-            </div>
-        </article>
-    `;
+const estimateReadingMinutes = (content) => {
+    const plainText = String(content || '').replace(/\s+/g, ' ').trim();
+    if (!plainText) return 1;
+    return Math.max(1, Math.ceil(plainText.length / 260));
 };
 
 const renderPostList = () => {
     if (!elements.list) return;
 
     if (!state.posts.length) {
-        elements.list.innerHTML = '';
+        elements.list.innerHTML = `
+            <div class="rounded-[1.5rem] border border-dashed border-slate-300 px-5 py-6 text-sm leading-6 text-slate-500">
+                아직 공개된 글이 없습니다.
+            </div>
+        `;
         return;
     }
 
-    const selectedSlug = getSelectedPost()?.slug || '';
-    elements.list.innerHTML = state.posts.map((post) => {
+    const selectedSlug = state.selectedSlug;
+    elements.list.innerHTML = state.posts.map((post, index) => {
         const isActive = post.slug === selectedSlug;
-        return `
-            <button
-                type="button"
-                data-blog-slug="${escapeHtml(post.slug)}"
-                class="w-full rounded-[1.75rem] border p-6 text-left transition-all ${
-                    isActive
-                        ? 'border-slate-900 bg-slate-900 text-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.8)]'
-                        : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300'
-                }"
-            >
-                <div class="flex items-center justify-between gap-4 text-xs font-semibold uppercase tracking-[0.18em] ${isActive ? 'text-slate-300' : 'text-slate-400'}">
-                    <span>${escapeHtml(post.category)}</span>
-                    <span>${escapeHtml(formatBlogDate(post.publishedAt || post.createdAt))}</span>
+        const publishedLabel = getPostDateLabel(post);
+        const readingMinutes = estimateReadingMinutes(post.content);
+        const imageMarkup = post.coverImageUrl
+            ? `
+                <div class="mt-6 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
+                    <img src="${escapeHtml(post.coverImageUrl)}" alt="${escapeHtml(post.coverImageAlt || post.title)}" loading="lazy" decoding="async" class="h-full w-full object-cover">
                 </div>
-                <h3 class="mt-4 text-xl font-semibold tracking-tight ${isActive ? 'text-white' : 'text-slate-900'}">${escapeHtml(post.title)}</h3>
-                <p class="mt-3 text-sm leading-7 ${isActive ? 'text-slate-300' : 'text-slate-500'}">${escapeHtml(post.summary)}</p>
-            </button>
+            `
+            : '';
+        const expandedMarkup = isActive
+            ? `
+                <div class="border-t border-slate-200 bg-white px-5 py-6 md:px-7 md:py-7">
+                    <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        <span class="rounded-full border border-slate-900 px-3 py-1.5 text-[11px] tracking-[0.18em] text-slate-900">${escapeHtml(post.category)}</span>
+                        <span>${escapeHtml(publishedLabel)}</span>
+                        <span>${escapeHtml(`${readingMinutes}분 읽기`)}</span>
+                    </div>
+                    ${imageMarkup}
+                    <div class="mt-6 space-y-6">${paragraphsToHtml(post.content)}</div>
+                    <div class="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">최근 업데이트: ${escapeHtml(publishedLabel)}</p>
+                        <a href="${escapeHtml(getBlogPostUrl(post.slug))}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">이 글 링크</a>
+                    </div>
+                </div>
+            `
+            : '';
+        return `
+            <article class="overflow-hidden rounded-[1.5rem] border ${
+                isActive ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'
+            }">
+                <button
+                    type="button"
+                    data-blog-slug="${escapeHtml(post.slug)}"
+                    aria-expanded="${isActive ? 'true' : 'false'}"
+                    class="w-full px-5 py-5 text-left transition-all ${
+                    isActive
+                        ? ''
+                        : 'hover:bg-slate-50'
+                    }"
+                >
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                <span class="rounded-full border border-slate-200 px-2.5 py-1 text-slate-600">${escapeHtml(post.category)}</span>
+                                <span>${escapeHtml(publishedLabel)}</span>
+                                <span>${escapeHtml(`${readingMinutes}분 읽기`)}</span>
+                                ${index === 0 ? '<span class="text-blue-600">최신</span>' : ''}
+                            </div>
+                            <h3 class="mt-4 text-xl font-semibold tracking-tight text-slate-900">${escapeHtml(post.title)}</h3>
+                            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-500">${escapeHtml(post.summary)}</p>
+                        </div>
+                        <span class="inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium ${
+                            isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                        }">${isActive ? '닫기' : '열기'}</span>
+                    </div>
+                </button>
+                ${expandedMarkup}
+            </article>
         `;
     }).join('');
 };
@@ -144,12 +152,36 @@ const renderAdminComposer = () => {
     if (!elements.adminShell) return;
 
     if (!state.isAdmin) {
+        state.isComposerOpen = false;
         elements.adminShell.classList.add('hidden');
         elements.adminShell.innerHTML = '';
         return;
     }
 
     elements.adminShell.classList.remove('hidden');
+
+    if (!state.isComposerOpen) {
+        elements.adminShell.innerHTML = `
+            <section class="mb-12 rounded-[2rem] border border-amber-200 bg-amber-50/70 p-6 md:p-8">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Admin Only</p>
+                        <h2 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">블로그 관리자</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">새 글 작성은 아래 버튼을 눌렀을 때만 열리도록 변경했습니다.</p>
+                    </div>
+                    <button
+                        type="button"
+                        data-blog-admin-action="open"
+                        class="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+                    >
+                        글쓰기
+                    </button>
+                </div>
+            </section>
+        `;
+        return;
+    }
+
     elements.adminShell.innerHTML = `
         <section class="mb-12 rounded-[2rem] border border-amber-200 bg-amber-50/70 p-6 md:p-8">
             <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -158,7 +190,16 @@ const renderAdminComposer = () => {
                     <h2 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">블로그 글쓰기</h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">이 폼은 관리자 메타데이터가 있는 계정에만 표시됩니다. 저장은 Supabase <code class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">blog_posts</code> 테이블로 바로 반영됩니다.</p>
                 </div>
-                <p class="text-sm text-amber-800">권한 기준: <code class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">app_metadata.role = admin</code> 또는 <code class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">blog_admin = true</code></p>
+                <div class="flex flex-col items-start gap-3 md:items-end">
+                    <p class="text-sm text-amber-800">권한 기준: <code class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">app_metadata.role = admin</code> 또는 <code class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">blog_admin = true</code></p>
+                    <button
+                        type="button"
+                        data-blog-admin-action="close"
+                        class="inline-flex items-center justify-center rounded-full border border-amber-300 bg-white px-5 py-2 text-sm font-medium text-amber-900 transition hover:border-amber-400 hover:bg-amber-100"
+                    >
+                        닫기
+                    </button>
+                </div>
             </div>
             <form id="blog-admin-form" class="mt-8 grid gap-4 md:grid-cols-2">
                 <label class="block">
@@ -238,7 +279,6 @@ const renderAdminComposer = () => {
             if (authorInput instanceof HTMLInputElement) authorInput.value = '평가원기출VOCA';
             formStatus.textContent = '글이 저장되었습니다.';
             formStatus.className = 'text-sm text-emerald-600';
-            renderSelectedPost();
             renderPostList();
             history.replaceState({}, '', getBlogPostUrl(post.slug));
             setStatus('새 글이 공개되었습니다.', 'success');
@@ -253,21 +293,39 @@ const renderAdminComposer = () => {
     });
 };
 
+const bindAdminComposer = () => {
+    if (!elements.adminShell) return;
+
+    elements.adminShell.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        const button = target.closest('[data-blog-admin-action]');
+        if (!(button instanceof HTMLButtonElement)) return;
+
+        const action = button.dataset.blogAdminAction;
+        if (action === 'open') {
+            state.isComposerOpen = true;
+            renderAdminComposer();
+            return;
+        }
+
+        if (action === 'close') {
+            state.isComposerOpen = false;
+            renderAdminComposer();
+        }
+    });
+};
+
 const syncSelectedSlug = () => {
     const params = new URLSearchParams(window.location.search);
-    const requestedSlug = params.get('slug') || '';
-    state.selectedSlug = requestedSlug;
-
-    if (!requestedSlug && state.posts.length) {
-        state.selectedSlug = state.posts[0].slug;
-    }
+    state.selectedSlug = params.get('slug') || '';
 };
 
 const loadPosts = async () => {
     setStatus('블로그 글을 불러오는 중입니다.');
     state.posts = await listBlogPosts();
     syncSelectedSlug();
-    renderSelectedPost();
     renderPostList();
     setStatus('');
 };
@@ -281,9 +339,9 @@ const bindPostSelection = () => {
         const button = target.closest('[data-blog-slug]');
         if (!(button instanceof HTMLButtonElement)) return;
 
-        state.selectedSlug = button.dataset.blogSlug || '';
-        history.replaceState({}, '', getBlogPostUrl(state.selectedSlug));
-        renderSelectedPost();
+        const slug = button.dataset.blogSlug || '';
+        state.selectedSlug = state.selectedSlug === slug ? '' : slug;
+        history.replaceState({}, '', state.selectedSlug ? getBlogPostUrl(state.selectedSlug) : '/blog/');
         renderPostList();
     });
 };
@@ -306,6 +364,7 @@ export const initBlogPage = async () => {
         loggedInAction: 'mypage',
     });
 
+    bindAdminComposer();
     bindPostSelection();
     await syncAdminState();
     await loadPosts();
