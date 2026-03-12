@@ -5,6 +5,7 @@ export const initLandingPage = async () => {
     const clearCallbackPending = () => {
         document.documentElement.classList.remove('auth-callback-pending');
     };
+    const purchaseButton = document.getElementById('landing-purchase-button');
 
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'success') {
@@ -22,4 +23,10 @@ export const initLandingPage = async () => {
         loggedInPath: '/mypage/',
         loggedInAction: 'mypage',
     });
+
+    if (purchaseButton instanceof HTMLButtonElement) {
+        purchaseButton.addEventListener('click', () => {
+            window.alert('곧 출시됩니다!');
+        });
+    }
 };

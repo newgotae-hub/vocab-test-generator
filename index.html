@@ -69,10 +69,6 @@
             -webkit-text-fill-color: transparent;
             background-image: linear-gradient(to right, #2563eb, #9333ea);
         }
-        .bg-grid {
-            background-size: 40px 40px;
-            background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
-        }
         /* Custom scrollbar for a cleaner look */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -95,8 +91,6 @@
 
     <!-- Hero Section -->
     <section class="relative pt-32 pb-20 overflow-hidden">
-        <div class="absolute inset-0 bg-grid [mask-image:linear-gradient(to_bottom,white,transparent)] -z-10"></div>
-        
         <div class="flex flex-col text-center max-w-6xl mr-auto ml-auto pr-6 pl-6 items-center">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-medium mb-8">
                 <span class="flex h-2 w-2 rounded-full bg-blue-600"></span>
@@ -114,9 +108,9 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 mb-16">
-                <a href="/auth/?redirect=%2Fdashboard%2F" class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
-                    무료로 학습 시작하기 <iconify-icon icon="solar:arrow-right-linear" width="20"></iconify-icon>
-                </a>
+                <button id="landing-purchase-button" type="button" class="flex items-center justify-center gap-2 bg-slate-900 text-white text-base font-medium px-8 py-3 rounded-full hover:bg-slate-800 transition-all duration-300 shadow-lg shadow-slate-200">
+                    구매하기 <iconify-icon icon="solar:arrow-right-linear" width="20"></iconify-icon>
+                </button>
                 <a href="#features" class="flex items-center justify-center gap-2 bg-white text-slate-600 border border-slate-200 text-base font-medium px-8 py-3 rounded-full hover:bg-slate-50 transition-all">
                     특징 살펴보기
                 </a>
