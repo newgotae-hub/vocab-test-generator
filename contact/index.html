@@ -140,32 +140,22 @@
           status.classList.toggle('hidden', !message);
         };
 
-        trigger.addEventListener('click', function () {
-          const widget = window.Userback;
-          if (!widget) {
-            setStatus('피드백 위젯을 아직 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-            return;
-          }
+        trigger.addEventListener('click', async function () {
+          setStatus('');
+          trigger.disabled = true;
 
           try {
-            if (typeof widget.setData === 'function') {
-              widget.setData({
-                page: 'contact',
-                source: 'contact-feedback-card',
-              });
-            }
-
-            if (typeof widget.openForm === 'function') {
-              widget.openForm('general', 'form');
-            } else if (typeof widget.open === 'function') {
-              widget.open('general', 'form');
-            } else {
+            const widget = window.Userback;
+            if (!widget || typeof widget.open !== 'function') {
               throw new Error('Userback open API unavailable');
             }
 
+            widget.open();
             setStatus('');
           } catch (_error) {
-            setStatus('피드백 위젯을 여는 중 문제가 발생했습니다. 우측 하단 버튼으로 다시 시도해 주세요.');
+            setStatus('피드백 위젯이 아직 준비되지 않았습니다. 계속 같은 문제가 나오면 Userback 프로젝트의 도메인 설정을 확인해야 합니다.');
+          } finally {
+            trigger.disabled = false;
           }
         });
       })();
