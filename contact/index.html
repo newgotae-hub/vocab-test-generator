@@ -131,6 +131,8 @@
       (function () {
         const trigger = document.getElementById('contact-userback-trigger');
         const status = document.getElementById('contact-userback-status');
+        let pendingOpen = false;
+        let userbackReady = false;
 
         if (!(trigger instanceof HTMLButtonElement)) return;
 
@@ -140,30 +142,56 @@
           status.classList.toggle('hidden', !message);
         };
 
-        trigger.addEventListener('click', async function () {
-          setStatus('');
-          trigger.disabled = true;
-
-          try {
-            const widget = window.Userback;
-            if (!widget || typeof widget.open !== 'function') {
-              throw new Error('Userback open API unavailable');
-            }
-
-            widget.open();
-            setStatus('');
-          } catch (_error) {
-            setStatus('피드백 위젯이 아직 준비되지 않았습니다. 계속 같은 문제가 나오면 Userback 프로젝트의 도메인 설정을 확인해야 합니다.');
-          } finally {
-            trigger.disabled = false;
+        const openWidget = () => {
+          const widget = window.Userback;
+          if (!widget || typeof widget.open !== 'function') {
+            return false;
           }
-        });
-      })();
 
-      window.Userback = window.Userback || {};
-      Userback.access_token = "A-vV6YCxc6cQKtRBem24yA3IgC8";
-      (function(d) {
+          widget.open();
+          return true;
+        };
+
+        trigger.addEventListener('click', function () {
+          setStatus('');
+
+          if (openWidget()) {
+            pendingOpen = false;
+            return;
+          }
+
+          pendingOpen = true;
+          trigger.disabled = true;
+          setStatus('피드백 위젯을 불러오는 중입니다...');
+        });
+
+        window.Userback = window.Userback || {};
+        window.Userback.access_token = "A-vV6YCxc6cQKtRBem24yA3IgC8";
+        window.Userback.on_load = function () {
+          userbackReady = true;
+          trigger.disabled = false;
+
+          if (pendingOpen) {
+            pendingOpen = false;
+            if (openWidget()) {
+              setStatus('');
+            }
+          }
+        };
+
+        window.setTimeout(function () {
+          if (!userbackReady) {
+            trigger.disabled = false;
+            if (pendingOpen) {
+              pendingOpen = false;
+              setStatus('피드백 위젯을 아직 불러오지 못했습니다. 계속 안 뜨면 Userback 프로젝트의 도메인 설정을 확인해야 합니다.');
+            }
+          }
+        }, 5000);
+
+        (function(d) {
         var s = d.createElement('script');s.async = true;s.src = 'https://static.userback.io/widget/v1.js';(d.head || d.body).appendChild(s);
-      })(document);
+        })(document);
+      })();
     </script>
 </body></html>
