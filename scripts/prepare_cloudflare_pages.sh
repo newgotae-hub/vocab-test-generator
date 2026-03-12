@@ -18,6 +18,7 @@ for relative_path in \
     author \
     blog \
     cards \
+    contact \
     dashboard \
     game \
     generator \
