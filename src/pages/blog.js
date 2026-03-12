@@ -3,9 +3,11 @@ import { supabase } from '/src/lib/supabaseClient.js';
 import {
     createBlogPost,
     formatBlogDate,
+    getFallbackBlogPosts,
     getBlogPostUrl,
     isBlogAdminUser,
     listBlogPosts,
+    uploadBlogImages,
 } from '/src/lib/blog.js';
 
 const state = {
@@ -30,13 +32,27 @@ const escapeHtml = (value) => {
         .replace(/'/g, '&#39;');
 };
 
+const IMAGE_BLOCK_PATTERN = /^!\[(.*?)\]\((.+?)\)$/;
+
 const paragraphsToHtml = (content) => {
     const blocks = String(content || '')
         .split(/\n{2,}/)
-        .map((paragraph) => paragraph.trim())
+        .map((block) => block.trim())
         .filter(Boolean);
 
-    return blocks.map((paragraph) => `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(paragraph)}</p>`).join('');
+    return blocks.map((block) => {
+        const imageMatch = block.match(IMAGE_BLOCK_PATTERN);
+        if (imageMatch) {
+            const [, alt, src] = imageMatch;
+            return `
+                <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                </figure>
+            `;
+        }
+
+        return `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(block).replace(/\n/g, '<br>')}</p>`;
+    }).join('');
 };
 
 const setStatus = (message = '', tone = 'neutral') => {
@@ -65,10 +81,47 @@ const getPostDateLabel = (post) => {
     return formatBlogDate(post?.publishedAt || post?.createdAt) || '날짜 미정';
 };
 
+const hasSelectedPost = () => state.posts.some((post) => post.slug === state.selectedSlug);
+
+const syncSelectedSlug = () => {
+    const params = new URLSearchParams(window.location.search);
+    state.selectedSlug = params.get('slug') || '';
+};
+
+const ensureSelectedSlugExists = () => {
+    if (state.selectedSlug && !hasSelectedPost()) {
+        state.selectedSlug = '';
+    }
+};
+
 const estimateReadingMinutes = (content) => {
-    const plainText = String(content || '').replace(/\s+/g, ' ').trim();
+    const plainText = String(content || '')
+        .replace(/!\[(.*?)\]\((.+?)\)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     if (!plainText) return 1;
     return Math.max(1, Math.ceil(plainText.length / 260));
+};
+
+const insertTextAtCursor = (input, text) => {
+    if (!(input instanceof HTMLTextAreaElement)) return;
+
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const prefixNeedsGap = start > 0 && !/\n\n$/.test(input.value.slice(0, start));
+    const suffixNeedsGap = end < input.value.length && !/^\n\n/.test(input.value.slice(end));
+    const insertion = `${prefixNeedsGap ? '\n\n' : ''}${text}${suffixNeedsGap ? '\n\n' : ''}`;
+
+    input.setRangeText(insertion, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+};
+
+const renderComposerPreview = (input, preview) => {
+    if (!(preview instanceof HTMLElement) || !(input instanceof HTMLTextAreaElement)) return;
+
+    const html = paragraphsToHtml(input.value);
+    preview.innerHTML = html || '<p class="text-sm leading-7 text-slate-400">본문 미리보기가 여기에 표시됩니다.</p>';
 };
 
 const renderPostList = () => {
@@ -146,6 +199,13 @@ const renderPostList = () => {
             </article>
         `;
     }).join('');
+};
+
+const renderFallbackPosts = () => {
+    syncSelectedSlug();
+    state.posts = getFallbackBlogPosts();
+    ensureSelectedSlugExists();
+    renderPostList();
 };
 
 const renderAdminComposer = () => {
@@ -231,10 +291,31 @@ const renderAdminComposer = () => {
                     <input name="coverImageAlt" type="text" maxlength="160" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900">
                 </label>
                 <label class="block md:col-span-2">
-                    <span class="mb-2 block text-sm font-medium text-slate-700">본문</span>
-                    <textarea name="content" rows="12" required class="w-full rounded-[1.5rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-slate-900"></textarea>
-                    <span class="mt-2 block text-xs text-slate-500">문단은 빈 줄로 구분해서 입력하면 됩니다.</span>
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+                        <span class="block text-sm font-medium text-slate-700">본문</span>
+                        <div class="flex items-center gap-2">
+                            <input id="blog-admin-image-picker" type="file" accept="image/*" multiple class="hidden">
+                            <button
+                                type="button"
+                                data-blog-editor-action="pick-images"
+                                class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                            >
+                                이미지 추가
+                            </button>
+                        </div>
+                    </div>
+                    <div id="blog-admin-dropzone" class="rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-3 transition">
+                        <textarea id="blog-admin-content" name="content" rows="12" required placeholder="문단을 입력하거나 여기에 이미지를 드래그해서 넣으세요." class="w-full resize-y rounded-[1rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-slate-900"></textarea>
+                    </div>
+                    <span class="mt-2 block text-xs text-slate-500">문단은 빈 줄로 구분합니다. 이미지는 드래그 앤 드롭하거나 버튼으로 올리면 본문 이미지 블록으로 삽입됩니다.</span>
                 </label>
+                <div class="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-white p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-sm font-semibold text-slate-900">실시간 미리보기</h3>
+                        <p class="text-xs text-slate-400">본문 저장 전 렌더링 확인용</p>
+                    </div>
+                    <div id="blog-admin-preview" class="mt-4 space-y-6"></div>
+                </div>
                 <div class="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p id="blog-admin-form-status" class="text-sm text-slate-500">새 글은 저장 즉시 공개됩니다.</p>
                     <button type="submit" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800">글 저장하기</button>
@@ -245,17 +326,126 @@ const renderAdminComposer = () => {
 
     const form = document.getElementById('blog-admin-form');
     const formStatus = document.getElementById('blog-admin-form-status');
+    const contentInput = document.getElementById('blog-admin-content');
+    const preview = document.getElementById('blog-admin-preview');
+    const imagePicker = document.getElementById('blog-admin-image-picker');
+    const dropzone = document.getElementById('blog-admin-dropzone');
+    const pickImageButton = form?.querySelector('[data-blog-editor-action="pick-images"]');
     if (!(form instanceof HTMLFormElement) || !(formStatus instanceof HTMLElement)) return;
+
+    let isUploadingImages = false;
+
+    const setFormStatus = (message, tone = 'neutral') => {
+        formStatus.textContent = message;
+        formStatus.className = 'text-sm';
+        if (tone === 'error') {
+            formStatus.classList.add('text-red-600');
+            return;
+        }
+        if (tone === 'success') {
+            formStatus.classList.add('text-emerald-600');
+            return;
+        }
+        formStatus.classList.add('text-slate-500');
+    };
+
+    const setDropzoneActive = (active) => {
+        if (!(dropzone instanceof HTMLElement)) return;
+        dropzone.className = `rounded-[1.5rem] border bg-white p-3 transition ${
+            active
+                ? 'border-blue-400 bg-blue-50/60'
+                : 'border-dashed border-slate-300'
+        }`;
+    };
+
+    const setImageControlsDisabled = (disabled) => {
+        if (pickImageButton instanceof HTMLButtonElement) {
+            pickImageButton.disabled = disabled;
+        }
+    };
+
+    const uploadAndInsertImages = async (files) => {
+        if (!(contentInput instanceof HTMLTextAreaElement) || isUploadingImages) return;
+
+        const imageFiles = Array.from(files || []).filter((file) => file instanceof File && file.type.startsWith('image/'));
+        if (!imageFiles.length) return;
+
+        isUploadingImages = true;
+        setImageControlsDisabled(true);
+        setDropzoneActive(false);
+        setFormStatus('이미지 업로드 중입니다...');
+
+        try {
+            const titleInput = form.elements.namedItem('title');
+            const uploads = await uploadBlogImages(imageFiles, {
+                title: titleInput instanceof HTMLInputElement ? titleInput.value : '',
+            });
+
+            const imageBlocks = uploads
+                .map((upload) => `![${upload.alt || '본문 이미지'}](${upload.url})`)
+                .join('\n\n');
+
+            insertTextAtCursor(contentInput, imageBlocks);
+            renderComposerPreview(contentInput, preview);
+            setFormStatus('이미지가 본문에 삽입되었습니다.', 'success');
+        } catch (error) {
+            setFormStatus(error instanceof Error ? error.message : '이미지 업로드에 실패했습니다.', 'error');
+        } finally {
+            isUploadingImages = false;
+            setImageControlsDisabled(false);
+            if (imagePicker instanceof HTMLInputElement) {
+                imagePicker.value = '';
+            }
+        }
+    };
+
+    if (contentInput instanceof HTMLTextAreaElement) {
+        renderComposerPreview(contentInput, preview);
+        contentInput.addEventListener('input', () => {
+            renderComposerPreview(contentInput, preview);
+        });
+    }
+
+    if (pickImageButton instanceof HTMLButtonElement && imagePicker instanceof HTMLInputElement) {
+        pickImageButton.addEventListener('click', () => {
+            imagePicker.click();
+        });
+        imagePicker.addEventListener('change', async () => {
+            await uploadAndInsertImages(imagePicker.files);
+        });
+    }
+
+    if (dropzone instanceof HTMLElement) {
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                setDropzoneActive(true);
+            });
+        });
+
+        ['dragleave', 'dragend'].forEach((eventName) => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                setDropzoneActive(false);
+            });
+        });
+
+        dropzone.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            const dataTransfer = event.dataTransfer;
+            await uploadAndInsertImages(dataTransfer?.files);
+        });
+    }
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        formStatus.textContent = '저장 중입니다...';
-        formStatus.className = 'text-sm text-slate-500';
+        setFormStatus('저장 중입니다...');
 
         const submitButton = form.querySelector('button[type="submit"]');
         if (submitButton instanceof HTMLButtonElement) {
             submitButton.disabled = true;
         }
+        setImageControlsDisabled(true);
 
         const formData = new FormData(form);
         try {
@@ -277,18 +467,20 @@ const renderAdminComposer = () => {
             if (categoryInput instanceof HTMLInputElement) categoryInput.value = '서비스 업데이트';
             const authorInput = form.elements.namedItem('authorName');
             if (authorInput instanceof HTMLInputElement) authorInput.value = '평가원기출VOCA';
-            formStatus.textContent = '글이 저장되었습니다.';
-            formStatus.className = 'text-sm text-emerald-600';
+            if (contentInput instanceof HTMLTextAreaElement) {
+                renderComposerPreview(contentInput, preview);
+            }
+            setFormStatus('글이 저장되었습니다.', 'success');
             renderPostList();
             history.replaceState({}, '', getBlogPostUrl(post.slug));
             setStatus('새 글이 공개되었습니다.', 'success');
         } catch (error) {
-            formStatus.textContent = error instanceof Error ? error.message : '글 저장에 실패했습니다.';
-            formStatus.className = 'text-sm text-red-600';
+            setFormStatus(error instanceof Error ? error.message : '글 저장에 실패했습니다.', 'error');
         } finally {
             if (submitButton instanceof HTMLButtonElement) {
                 submitButton.disabled = false;
             }
+            setImageControlsDisabled(false);
         }
     });
 };
@@ -317,15 +509,11 @@ const bindAdminComposer = () => {
     });
 };
 
-const syncSelectedSlug = () => {
-    const params = new URLSearchParams(window.location.search);
-    state.selectedSlug = params.get('slug') || '';
-};
-
-const loadPosts = async () => {
-    setStatus('블로그 글을 불러오는 중입니다.');
-    state.posts = await listBlogPosts();
+const refreshPosts = async () => {
+    const posts = await listBlogPosts();
+    state.posts = posts;
     syncSelectedSlug();
+    ensureSelectedSlugExists();
     renderPostList();
     setStatus('');
 };
@@ -358,16 +546,25 @@ const syncAdminState = async () => {
 };
 
 export const initBlogPage = async () => {
-    await initAuthNavLinks({
+    renderFallbackPosts();
+
+    void initAuthNavLinks({
         loggedInLabel: '마이페이지',
         loggedInPath: '/mypage/',
         loggedInAction: 'mypage',
+    }).catch((error) => {
+        console.warn('[blog-page] auth nav init failed', error);
     });
 
     bindAdminComposer();
     bindPostSelection();
-    await syncAdminState();
-    await loadPosts();
+    void syncAdminState().catch((error) => {
+        console.warn('[blog-page] admin state sync failed', error);
+    });
+    void refreshPosts().catch((error) => {
+        console.warn('[blog-page] post refresh failed', error);
+        setStatus('블로그 글을 최신 상태로 불러오지 못했습니다.', 'error');
+    });
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
         state.isAdmin = isBlogAdminUser(session?.user || null);

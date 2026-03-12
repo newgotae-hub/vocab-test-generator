@@ -15,6 +15,9 @@ const BLOG_SELECT_FIELDS = [
     'updated_at',
 ].join(', ');
 
+export const BLOG_IMAGE_BUCKET = 'blog-images';
+const MAX_BLOG_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
+
 const FALLBACK_BLOG_POSTS = [
     {
         id: 'fallback-priority-before-volume',
@@ -82,6 +85,28 @@ const normalizeSpacingText = (value) => {
         .trim();
 };
 
+const sanitizeBlogImageStem = (value) => {
+    return normalizeSpacingText(value)
+        .toLowerCase()
+        .replace(/\.[a-z0-9]+$/i, '')
+        .replace(/[^a-z0-9가-힣-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'image';
+};
+
+const getBlogImageExtension = (file) => {
+    const fileType = normalizeSpacingText(file?.type).toLowerCase();
+    if (fileType === 'image/jpeg') return 'jpg';
+    if (fileType === 'image/png') return 'png';
+    if (fileType === 'image/webp') return 'webp';
+    if (fileType === 'image/gif') return 'gif';
+    if (fileType === 'image/svg+xml') return 'svg';
+
+    const name = normalizeSpacingText(file?.name);
+    const match = name.match(/\.([a-z0-9]+)$/i);
+    return match ? match[1].toLowerCase() : 'png';
+};
+
 const parseBooleanLike = (value) => {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'number') return value === 1;
@@ -124,6 +149,14 @@ export const slugifyBlogText = (value) => {
         .replace(/^-|-$/g, '');
 
     return normalized || `post-${Date.now()}`;
+};
+
+const createBlogImagePath = (file, slugHint = '') => {
+    const extension = getBlogImageExtension(file);
+    const datePath = new Date().toISOString().slice(0, 10);
+    const slugPath = slugifyBlogText(slugHint || 'draft');
+    const fileStem = sanitizeBlogImageStem(file?.name || 'image');
+    return `${datePath}/${slugPath}/${crypto.randomUUID()}-${fileStem}.${extension}`;
 };
 
 export const formatBlogDate = (value) => {
@@ -230,4 +263,59 @@ export const createBlogPost = async (input) => {
     }
 
     return mapBlogPost(data);
+};
+
+export const uploadBlogImages = async (files, options = {}) => {
+    const fileList = Array.from(files || []);
+    if (!fileList.length) {
+        return [];
+    }
+
+    const slugHint = normalizeSpacingText(options?.slugHint || options?.title || 'draft');
+    const uploads = [];
+
+    for (const file of fileList) {
+        if (!(file instanceof File) || !normalizeSpacingText(file.type).toLowerCase().startsWith('image/')) {
+            throw new Error('이미지 파일만 업로드할 수 있습니다.');
+        }
+
+        if ((file.size || 0) > MAX_BLOG_IMAGE_FILE_BYTES) {
+            throw new Error('이미지는 10MB 이하만 업로드할 수 있습니다.');
+        }
+
+        const path = createBlogImagePath(file, slugHint);
+        const { error: uploadError } = await supabase
+            .storage
+            .from(BLOG_IMAGE_BUCKET)
+            .upload(path, file, {
+                cacheControl: '31536000',
+                upsert: false,
+                contentType: file.type || undefined,
+            });
+
+        if (uploadError) {
+            const message = normalizeSpacingText(uploadError.message).toLowerCase();
+            if (message.includes('bucket')) {
+                throw new Error('blog-images 스토리지 버킷이 아직 배포되지 않았습니다. Supabase migration을 먼저 적용해 주세요.');
+            }
+            if (message.includes('row-level security') || uploadError.statusCode === '403') {
+                throw new Error('관리자 권한이 있는 계정만 이미지를 업로드할 수 있습니다.');
+            }
+            throw new Error(normalizeSpacingText(uploadError.message) || '이미지 업로드에 실패했습니다.');
+        }
+
+        const { data } = supabase.storage.from(BLOG_IMAGE_BUCKET).getPublicUrl(path);
+        const publicUrl = normalizeSpacingText(data?.publicUrl);
+        if (!publicUrl) {
+            throw new Error('업로드는 완료됐지만 이미지 URL을 가져오지 못했습니다.');
+        }
+
+        uploads.push({
+            alt: sanitizeBlogImageStem(file.name).replace(/-/g, ' '),
+            path,
+            url: publicUrl,
+        });
+    }
+
+    return uploads;
 };
