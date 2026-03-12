@@ -3,3 +3,4 @@ firebase-debug.log
 .firebaserc
 firebase.json
 ads.txt
+.cloudflare-pages/
