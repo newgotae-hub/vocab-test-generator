@@ -41,6 +41,9 @@
 - 별도 상세 본문 영역으로 스크롤 이동시키던 방식은 제거했다.
 - 블로그 헤더 중앙에도 랜딩과 같은 `oxbridge-partners` 로고를 배치했다.
 - 블로그 푸터도 랜딩과 같은 구조로 추가했다.
+- 관리자 작성기에서 본문 이미지 드래그 앤 드롭 업로드를 지원하도록 확장했다.
+- 본문에 삽입한 이미지는 실시간 미리보기와 공개 글 렌더링에 반영되도록 바꿨다.
+- 첫 진입 시 fallback 글을 먼저 보여주고, 실제 데이터는 뒤에서 갱신하는 방식으로 초기 로딩 체감을 줄였다.
 
 ### 3. 저자 페이지
 
@@ -52,10 +55,7 @@
 
 - 공개 헤더에서 `홈`, `저자` 링크를 제거했다.
 - 현재는 `블로그`, `로그인`만 남아 있다.
-
-주의:
-
-- 저자 페이지는 아직 랜딩/블로그처럼 중앙 `oxbridge-partners` 로고와 동일 푸터 구조까지는 맞추지 않았다.
+- 저자 페이지 하단에도 랜딩/블로그/contact와 같은 최신 푸터를 추가했다.
 
 ### 4. 로그인 후 보호 페이지
 
@@ -89,6 +89,20 @@
 - Pages 번들 준비 스크립트가 실제 배포 자산을 포함하도록 정리했다.
 - `oxbridge-partners-black-on-white.svg`도 배포 번들에 포함되도록 추가했다.
 
+### 6. Contact 페이지
+
+관련 파일:
+
+- `contact/index.html`
+
+적용된 상태:
+
+- 공개 푸터의 편지 아이콘이 `/contact/`로 이동하도록 연결했다.
+- 새 `contact` 페이지를 추가했다.
+- `Instagram DM`과 `서비스 피드백` 두 개의 기본 문의 채널 블록을 배치했다.
+- `서비스 피드백` 카드에서 Userback 위젯을 직접 열 수 있는 버튼을 연결했다.
+- 버튼을 Userback 로드 완료 전 눌러도, 준비가 끝나는 즉시 열리도록 pending-open 처리를 추가했다.
+
 ## 중간에 시도했다가 롤백된 변경
 
 - 랜딩페이지 하단에 `oxbridge-partners` 로고를 별도 추가 블록으로 붙인 버전
@@ -121,14 +135,19 @@
 - `eda74a5` `Make Oxbridge logo background transparent`
 - `2d3ce05` `Adjust landing footer spacing and credits`
 - `9789edc` `Align blog chrome with landing branding`
+- `e39b794` `Add blog body image drag-and-drop uploads`
+- `05076b6` `Add public contact page`
+- `d276868` `Wire contact feedback card to Userback`
+- `0691f10` `Use basic Userback open on contact page`
+- `ec6c958` `Queue Userback open on contact button`
+- `5ae7282` `Move footer credit text to left column`
 
 ## 현재 미반영 요청
 
-- 블로그 관리자 글쓰기 화면을 `Notion`처럼 블록 기반으로 바꾸는 작업
-- 드래그 앤 드롭 이미지 업로드
+- 블로그 관리자 글쓰기 화면을 `Notion`처럼 완전한 블록 기반 편집기로 바꾸는 작업
 - 이미지 크기 조절, 위치 조정, 자유 편집
 
-현재 블로그 작성기는 아직 `textarea + 대표 이미지 URL` 수준이다. 이 기능은 논의만 시작했고 아직 구현하지 않았다.
+현재 블로그 작성기는 드래그 앤 드롭 이미지 업로드와 미리보기까지는 지원하지만, 아직 완전한 블록 에디터는 아니다.
 
 ## 작업 시 주의사항
 
