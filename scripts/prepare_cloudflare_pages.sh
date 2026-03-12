@@ -45,7 +45,6 @@ for relative_path in \
     favicon.svg \
     index.html \
     main.js \
-    oxbridge-partners-black-on-white.svg \
     robots.txt \
     rss.xml \
     sitemap.xml \
