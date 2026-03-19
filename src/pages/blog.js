@@ -562,10 +562,10 @@ const renderAdminComposer = () => {
                     <span class="mb-2 block text-sm font-medium text-slate-700">대표 이미지 설명 (선택)</span>
                     <input name="coverImageAlt" type="text" maxlength="160" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900">
                 </label>
-                <label class="block md:col-span-2">
+                <div class="block md:col-span-2">
                     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <span class="block text-sm font-medium text-slate-700">본문</span>
+                            <span id="blog-admin-editor-label" class="block text-sm font-medium text-slate-700">본문</span>
                             <p class="mt-1 text-xs text-slate-500">Enter로 새 문단, Shift+Enter로 줄바꿈, 이미지 드래그앤드롭/붙여넣기를 지원합니다.</p>
                         </div>
                         <div class="flex items-center gap-2">
@@ -586,7 +586,7 @@ const renderAdminComposer = () => {
                             </button>
                         </div>
                     </div>
-                    <div id="blog-admin-editor-shell" class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white transition">
+                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white transition">
                         <div class="border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Notion-style editor
                         </div>
@@ -596,7 +596,7 @@ const renderAdminComposer = () => {
                         <textarea id="blog-admin-content" name="content" required class="hidden"></textarea>
                     </div>
                     <span class="mt-2 block text-xs text-slate-500">노션처럼 블록 단위로 바로 수정할 수 있습니다. 이미지는 현재 위치 뒤에 자동 삽입됩니다.</span>
-                </label>
+                </div>
                 <div class="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <div class="flex items-center justify-between gap-3">
                         <h3 class="text-sm font-semibold text-slate-900">실시간 미리보기</h3>
