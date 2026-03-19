@@ -1630,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('PDF 볼드 한글 폰트 임베딩 실패:', fontError.message || fontError);
             }
         }
-        const resolvePdfFont = (text, options = {}) => {
+        const resolvePdfFont = (_text, options = {}) => {
             return options.bold ? boldFont : font;
         };
 
