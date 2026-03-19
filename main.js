@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadedBooks: new Set(),
         isDataReady: false,
         koreanFont: null,
+        koreanBoldFont: null,
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
@@ -1025,9 +1026,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         return bytes;
                     };
 
-                    state.koreanFont = await loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.ttf');
+                    const [regularFontResult, boldFontResult] = await Promise.allSettled([
+                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.ttf'),
+                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Bold.otf'),
+                    ]);
+
+                    if (regularFontResult.status !== 'fulfilled') {
+                        throw regularFontResult.reason;
+                    }
+
+                    state.koreanFont = regularFontResult.value;
+                    if (boldFontResult.status === 'fulfilled') {
+                        state.koreanBoldFont = boldFontResult.value;
+                    } else {
+                        state.koreanBoldFont = null;
+                        console.warn('PDF 볼드 한글 폰트 로드 실패:', boldFontResult.reason?.message || boldFontResult.reason);
+                    }
                 } catch (fontError) {
                     state.koreanFont = null;
+                    state.koreanBoldFont = null;
                     console.warn('한글 폰트 로드 실패:', fontError.message || fontError);
                 }
             }
@@ -1548,12 +1565,29 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
         }
-        let latinTitleFont = font;
+        let boldFont = font;
+        if (state.koreanBoldFont) {
+            try {
+                boldFont = await pdfDoc.embedFont(state.koreanBoldFont, { subset: true });
+            } catch (fontError) {
+                boldFont = font;
+                console.warn('PDF 볼드 한글 폰트 임베딩 실패:', fontError.message || fontError);
+            }
+        }
+        let latinFont = font;
         if (StandardFonts?.Helvetica) {
             try {
-                latinTitleFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
             } catch (_) {
-                latinTitleFont = font;
+                latinFont = font;
+            }
+        }
+        let latinBoldFont = boldFont;
+        if (StandardFonts?.HelveticaBold) {
+            try {
+                latinBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            } catch (_) {
+                latinBoldFont = boldFont;
             }
         }
         const canRenderWithFont = (targetFont, text) => {
@@ -1564,10 +1598,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return false;
             }
         };
-        const resolvePdfFont = (text) => {
-            if (hasKoreanText(text)) return font;
-            if (latinTitleFont !== font && canRenderWithFont(latinTitleFont, text)) return latinTitleFont;
-            return font;
+        const resolvePdfFont = (text, options = {}) => {
+            const useBold = Boolean(options.bold);
+            const defaultFont = useBold ? boldFont : font;
+            const latinCandidate = useBold ? latinBoldFont : latinFont;
+            if (hasKoreanText(text)) return defaultFont;
+            if (latinCandidate !== defaultFont && canRenderWithFont(latinCandidate, text)) return latinCandidate;
+            return defaultFont;
         };
 
         const pages = [];
@@ -1659,8 +1696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const drawRegularText = (targetPage, text, options = {}, drawOptions = {}) => {
-            const { boostKorean = true } = drawOptions;
-            const resolvedFont = options.font || resolvePdfFont(text);
+            const resolvedFont = options.font || resolvePdfFont(text, drawOptions);
             try {
                 targetPage.drawText(text, {
                     ...options,
@@ -1669,25 +1705,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {
                 targetPage.drawText(text, {
                     ...options,
-                    font,
-                });
-            }
-            const shouldBoostKorean = boostKorean && resolvedFont === font && hasKoreanText(text);
-            if (shouldBoostKorean) {
-                targetPage.drawText(text, {
-                    ...options,
-                    font: resolvedFont,
-                    x: (options.x || 0) + 0.18,
+                    font: resolvePdfFont(text, drawOptions),
                 });
             }
         };
 
         const drawStrongText = (targetPage, text, options = {}) => {
-            drawRegularText(targetPage, text, options, { boostKorean: false });
-            drawRegularText(targetPage, text, {
-                ...options,
-                x: (options.x || 0) + 0.45,
-            }, { boostKorean: false });
+            drawRegularText(targetPage, text, options, { bold: true });
         };
 
         const decoratePage = (currentPage) => {
@@ -1727,7 +1751,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const headerSize = isAnswerSheet ? answerHeaderSize : questionHeaderSize;
             const fullTitle = sectionTitle;
-            const titleFont = resolvePdfFont(fullTitle);
+            const titleFont = resolvePdfFont(fullTitle, { bold: true });
             const renderedTitle = truncateToFit(
                 fullTitle,
                 titleAreaWidth,
@@ -1831,6 +1855,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const numberText = `${itemIndex + 1}.`;
                     const itemText = `${numberTextDotSpacing}${String(values[itemIndex])}`;
                     const itemY = y - rowTextOffset;
+                    const itemFont = resolvePdfFont(itemText);
+                    const renderedItemText = truncateToFit(
+                        itemText,
+                        columnWidth - numberColumnWidth,
+                        bodyFontSize,
+                        itemFont
+                    );
 
                     drawRegularText(page, numberText, {
                         x: x + 2,
@@ -1838,9 +1869,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         size: bodyFontSize,
                         color: mutedColor
                     });
-                    drawRegularText(page, truncateToFit(itemText, columnWidth - numberColumnWidth, bodyFontSize), {
+                    drawRegularText(page, renderedItemText, {
                         x: x + numberColumnWidth + numberToTextGap,
                         y: itemY,
+                        font: itemFont,
                         size: bodyFontSize,
                         color: frameColor,
                     });
