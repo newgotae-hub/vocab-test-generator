@@ -34,19 +34,6 @@ const shouldInlineBlogImageFallback = (error) => {
         || error?.status === 403;
 };
 
-const sanitizeBlogStorageKeyPart = (value, fallback = 'item') => {
-    const normalized = normalizeSpacingText(value)
-        .toLowerCase()
-        .replace(/\.[^./\\]+$/u, '')
-        .replace(/[^\p{Letter}\p{Number}-]+/gu, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-
-    return normalized || fallback;
-};
-
-const sanitizeBlogImageStem = (value) => sanitizeBlogStorageKeyPart(value, 'image');
-
 const getBlogImageAltText = (value, fallback = '본문 이미지') => {
     const normalized = normalizeSpacingText(value)
         .replace(/\.[^./\\]+$/u, '')
@@ -76,12 +63,11 @@ const parseBooleanLike = (value) => {
     return ['1', 'true', 'yes', 'y', 'admin', 'enabled', 'on'].includes(normalized);
 };
 
-const createBlogImagePath = (file, slugHint = '') => {
+const createBlogImagePath = (file) => {
     const extension = getBlogImageExtension(file);
     const datePath = new Date().toISOString().slice(0, 10);
-    const slugPath = sanitizeBlogStorageKeyPart(slugHint || 'draft', 'draft');
-    const fileStem = sanitizeBlogImageStem(file?.name || 'image');
-    return `${datePath}/${slugPath}/${crypto.randomUUID()}-${fileStem}.${extension}`;
+    // Keep storage keys opaque so uploads never depend on the user's language or filename.
+    return `${datePath}/${crypto.randomUUID()}.${extension}`;
 };
 
 const readBlogFileAsDataUrl = (file) => new Promise((resolve, reject) => {
@@ -231,7 +217,6 @@ export const uploadBlogImages = async (files, options = {}) => {
         return [];
     }
 
-    const slugHint = normalizeSpacingText(options?.slugHint || options?.title || 'draft');
     const uploads = [];
 
     for (const file of fileList) {
@@ -243,7 +228,7 @@ export const uploadBlogImages = async (files, options = {}) => {
             throw new Error('이미지는 10MB 이하만 업로드할 수 있습니다.');
         }
 
-        const path = createBlogImagePath(file, slugHint);
+        const path = createBlogImagePath(file);
         const { error: uploadError } = await supabase
             .storage
             .from(BLOG_IMAGE_BUCKET)
