@@ -19,12 +19,184 @@ const state = {
     selectedSlug: '',
     isAdmin: false,
     isComposerOpen: false,
+    composerDraft: null,
+    flushComposerDraft: null,
 };
 
 const elements = {
     list: document.getElementById('blog-post-list'),
     status: document.getElementById('blog-page-status'),
     adminShell: document.getElementById('blog-admin-shell'),
+};
+
+const BLOG_COMPOSER_DRAFT_DB_NAME = 'voca-plus-blog-drafts';
+const BLOG_COMPOSER_DRAFT_STORE_NAME = 'drafts';
+const BLOG_COMPOSER_DRAFT_KEY = 'blog-admin-composer';
+const BLOG_COMPOSER_DRAFT_STORAGE_KEY = 'voca-plus-blog-admin-draft';
+const BLOG_COMPOSER_AUTOSAVE_DELAY_MS = 600;
+const BLOG_COMPOSER_DEFAULTS = {
+    category: '서비스 업데이트',
+    authorName: '평가원기출VOCA',
+    title: '',
+    summary: '',
+    slug: '',
+    coverImageUrl: '',
+    coverImageAlt: '',
+    content: '',
+    updatedAt: 0,
+};
+
+let blogComposerDraftDbPromise = null;
+
+const requestToPromise = (request) => new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB request failed.'));
+});
+
+const openBlogComposerDraftDb = async () => {
+    if (typeof indexedDB === 'undefined') return null;
+    if (blogComposerDraftDbPromise) return blogComposerDraftDbPromise;
+
+    blogComposerDraftDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(BLOG_COMPOSER_DRAFT_DB_NAME, 1);
+
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(BLOG_COMPOSER_DRAFT_STORE_NAME)) {
+                db.createObjectStore(BLOG_COMPOSER_DRAFT_STORE_NAME, { keyPath: 'key' });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Failed to open blog draft database.'));
+    }).catch((error) => {
+        blogComposerDraftDbPromise = null;
+        throw error;
+    });
+
+    return blogComposerDraftDbPromise;
+};
+
+const normalizeBlogComposerDraft = (draft) => ({
+    category: String(draft?.category ?? BLOG_COMPOSER_DEFAULTS.category),
+    authorName: String(draft?.authorName ?? BLOG_COMPOSER_DEFAULTS.authorName),
+    title: String(draft?.title ?? ''),
+    summary: String(draft?.summary ?? ''),
+    slug: String(draft?.slug ?? ''),
+    coverImageUrl: String(draft?.coverImageUrl ?? ''),
+    coverImageAlt: String(draft?.coverImageAlt ?? ''),
+    content: String(draft?.content ?? ''),
+    updatedAt: Number(draft?.updatedAt || Date.now()),
+});
+
+const isBlogComposerDraftEmpty = (draft) => {
+    const normalized = normalizeBlogComposerDraft(draft);
+    return !normalized.title.trim()
+        && !normalized.summary.trim()
+        && !normalized.slug.trim()
+        && !normalized.coverImageUrl.trim()
+        && !normalized.coverImageAlt.trim()
+        && !normalized.content.trim()
+        && normalized.category.trim() === BLOG_COMPOSER_DEFAULTS.category
+        && normalized.authorName.trim() === BLOG_COMPOSER_DEFAULTS.authorName;
+};
+
+const readBlogComposerDraftFromLocalStorage = () => {
+    if (typeof localStorage === 'undefined') return null;
+
+    try {
+        const rawValue = localStorage.getItem(BLOG_COMPOSER_DRAFT_STORAGE_KEY);
+        if (!rawValue) return null;
+        return normalizeBlogComposerDraft(JSON.parse(rawValue));
+    } catch (error) {
+        console.warn('[blog-page] draft localStorage read failed', error);
+        return null;
+    }
+};
+
+const writeBlogComposerDraftToLocalStorage = (draft) => {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+        localStorage.setItem(
+            BLOG_COMPOSER_DRAFT_STORAGE_KEY,
+            JSON.stringify(normalizeBlogComposerDraft(draft))
+        );
+    } catch (error) {
+        console.warn('[blog-page] draft localStorage write failed', error);
+    }
+};
+
+const clearBlogComposerDraftFromLocalStorage = () => {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+        localStorage.removeItem(BLOG_COMPOSER_DRAFT_STORAGE_KEY);
+    } catch (error) {
+        console.warn('[blog-page] draft localStorage clear failed', error);
+    }
+};
+
+const loadBlogComposerDraft = async () => {
+    try {
+        const db = await openBlogComposerDraftDb();
+        if (!db) {
+            return readBlogComposerDraftFromLocalStorage();
+        }
+
+        const transaction = db.transaction(BLOG_COMPOSER_DRAFT_STORE_NAME, 'readonly');
+        const store = transaction.objectStore(BLOG_COMPOSER_DRAFT_STORE_NAME);
+        const result = await requestToPromise(store.get(BLOG_COMPOSER_DRAFT_KEY));
+        const draft = result?.draft ? normalizeBlogComposerDraft(result.draft) : null;
+
+        if (draft) {
+            clearBlogComposerDraftFromLocalStorage();
+            return draft;
+        }
+
+        return readBlogComposerDraftFromLocalStorage();
+    } catch (error) {
+        console.warn('[blog-page] draft load failed', error);
+        return readBlogComposerDraftFromLocalStorage();
+    }
+};
+
+const saveBlogComposerDraft = async (draft) => {
+    const normalizedDraft = normalizeBlogComposerDraft(draft);
+
+    try {
+        const db = await openBlogComposerDraftDb();
+        if (!db) {
+            writeBlogComposerDraftToLocalStorage(normalizedDraft);
+            return;
+        }
+
+        const transaction = db.transaction(BLOG_COMPOSER_DRAFT_STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(BLOG_COMPOSER_DRAFT_STORE_NAME);
+        await requestToPromise(store.put({
+            key: BLOG_COMPOSER_DRAFT_KEY,
+            draft: normalizedDraft,
+        }));
+        clearBlogComposerDraftFromLocalStorage();
+    } catch (error) {
+        console.warn('[blog-page] draft save failed, falling back to localStorage', error);
+        writeBlogComposerDraftToLocalStorage(normalizedDraft);
+    }
+};
+
+const clearBlogComposerDraft = async () => {
+    try {
+        const db = await openBlogComposerDraftDb();
+        if (db) {
+            const transaction = db.transaction(BLOG_COMPOSER_DRAFT_STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(BLOG_COMPOSER_DRAFT_STORE_NAME);
+            await requestToPromise(store.delete(BLOG_COMPOSER_DRAFT_KEY));
+        }
+    } catch (error) {
+        console.warn('[blog-page] draft clear failed', error);
+    } finally {
+        clearBlogComposerDraftFromLocalStorage();
+    }
 };
 
 const escapeHtml = (value) => {
@@ -311,6 +483,7 @@ const renderAdminComposer = () => {
 
     if (!state.isAdmin) {
         state.isComposerOpen = false;
+        state.flushComposerDraft = null;
         elements.adminShell.classList.add('hidden');
         elements.adminShell.innerHTML = '';
         return;
@@ -319,6 +492,7 @@ const renderAdminComposer = () => {
     elements.adminShell.classList.remove('hidden');
 
     if (!state.isComposerOpen) {
+        state.flushComposerDraft = null;
         elements.adminShell.innerHTML = `
             <section class="mb-12 rounded-[2rem] border border-amber-200 bg-amber-50/70 p-6 md:p-8">
                 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -448,12 +622,23 @@ const renderAdminComposer = () => {
     const dropzone = document.getElementById('blog-admin-dropzone');
     const pickImageButton = form?.querySelector('[data-blog-editor-action="pick-images"]');
     const addParagraphButton = form?.querySelector('[data-blog-editor-action="add-paragraph"]');
-    if (!(form instanceof HTMLFormElement) || !(formStatus instanceof HTMLElement)) return;
+    if (!(form instanceof HTMLFormElement) || !(formStatus instanceof HTMLElement) || !(contentInput instanceof HTMLTextAreaElement)) return;
+
+    const categoryInput = form.elements.namedItem('category');
+    const authorInput = form.elements.namedItem('authorName');
+    const titleInput = form.elements.namedItem('title');
+    const summaryInput = form.elements.namedItem('summary');
+    const slugInput = form.elements.namedItem('slug');
+    const coverImageUrlInput = form.elements.namedItem('coverImageUrl');
+    const coverImageAltInput = form.elements.namedItem('coverImageAlt');
+    const restoredDraft = state.composerDraft ? normalizeBlogComposerDraft(state.composerDraft) : null;
 
     let isUploadingImages = false;
     let pendingImageReplaceBlockId = '';
+    let autosaveTimerId = 0;
+    let lastSavedDraftSnapshot = restoredDraft ? JSON.stringify(restoredDraft) : '';
     const editorState = {
-        blocks: createBlogEditorBlocks(''),
+        blocks: createBlogEditorBlocks(restoredDraft?.content || ''),
         focusedBlockId: '',
     };
 
@@ -486,8 +671,85 @@ const renderAdminComposer = () => {
         }
     };
 
+    const buildComposerDraft = () => normalizeBlogComposerDraft({
+        category: categoryInput instanceof HTMLInputElement ? categoryInput.value : BLOG_COMPOSER_DEFAULTS.category,
+        authorName: authorInput instanceof HTMLInputElement ? authorInput.value : BLOG_COMPOSER_DEFAULTS.authorName,
+        title: titleInput instanceof HTMLInputElement ? titleInput.value : '',
+        summary: summaryInput instanceof HTMLTextAreaElement ? summaryInput.value : '',
+        slug: slugInput instanceof HTMLInputElement ? slugInput.value : '',
+        coverImageUrl: coverImageUrlInput instanceof HTMLInputElement ? coverImageUrlInput.value : '',
+        coverImageAlt: coverImageAltInput instanceof HTMLInputElement ? coverImageAltInput.value : '',
+        content: contentInput.value,
+        updatedAt: Date.now(),
+    });
+
+    const clearAutosaveTimer = () => {
+        if (!autosaveTimerId) return;
+        window.clearTimeout(autosaveTimerId);
+        autosaveTimerId = 0;
+    };
+
+    const resetDraftStatusMessage = () => {
+        if (!formStatus.textContent || formStatus.textContent === '임시저장됨' || formStatus.textContent === '임시저장본을 복원했습니다.') {
+            setFormStatus('새 글은 저장 즉시 공개됩니다.');
+        }
+    };
+
+    const persistComposerDraft = async ({ silent = false, force = false } = {}) => {
+        const draft = buildComposerDraft();
+
+        if (isBlogComposerDraftEmpty(draft)) {
+            clearAutosaveTimer();
+            lastSavedDraftSnapshot = '';
+            state.composerDraft = null;
+            await clearBlogComposerDraft();
+            if (!silent) {
+                resetDraftStatusMessage();
+            }
+            return;
+        }
+
+        const snapshot = JSON.stringify(draft);
+        state.composerDraft = draft;
+        if (!force && snapshot === lastSavedDraftSnapshot) {
+            return;
+        }
+
+        await saveBlogComposerDraft(draft);
+        lastSavedDraftSnapshot = snapshot;
+        if (!silent) {
+            setFormStatus('임시저장됨');
+        }
+    };
+
+    const scheduleComposerDraftPersist = ({ delay = BLOG_COMPOSER_AUTOSAVE_DELAY_MS, silent = false, force = false } = {}) => {
+        clearAutosaveTimer();
+        autosaveTimerId = window.setTimeout(() => {
+            autosaveTimerId = 0;
+            void persistComposerDraft({ silent, force });
+        }, delay);
+    };
+
+    const flushComposerDraft = () => {
+        clearAutosaveTimer();
+        const draft = buildComposerDraft();
+
+        if (isBlogComposerDraftEmpty(draft)) {
+            state.composerDraft = null;
+            clearBlogComposerDraftFromLocalStorage();
+            void clearBlogComposerDraft();
+            return;
+        }
+
+        state.composerDraft = draft;
+        lastSavedDraftSnapshot = JSON.stringify(draft);
+        writeBlogComposerDraftToLocalStorage(draft);
+        void saveBlogComposerDraft(draft);
+    };
+
+    state.flushComposerDraft = flushComposerDraft;
+
     const syncEditorContent = () => {
-        if (!(contentInput instanceof HTMLTextAreaElement)) return;
         contentInput.value = serializeBlogEditorBlocks(editorState.blocks);
         renderComposerPreview(contentInput, preview);
     };
@@ -590,6 +852,7 @@ const renderAdminComposer = () => {
 
         editorState.focusedBlockId = newBlock.id;
         renderEditorBlocks({ blockId: newBlock.id, offset: focusOffset });
+        scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
         return newBlock.id;
     };
 
@@ -605,6 +868,7 @@ const renderAdminComposer = () => {
         const focusBlockId = previousParagraphId || nextParagraphId || editorState.blocks[0]?.id || '';
         editorState.focusedBlockId = focusBlockId;
         renderEditorBlocks({ blockId: focusBlockId, offset: 'end' });
+        scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
     };
 
     const insertImagesAfterBlock = (blockId, uploads) => {
@@ -623,6 +887,7 @@ const renderAdminComposer = () => {
         editorState.blocks.splice(insertIndex + imageBlocks.length, 0, paragraphBlock);
         editorState.focusedBlockId = paragraphBlock.id;
         renderEditorBlocks({ blockId: paragraphBlock.id, offset: 'start' });
+        scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
     };
 
     const replaceImageBlock = (blockId, uploads) => {
@@ -647,6 +912,7 @@ const renderAdminComposer = () => {
         }
 
         renderEditorBlocks();
+        scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
     };
 
     const uploadAndInsertImages = async (files, options = {}) => {
@@ -697,7 +963,22 @@ const renderAdminComposer = () => {
         }
     };
 
-    renderEditorBlocks({ blockId: editorState.blocks[0]?.id || '', offset: 'start' });
+    if (restoredDraft) {
+        if (categoryInput instanceof HTMLInputElement) categoryInput.value = restoredDraft.category;
+        if (authorInput instanceof HTMLInputElement) authorInput.value = restoredDraft.authorName;
+        if (titleInput instanceof HTMLInputElement) titleInput.value = restoredDraft.title;
+        if (summaryInput instanceof HTMLTextAreaElement) summaryInput.value = restoredDraft.summary;
+        if (slugInput instanceof HTMLInputElement) slugInput.value = restoredDraft.slug;
+        if (coverImageUrlInput instanceof HTMLInputElement) coverImageUrlInput.value = restoredDraft.coverImageUrl;
+        if (coverImageAltInput instanceof HTMLInputElement) coverImageAltInput.value = restoredDraft.coverImageAlt;
+    }
+
+    editorState.focusedBlockId = editorState.blocks[0]?.id || '';
+    renderEditorBlocks({ blockId: editorState.focusedBlockId, offset: 'start' });
+
+    if (restoredDraft) {
+        setFormStatus('임시저장본을 복원했습니다.', 'success');
+    }
 
     if (editorRoot instanceof HTMLElement) {
         editorRoot.addEventListener('focusin', (event) => {
@@ -721,6 +1002,7 @@ const renderAdminComposer = () => {
                     block.text = getBlogEditorTextFromElement(target);
                     editorState.focusedBlockId = blockId;
                     syncEditorContent();
+                    scheduleComposerDraftPersist();
                 }
                 return;
             }
@@ -732,6 +1014,7 @@ const renderAdminComposer = () => {
                     block.alt = target.value;
                     editorState.focusedBlockId = blockId;
                     syncEditorContent();
+                    scheduleComposerDraftPersist();
                 }
             }
         });
@@ -823,6 +1106,13 @@ const renderAdminComposer = () => {
         });
     }
 
+    form.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (editorRoot instanceof HTMLElement && editorRoot.contains(target)) return;
+        scheduleComposerDraftPersist();
+    });
+
     if (dropzone instanceof HTMLElement) {
         ['dragenter', 'dragover'].forEach((eventName) => {
             dropzone.addEventListener(eventName, (event) => {
@@ -847,6 +1137,7 @@ const renderAdminComposer = () => {
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+        clearAutosaveTimer();
         setFormStatus('저장 중입니다...');
 
         const submitButton = form.querySelector('button[type="submit"]');
@@ -870,6 +1161,9 @@ const renderAdminComposer = () => {
 
             state.posts = [post, ...state.posts.filter((item) => item.slug !== post.slug)];
             state.selectedSlug = post.slug;
+            await clearBlogComposerDraft();
+            state.composerDraft = null;
+            lastSavedDraftSnapshot = '';
             form.reset();
             const categoryInput = form.elements.namedItem('category');
             if (categoryInput instanceof HTMLInputElement) categoryInput.value = '서비스 업데이트';
@@ -947,6 +1241,10 @@ const syncAdminState = async () => {
 
     const user = userData?.user || sessionData?.session?.user || null;
     state.isAdmin = isBlogAdminUser(user);
+    state.composerDraft = state.isAdmin ? await loadBlogComposerDraft() : null;
+    if (state.isAdmin && state.composerDraft) {
+        state.isComposerOpen = true;
+    }
     renderAdminComposer();
 };
 
@@ -970,6 +1268,20 @@ export const initBlogPage = async () => {
         console.warn('[blog-page] auth nav init failed', error);
     });
 
+    const flushPendingComposerDraft = () => {
+        if (typeof state.flushComposerDraft === 'function') {
+            state.flushComposerDraft();
+        }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            flushPendingComposerDraft();
+        }
+    });
+    window.addEventListener('pagehide', flushPendingComposerDraft);
+    window.addEventListener('beforeunload', flushPendingComposerDraft);
+
     bindAdminComposer();
     bindPostSelection();
     void syncAdminState().catch((error) => {
@@ -982,6 +1294,10 @@ export const initBlogPage = async () => {
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
         state.isAdmin = isBlogAdminUser(session?.user || null);
+        state.composerDraft = state.isAdmin ? await loadBlogComposerDraft() : null;
+        if (state.isAdmin && state.composerDraft) {
+            state.isComposerOpen = true;
+        }
         renderAdminComposer();
     });
 };
