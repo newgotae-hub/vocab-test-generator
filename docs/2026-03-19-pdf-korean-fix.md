@@ -35,6 +35,7 @@
 - Updated body text truncation to measure width with the resolved font actually used for drawing.
 - Added versioned asset query strings for the PDF font fetch and generator `main.js` include so browsers do not keep serving stale cached PDF assets after deployment.
 - Switched the PDF Korean font assets again to `assets/fonts/NanumGothic-Regular.ttf` and `assets/fonts/NanumGothic-Bold.ttf` to cut browser-side PDF generation cost from tens of megabytes per run to roughly 4MB total font payload.
+- Fixed blob download handling so the object URL is not revoked immediately after `click()`, which could cancel the start of larger downloads in some browsers.
 
 ## Verification
 

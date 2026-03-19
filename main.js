@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const PDF_ASSET_VERSION = '20260319e';
+    const PDF_ASSET_VERSION = '20260319f';
     const MAX_QUESTION_COUNT = 200;
     const UNVERIFIED_MAX_QUESTION_COUNT = 50;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
@@ -689,14 +689,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const downloadBlob = (blob, filename) => {
+        if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === 'function') {
+            window.navigator.msSaveOrOpenBlob(blob, filename);
+            return;
+        }
+
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
+        link.rel = 'noopener';
+        link.style.display = 'none';
         document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
+        requestAnimationFrame(() => link.click());
+        window.setTimeout(() => {
+            link.remove();
+            URL.revokeObjectURL(url);
+        }, 60000);
     };
     const DOWNLOAD_GAP_MS = 800;
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
