@@ -34,6 +34,7 @@
 - Updated PDF font resolution so regular/bold Korean and Latin text use the correct font variant.
 - Updated body text truncation to measure width with the resolved font actually used for drawing.
 - Added versioned asset query strings for the PDF font fetch and generator `main.js` include so browsers do not keep serving stale cached PDF assets after deployment.
+- Switched the PDF Korean font assets again to `assets/fonts/NanumGothic-Regular.ttf` and `assets/fonts/NanumGothic-Bold.ttf` to cut browser-side PDF generation cost from tens of megabytes per run to roughly 4MB total font payload.
 
 ## Verification
 

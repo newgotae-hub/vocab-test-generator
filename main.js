@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const PDF_ASSET_VERSION = '20260319d';
+    const PDF_ASSET_VERSION = '20260319e';
     const MAX_QUESTION_COUNT = 200;
     const UNVERIFIED_MAX_QUESTION_COUNT = 50;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
@@ -1028,8 +1028,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                     const [regularFontResult, boldFontResult] = await Promise.allSettled([
-                        loadPdfFontBuffer(`/assets/fonts/NotoSansKR-Regular.otf?v=${PDF_ASSET_VERSION}`),
-                        loadPdfFontBuffer(`/assets/fonts/NotoSansKR-Bold.otf?v=${PDF_ASSET_VERSION}`),
+                        loadPdfFontBuffer(`/assets/fonts/NanumGothic-Regular.ttf?v=${PDF_ASSET_VERSION}`),
+                        loadPdfFontBuffer(`/assets/fonts/NanumGothic-Bold.ttf?v=${PDF_ASSET_VERSION}`),
                     ]);
 
                     if (regularFontResult.status !== 'fulfilled') {
@@ -1037,12 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     state.koreanFont = regularFontResult.value;
-                    if (boldFontResult.status === 'fulfilled') {
-                        state.koreanBoldFont = boldFontResult.value;
-                    } else {
-                        state.koreanBoldFont = null;
-                        console.warn('PDF 볼드 한글 폰트 로드 실패:', boldFontResult.reason?.message || boldFontResult.reason);
-                    }
+                    state.koreanBoldFont = boldFontResult.status === 'fulfilled' ? boldFontResult.value : null;
                 } catch (fontError) {
                     state.koreanFont = null;
                     state.koreanBoldFont = null;
