@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const PDF_ASSET_VERSION = '20260319f';
+    const PDF_ASSET_VERSION = '20260319g';
+    const ENTITLEMENT_REQUEST_TIMEOUT_MS = 8000;
     const MAX_QUESTION_COUNT = 200;
     const UNVERIFIED_MAX_QUESTION_COUNT = 50;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isDataReady: false,
         koreanFont: null,
         koreanBoldFont: null,
+        preparedDownloads: [],
         selectedBook: null,
         selectedChapter: null,
         selectedTocs: new Set(),
@@ -86,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             examTitle: document.getElementById('exam-title'),
             includeDerivatives: document.getElementById('include-derivatives'),
             includeDerivativesGroup: document.getElementById('include-derivatives-group'),
+            generatedDownloads: document.getElementById('generated-downloads'),
         }
     };
     const bookLibraryCard = state.ui.bookLibrary.closest('.card');
@@ -267,6 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const normalizedToken = normalizeSpacingText(token);
         if (!normalizedToken) throw new Error('인증 토큰이 필요합니다.');
 
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), ENTITLEMENT_REQUEST_TIMEOUT_MS);
         const response = await fetch(ENTITLEMENT_API_PATH, {
             method: 'POST',
             headers: {
@@ -274,7 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 authorization: `Bearer ${normalizedToken}`,
             },
             body: JSON.stringify({ action }),
-        });
+            signal: controller.signal,
+        }).finally(() => window.clearTimeout(timeoutId));
         const payload = await response.json().catch(() => null);
         if (!response.ok || !payload?.ok) {
             const message = normalizeSpacingText(payload?.error) || '권한 정보를 불러오지 못했습니다.';
@@ -688,13 +694,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const createDownloadUrl = (blob) => URL.createObjectURL(blob);
+    const releasePreparedDownloads = () => {
+        state.preparedDownloads.forEach((entry) => {
+            try {
+                URL.revokeObjectURL(entry.url);
+            } catch (_) {
+                // Ignore cleanup failure.
+            }
+        });
+        state.preparedDownloads = [];
+    };
+    const renderPreparedDownloads = (files) => {
+        const container = state.ui.generatedDownloads;
+        if (!container) return;
+
+        releasePreparedDownloads();
+        container.innerHTML = '';
+
+        if (!Array.isArray(files) || files.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        const hint = document.createElement('p');
+        hint.className = 'field-hint';
+        hint.textContent = '자동 다운로드가 시작되지 않으면 아래 파일을 눌러 받으세요.';
+        container.appendChild(hint);
+
+        files.forEach((file) => {
+            const url = createDownloadUrl(file.blob);
+            state.preparedDownloads.push({ url });
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.textContent = file.name;
+            link.className = 'button-primary';
+            link.style.display = 'inline-flex';
+            link.style.marginTop = '8px';
+            link.style.marginRight = '8px';
+            container.appendChild(link);
+        });
+
+        container.classList.remove('hidden');
+    };
     const downloadBlob = (blob, filename) => {
         if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === 'function') {
             window.navigator.msSaveOrOpenBlob(blob, filename);
             return;
         }
 
-        const url = URL.createObjectURL(blob);
+        const url = createDownloadUrl(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
@@ -1393,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseFileName = normalizeFileName(`${getBookPrefixForFile(state.selectedBook)}${settings.fileBaseName || settings.examTitle}`);
         showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
+            renderPreparedDownloads([]);
             const generatedFiles = [];
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
@@ -1419,6 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!(await consumeDailyDownloadQuota())) {
                 throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
             }
+            renderPreparedDownloads(generatedFiles);
             for (let i = 0; i < generatedFiles.length; i += 1) {
                 const file = generatedFiles[i];
                 downloadBlob(file.blob, file.name);
