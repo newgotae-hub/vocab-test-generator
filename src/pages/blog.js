@@ -586,17 +586,13 @@ const renderAdminComposer = () => {
                             </button>
                         </div>
                     </div>
-                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.05)] transition">
-                        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
-                            <span class="font-semibold uppercase tracking-[0.18em] text-slate-500">Editor</span>
-                            <span class="text-[11px] text-slate-400">이미지 붙여넣기, 드롭, Shift+Enter 줄바꿈</span>
-                        </div>
-                        <div id="blog-admin-dropzone" class="min-h-[20rem] bg-white p-4 transition md:p-5">
-                            <div id="blog-admin-editor" class="space-y-1"></div>
+                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.06)] transition">
+                        <div id="blog-admin-dropzone" class="min-h-[30rem] bg-white px-6 py-7 transition md:px-10 md:py-10">
+                            <div id="blog-admin-editor" class="space-y-6"></div>
                         </div>
                         <textarea id="blog-admin-content" name="content" required class="hidden"></textarea>
                     </div>
-                    <span class="mt-2 block text-xs text-slate-500">노션처럼 이어지는 본문 흐름으로 수정됩니다. 이미지는 현재 위치 뒤에 삽입됩니다.</span>
+                    <span class="mt-2 block text-xs text-slate-500">실제 게시글 레이아웃에 가깝게 바로 입력됩니다. 이미지는 현재 위치 뒤에 삽입됩니다.</span>
                 </div>
                 <div class="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <div class="flex items-center justify-between gap-3">
@@ -795,18 +791,15 @@ const renderAdminComposer = () => {
         editorRoot.innerHTML = editorState.blocks.map((block) => {
             if (block.type === 'image') {
                 return `
-                    <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative my-3 overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Image</div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">아래 문단</button>
-                                <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">이미지 교체</button>
-                                <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">삭제</button>
-                            </div>
+                    <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative my-2">
+                        <div class="absolute right-0 top-0 z-10 flex flex-wrap items-center gap-2 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-100">아래 문단</button>
+                            <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-100">이미지 교체</button>
+                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">삭제</button>
                         </div>
-                        <div class="mt-3 overflow-hidden rounded-[1.1rem] border border-slate-200 bg-white">
+                        <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
                             <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                        </div>
+                        </figure>
                         <label class="mt-3 block">
                             <span class="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">이미지 설명</span>
                             <input
@@ -822,23 +815,19 @@ const renderAdminComposer = () => {
             }
 
             return `
-                <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative -mx-2 rounded-xl px-2 py-1 transition hover:bg-slate-50/70 focus-within:bg-slate-50/70">
-                    <div class="flex items-start gap-2">
-                        <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-base text-slate-400 transition hover:bg-white hover:text-slate-700">+</button>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div
-                                contenteditable="true"
-                                spellcheck="true"
-                                data-editor-paragraph="${escapeHtml(block.id)}"
-                                data-block-id="${escapeHtml(block.id)}"
-                                class="min-h-[2rem] px-1 py-1 text-[1.04rem] leading-8 text-slate-800 outline-none whitespace-pre-wrap"
-                            >${paragraphTextToEditableHtml(block.text)}</div>
-                        </div>
-                        <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-slate-300 transition hover:bg-white hover:text-slate-600">×</button>
-                        </div>
+                <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative">
+                    <div class="absolute right-0 top-1 z-10 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                        <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-base text-slate-300 transition hover:bg-slate-100 hover:text-slate-700">+</button>
+                        <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-slate-300 transition hover:bg-slate-100 hover:text-slate-600">×</button>
+                    </div>
+                    <div class="pr-12">
+                        <div
+                            contenteditable="true"
+                            spellcheck="true"
+                            data-editor-paragraph="${escapeHtml(block.id)}"
+                            data-block-id="${escapeHtml(block.id)}"
+                            class="min-h-[2.8rem] py-0.5 text-[1.08rem] leading-[2.1rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[2.15rem]"
+                        >${paragraphTextToEditableHtml(block.text)}</div>
                     </div>
                 </article>
             `;
