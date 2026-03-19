@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const PDF_ASSET_VERSION = '20260319d';
     const MAX_QUESTION_COUNT = 200;
     const UNVERIFIED_MAX_QUESTION_COUNT = 50;
     const GENERATOR_HISTORY_KEY = 'voca_plus_generator_history_v1';
@@ -1027,8 +1028,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                     const [regularFontResult, boldFontResult] = await Promise.allSettled([
-                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.otf'),
-                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Bold.otf'),
+                        loadPdfFontBuffer(`/assets/fonts/NotoSansKR-Regular.otf?v=${PDF_ASSET_VERSION}`),
+                        loadPdfFontBuffer(`/assets/fonts/NotoSansKR-Bold.otf?v=${PDF_ASSET_VERSION}`),
                     ]);
 
                     if (regularFontResult.status !== 'fulfilled') {

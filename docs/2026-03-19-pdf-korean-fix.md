@@ -33,6 +33,7 @@
 - Removed the Korean overdraw pass from PDF text rendering.
 - Updated PDF font resolution so regular/bold Korean and Latin text use the correct font variant.
 - Updated body text truncation to measure width with the resolved font actually used for drawing.
+- Added versioned asset query strings for the PDF font fetch and generator `main.js` include so browsers do not keep serving stale cached PDF assets after deployment.
 
 ## Verification
 
