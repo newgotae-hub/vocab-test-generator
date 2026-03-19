@@ -1027,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                     const [regularFontResult, boldFontResult] = await Promise.allSettled([
-                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.ttf'),
+                        loadPdfFontBuffer('/assets/fonts/NotoSansKR-Regular.otf'),
                         loadPdfFontBuffer('/assets/fonts/NotoSansKR-Bold.otf'),
                     ]);
 
