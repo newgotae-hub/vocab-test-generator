@@ -9,6 +9,10 @@ import {
     listBlogPosts,
     uploadBlogImages,
 } from '/src/lib/blog.js';
+import {
+    estimateBlogReadingMinutes,
+    parseBlogContentBlocks,
+} from '/src/lib/blog-content.js';
 
 const state = {
     posts: [],
@@ -32,26 +36,17 @@ const escapeHtml = (value) => {
         .replace(/'/g, '&#39;');
 };
 
-const IMAGE_BLOCK_PATTERN = /^!\[(.*?)\]\((.+?)\)$/;
-
 const paragraphsToHtml = (content) => {
-    const blocks = String(content || '')
-        .split(/\n{2,}/)
-        .map((block) => block.trim())
-        .filter(Boolean);
-
-    return blocks.map((block) => {
-        const imageMatch = block.match(IMAGE_BLOCK_PATTERN);
-        if (imageMatch) {
-            const [, alt, src] = imageMatch;
+    return parseBlogContentBlocks(content).map((block) => {
+        if (block.type === 'image') {
             return `
                 <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
-                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                    <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
                 </figure>
             `;
         }
 
-        return `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(block).replace(/\n/g, '<br>')}</p>`;
+        return `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(block.text).replace(/\n/g, '<br>')}</p>`;
     }).join('');
 };
 
@@ -94,27 +89,9 @@ const ensureSelectedSlugExists = () => {
     }
 };
 
-const estimateReadingMinutes = (content) => {
-    const plainText = String(content || '')
-        .replace(/!\[(.*?)\]\((.+?)\)/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    if (!plainText) return 1;
-    return Math.max(1, Math.ceil(plainText.length / 260));
-};
-
-const insertTextAtCursor = (input, text) => {
-    if (!(input instanceof HTMLTextAreaElement)) return;
-
-    const start = input.selectionStart ?? input.value.length;
-    const end = input.selectionEnd ?? input.value.length;
-    const prefixNeedsGap = start > 0 && !/\n\n$/.test(input.value.slice(0, start));
-    const suffixNeedsGap = end < input.value.length && !/^\n\n/.test(input.value.slice(end));
-    const insertion = `${prefixNeedsGap ? '\n\n' : ''}${text}${suffixNeedsGap ? '\n\n' : ''}`;
-
-    input.setRangeText(insertion, start, end, 'end');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.focus();
+const readInitialPosts = () => {
+    const initialPosts = window.__BLOG_INITIAL_POSTS__;
+    return Array.isArray(initialPosts) ? initialPosts : [];
 };
 
 const renderComposerPreview = (input, preview) => {
@@ -122,6 +99,124 @@ const renderComposerPreview = (input, preview) => {
 
     const html = paragraphsToHtml(input.value);
     preview.innerHTML = html || '<p class="text-sm leading-7 text-slate-400">본문 미리보기가 여기에 표시됩니다.</p>';
+};
+
+const createBlogEditorBlockId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `blog-block-${crypto.randomUUID()}`;
+    }
+    return `blog-block-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const createEmptyBlogParagraphBlock = (text = '') => ({
+    id: createBlogEditorBlockId(),
+    type: 'paragraph',
+    text: String(text || ''),
+});
+
+const createBlogEditorBlocks = (content) => {
+    const blocks = parseBlogContentBlocks(content).map((block) => {
+        if (block.type === 'image') {
+            return {
+                id: createBlogEditorBlockId(),
+                type: 'image',
+                src: block.src,
+                alt: block.alt || '본문 이미지',
+            };
+        }
+
+        return createEmptyBlogParagraphBlock(block.text || '');
+    });
+
+    return blocks.length ? blocks : [createEmptyBlogParagraphBlock('')];
+};
+
+const serializeBlogEditorBlocks = (blocks) => {
+    return blocks
+        .map((block) => {
+            if (block?.type === 'image') {
+                const src = String(block.src || '').trim();
+                if (!src) return '';
+                const alt = String(block.alt || '본문 이미지').trim() || '본문 이미지';
+                return `![${alt}](${src})`;
+            }
+
+            return String(block?.text || '').replace(/\r/g, '').trim();
+        })
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+};
+
+const paragraphTextToEditableHtml = (text) => escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+
+const getBlogEditorTextFromElement = (element) => {
+    if (!(element instanceof HTMLElement)) return '';
+    return String(element.innerText || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\r/g, '')
+        .replace(/\n$/, '');
+};
+
+const getBlogEditorCaretOffset = (element) => {
+    if (!(element instanceof HTMLElement)) return 0;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return String(element.innerText || '').length;
+
+    const range = selection.getRangeAt(0);
+    if (!element.contains(range.startContainer)) {
+        return String(element.innerText || '').length;
+    }
+
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(element);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+    return preCaretRange.toString().length;
+};
+
+const setBlogEditorCaretOffset = (element, offset) => {
+    if (!(element instanceof HTMLElement)) return;
+
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const range = document.createRange();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let remaining = Math.max(0, offset);
+    let currentNode = walker.nextNode();
+
+    while (currentNode) {
+        const length = currentNode.textContent?.length || 0;
+        if (remaining <= length) {
+            range.setStart(currentNode, remaining);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return;
+        }
+        remaining -= length;
+        currentNode = walker.nextNode();
+    }
+
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+};
+
+const focusBlogEditorParagraph = (editorRoot, blockId, offset = 'end') => {
+    if (!(editorRoot instanceof HTMLElement) || !blockId) return;
+
+    requestAnimationFrame(() => {
+        const target = editorRoot.querySelector(`[data-editor-paragraph="${blockId}"]`);
+        if (!(target instanceof HTMLElement)) return;
+
+        target.focus();
+        const caretOffset = offset === 'start'
+            ? 0
+            : String(target.innerText || '').length;
+        setBlogEditorCaretOffset(target, caretOffset);
+    });
 };
 
 const renderPostList = () => {
@@ -140,7 +235,8 @@ const renderPostList = () => {
     elements.list.innerHTML = state.posts.map((post, index) => {
         const isActive = post.slug === selectedSlug;
         const publishedLabel = getPostDateLabel(post);
-        const readingMinutes = estimateReadingMinutes(post.content);
+        const readingMinutes = estimateBlogReadingMinutes(post.content);
+        const articleUrl = getBlogPostUrl(post.slug);
         const imageMarkup = post.coverImageUrl
             ? `
                 <div class="mt-6 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
@@ -160,7 +256,7 @@ const renderPostList = () => {
                     <div class="mt-6 space-y-6">${paragraphsToHtml(post.content)}</div>
                     <div class="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <p class="text-sm text-slate-500">최근 업데이트: ${escapeHtml(publishedLabel)}</p>
-                        <a href="${escapeHtml(getBlogPostUrl(post.slug))}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">이 글 링크</a>
+                        <a href="${escapeHtml(articleUrl)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">정식 글 페이지</a>
                     </div>
                 </div>
             `
@@ -169,16 +265,7 @@ const renderPostList = () => {
             <article class="overflow-hidden rounded-[1.5rem] border ${
                 isActive ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'
             }">
-                <button
-                    type="button"
-                    data-blog-slug="${escapeHtml(post.slug)}"
-                    aria-expanded="${isActive ? 'true' : 'false'}"
-                    class="w-full px-5 py-5 text-left transition-all ${
-                    isActive
-                        ? ''
-                        : 'hover:bg-slate-50'
-                    }"
-                >
+                <div class="px-5 py-5">
                     <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -187,14 +274,26 @@ const renderPostList = () => {
                                 <span>${escapeHtml(`${readingMinutes}분 읽기`)}</span>
                                 ${index === 0 ? '<span class="text-blue-600">최신</span>' : ''}
                             </div>
-                            <h3 class="mt-4 text-xl font-semibold tracking-tight text-slate-900">${escapeHtml(post.title)}</h3>
+                            <h2 class="mt-4 text-xl font-semibold tracking-tight text-slate-900">
+                                <a href="${escapeHtml(articleUrl)}" class="transition hover:text-blue-700">${escapeHtml(post.title)}</a>
+                            </h2>
                             <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-500">${escapeHtml(post.summary)}</p>
                         </div>
-                        <span class="inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium ${
-                            isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                        }">${isActive ? '닫기' : '열기'}</span>
+                        <div class="flex shrink-0 flex-wrap items-center gap-2">
+                            <a href="${escapeHtml(articleUrl)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">글 보기</a>
+                            <button
+                                type="button"
+                                data-blog-slug="${escapeHtml(post.slug)}"
+                                aria-expanded="${isActive ? 'true' : 'false'}"
+                                class="inline-flex items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                                    isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }"
+                            >
+                                ${isActive ? '미리보기 닫기' : '미리보기'}
+                            </button>
+                        </div>
                     </div>
-                </button>
+                </div>
                 ${expandedMarkup}
             </article>
         `;
@@ -202,7 +301,6 @@ const renderPostList = () => {
 };
 
 const renderFallbackPosts = () => {
-    syncSelectedSlug();
     state.posts = getFallbackBlogPosts();
     ensureSelectedSlugExists();
     renderPostList();
@@ -292,7 +390,10 @@ const renderAdminComposer = () => {
                 </label>
                 <label class="block md:col-span-2">
                     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
-                        <span class="block text-sm font-medium text-slate-700">본문</span>
+                        <div>
+                            <span class="block text-sm font-medium text-slate-700">본문</span>
+                            <p class="mt-1 text-xs text-slate-500">Enter로 새 문단, Shift+Enter로 줄바꿈, 이미지 드래그앤드롭/붙여넣기를 지원합니다.</p>
+                        </div>
                         <div class="flex items-center gap-2">
                             <input id="blog-admin-image-picker" type="file" accept="image/*" multiple class="hidden">
                             <button
@@ -302,12 +403,25 @@ const renderAdminComposer = () => {
                             >
                                 이미지 추가
                             </button>
+                            <button
+                                type="button"
+                                data-blog-editor-action="add-paragraph"
+                                class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                            >
+                                문단 추가
+                            </button>
                         </div>
                     </div>
-                    <div id="blog-admin-dropzone" class="rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-3 transition">
-                        <textarea id="blog-admin-content" name="content" rows="12" required placeholder="문단을 입력하거나 여기에 이미지를 드래그해서 넣으세요." class="w-full resize-y rounded-[1rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-slate-900"></textarea>
+                    <div id="blog-admin-editor-shell" class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white transition">
+                        <div class="border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Notion-style editor
+                        </div>
+                        <div id="blog-admin-dropzone" class="p-3 transition">
+                            <div id="blog-admin-editor" class="space-y-3"></div>
+                        </div>
+                        <textarea id="blog-admin-content" name="content" required class="hidden"></textarea>
                     </div>
-                    <span class="mt-2 block text-xs text-slate-500">문단은 빈 줄로 구분합니다. 이미지는 드래그 앤 드롭하거나 버튼으로 올리면 본문 이미지 블록으로 삽입됩니다.</span>
+                    <span class="mt-2 block text-xs text-slate-500">노션처럼 블록 단위로 바로 수정할 수 있습니다. 이미지는 현재 위치 뒤에 자동 삽입됩니다.</span>
                 </label>
                 <div class="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <div class="flex items-center justify-between gap-3">
@@ -329,11 +443,19 @@ const renderAdminComposer = () => {
     const contentInput = document.getElementById('blog-admin-content');
     const preview = document.getElementById('blog-admin-preview');
     const imagePicker = document.getElementById('blog-admin-image-picker');
+    const editorShell = document.getElementById('blog-admin-editor-shell');
+    const editorRoot = document.getElementById('blog-admin-editor');
     const dropzone = document.getElementById('blog-admin-dropzone');
     const pickImageButton = form?.querySelector('[data-blog-editor-action="pick-images"]');
+    const addParagraphButton = form?.querySelector('[data-blog-editor-action="add-paragraph"]');
     if (!(form instanceof HTMLFormElement) || !(formStatus instanceof HTMLElement)) return;
 
     let isUploadingImages = false;
+    let pendingImageReplaceBlockId = '';
+    const editorState = {
+        blocks: createBlogEditorBlocks(''),
+        focusedBlockId: '',
+    };
 
     const setFormStatus = (message, tone = 'neutral') => {
         formStatus.textContent = message;
@@ -350,21 +472,184 @@ const renderAdminComposer = () => {
     };
 
     const setDropzoneActive = (active) => {
-        if (!(dropzone instanceof HTMLElement)) return;
-        dropzone.className = `rounded-[1.5rem] border bg-white p-3 transition ${
-            active
-                ? 'border-blue-400 bg-blue-50/60'
-                : 'border-dashed border-slate-300'
-        }`;
+        if (!(editorShell instanceof HTMLElement)) return;
+        editorShell.classList.toggle('border-blue-400', active);
+        editorShell.classList.toggle('bg-blue-50/40', active);
     };
 
     const setImageControlsDisabled = (disabled) => {
         if (pickImageButton instanceof HTMLButtonElement) {
             pickImageButton.disabled = disabled;
         }
+        if (addParagraphButton instanceof HTMLButtonElement) {
+            addParagraphButton.disabled = disabled;
+        }
     };
 
-    const uploadAndInsertImages = async (files) => {
+    const syncEditorContent = () => {
+        if (!(contentInput instanceof HTMLTextAreaElement)) return;
+        contentInput.value = serializeBlogEditorBlocks(editorState.blocks);
+        renderComposerPreview(contentInput, preview);
+    };
+
+    const ensureEditorHasBlock = () => {
+        if (!editorState.blocks.length) {
+            const block = createEmptyBlogParagraphBlock('');
+            editorState.blocks = [block];
+            editorState.focusedBlockId = block.id;
+        }
+    };
+
+    const getBlockIndex = (blockId) => editorState.blocks.findIndex((block) => block.id === blockId);
+
+    const getBlockById = (blockId) => editorState.blocks[getBlockIndex(blockId)] || null;
+
+    const findNearestParagraphForFocus = (startIndex, direction = -1) => {
+        let index = startIndex;
+        while (index >= 0 && index < editorState.blocks.length) {
+            const block = editorState.blocks[index];
+            if (block?.type === 'paragraph') {
+                return block.id;
+            }
+            index += direction;
+        }
+        return '';
+    };
+
+    const renderEditorBlocks = (focusOptions = null) => {
+        if (!(editorRoot instanceof HTMLElement)) return;
+
+        ensureEditorHasBlock();
+        editorRoot.innerHTML = editorState.blocks.map((block) => {
+            if (block.type === 'image') {
+                return `
+                    <article data-editor-block-id="${escapeHtml(block.id)}" class="group overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Image block</div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">아래 문단</button>
+                                <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">이미지 교체</button>
+                                <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">삭제</button>
+                            </div>
+                        </div>
+                        <div class="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-white">
+                            <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                        </div>
+                        <label class="mt-3 block">
+                            <span class="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">이미지 설명</span>
+                            <input
+                                type="text"
+                                value="${escapeHtml(block.alt || '')}"
+                                data-editor-image-alt="${escapeHtml(block.id)}"
+                                data-block-id="${escapeHtml(block.id)}"
+                                class="w-full rounded-[1rem] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+                            >
+                        </label>
+                    </article>
+                `;
+            }
+
+            return `
+                <article data-editor-block-id="${escapeHtml(block.id)}" class="group rounded-[1.25rem] border border-transparent bg-white px-3 py-2 transition hover:border-slate-200 hover:bg-slate-50/70">
+                    <div class="flex items-start gap-3">
+                        <div class="pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">Text</div>
+                        <div class="min-w-0 flex-1">
+                            <div
+                                contenteditable="true"
+                                spellcheck="true"
+                                data-editor-paragraph="${escapeHtml(block.id)}"
+                                data-block-id="${escapeHtml(block.id)}"
+                                class="min-h-[2rem] rounded-[0.9rem] px-3 py-2 text-[1.02rem] leading-8 text-slate-800 outline-none transition focus:bg-white focus:shadow-[0_0_0_1px_rgba(15,23,42,0.08)] whitespace-pre-wrap"
+                            >${paragraphTextToEditableHtml(block.text)}</div>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-800">+</button>
+                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-sm text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">×</button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+        syncEditorContent();
+
+        if (focusOptions?.blockId) {
+            focusBlogEditorParagraph(editorRoot, focusOptions.blockId, focusOptions.offset || 'end');
+        }
+    };
+
+    const insertParagraphAfterBlock = (blockId, text = '', focusOffset = 'end') => {
+        const newBlock = createEmptyBlogParagraphBlock(text);
+        const blockIndex = getBlockIndex(blockId);
+
+        if (blockIndex === -1) {
+            editorState.blocks.push(newBlock);
+        } else {
+            editorState.blocks.splice(blockIndex + 1, 0, newBlock);
+        }
+
+        editorState.focusedBlockId = newBlock.id;
+        renderEditorBlocks({ blockId: newBlock.id, offset: focusOffset });
+        return newBlock.id;
+    };
+
+    const removeBlock = (blockId) => {
+        const blockIndex = getBlockIndex(blockId);
+        if (blockIndex === -1) return;
+
+        editorState.blocks.splice(blockIndex, 1);
+        ensureEditorHasBlock();
+
+        const previousParagraphId = findNearestParagraphForFocus(blockIndex - 1, -1);
+        const nextParagraphId = findNearestParagraphForFocus(blockIndex, 1);
+        const focusBlockId = previousParagraphId || nextParagraphId || editorState.blocks[0]?.id || '';
+        editorState.focusedBlockId = focusBlockId;
+        renderEditorBlocks({ blockId: focusBlockId, offset: 'end' });
+    };
+
+    const insertImagesAfterBlock = (blockId, uploads) => {
+        const imageBlocks = uploads.map((upload) => ({
+            id: createBlogEditorBlockId(),
+            type: 'image',
+            src: upload.url,
+            alt: upload.alt || '본문 이미지',
+        }));
+
+        const blockIndex = getBlockIndex(blockId);
+        const insertIndex = blockIndex === -1 ? editorState.blocks.length : blockIndex + 1;
+        editorState.blocks.splice(insertIndex, 0, ...imageBlocks);
+
+        const paragraphBlock = createEmptyBlogParagraphBlock('');
+        editorState.blocks.splice(insertIndex + imageBlocks.length, 0, paragraphBlock);
+        editorState.focusedBlockId = paragraphBlock.id;
+        renderEditorBlocks({ blockId: paragraphBlock.id, offset: 'start' });
+    };
+
+    const replaceImageBlock = (blockId, uploads) => {
+        const imageBlock = getBlockById(blockId);
+        if (!imageBlock || imageBlock.type !== 'image') return;
+
+        const [firstUpload, ...restUploads] = uploads;
+        if (firstUpload) {
+            imageBlock.src = firstUpload.url;
+            imageBlock.alt = firstUpload.alt || '본문 이미지';
+        }
+
+        if (restUploads.length) {
+            const imageBlocks = restUploads.map((upload) => ({
+                id: createBlogEditorBlockId(),
+                type: 'image',
+                src: upload.url,
+                alt: upload.alt || '본문 이미지',
+            }));
+            const blockIndex = getBlockIndex(blockId);
+            editorState.blocks.splice(blockIndex + 1, 0, ...imageBlocks);
+        }
+
+        renderEditorBlocks();
+    };
+
+    const uploadAndInsertImages = async (files, options = {}) => {
         if (!(contentInput instanceof HTMLTextAreaElement) || isUploadingImages) return;
 
         const imageFiles = Array.from(files || []).filter((file) => file instanceof File && file.type.startsWith('image/'));
@@ -379,15 +664,27 @@ const renderAdminComposer = () => {
             const titleInput = form.elements.namedItem('title');
             const uploads = await uploadBlogImages(imageFiles, {
                 title: titleInput instanceof HTMLInputElement ? titleInput.value : '',
+                slugHint: titleInput instanceof HTMLInputElement ? titleInput.value : '',
             });
+            const usedInlineFallback = uploads.some((upload) => upload?.storage === 'inline');
 
-            const imageBlocks = uploads
-                .map((upload) => `![${upload.alt || '본문 이미지'}](${upload.url})`)
-                .join('\n\n');
-
-            insertTextAtCursor(contentInput, imageBlocks);
-            renderComposerPreview(contentInput, preview);
-            setFormStatus('이미지가 본문에 삽입되었습니다.', 'success');
+            if (options.replaceBlockId) {
+                replaceImageBlock(options.replaceBlockId, uploads);
+                setFormStatus(
+                    usedInlineFallback
+                        ? '스토리지 버킷이 아직 없어 이미지를 본문에 직접 포함해 교체했습니다.'
+                        : '이미지가 교체되었습니다.',
+                    'success'
+                );
+            } else {
+                insertImagesAfterBlock(options.afterBlockId || editorState.focusedBlockId, uploads);
+                setFormStatus(
+                    usedInlineFallback
+                        ? '스토리지 버킷이 아직 없어 이미지를 본문에 직접 포함했습니다.'
+                        : '이미지가 본문에 삽입되었습니다.',
+                    'success'
+                );
+            }
         } catch (error) {
             setFormStatus(error instanceof Error ? error.message : '이미지 업로드에 실패했습니다.', 'error');
         } finally {
@@ -396,22 +693,133 @@ const renderAdminComposer = () => {
             if (imagePicker instanceof HTMLInputElement) {
                 imagePicker.value = '';
             }
+            pendingImageReplaceBlockId = '';
         }
     };
 
-    if (contentInput instanceof HTMLTextAreaElement) {
-        renderComposerPreview(contentInput, preview);
-        contentInput.addEventListener('input', () => {
-            renderComposerPreview(contentInput, preview);
+    renderEditorBlocks({ blockId: editorState.blocks[0]?.id || '', offset: 'start' });
+
+    if (editorRoot instanceof HTMLElement) {
+        editorRoot.addEventListener('focusin', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            const blockId = target.dataset.blockId || '';
+            if (blockId) {
+                editorState.focusedBlockId = blockId;
+            }
+        });
+
+        editorRoot.addEventListener('input', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            if (target.matches('[data-editor-paragraph]')) {
+                const blockId = target.dataset.blockId || '';
+                const block = getBlockById(blockId);
+                if (block?.type === 'paragraph') {
+                    block.text = getBlogEditorTextFromElement(target);
+                    editorState.focusedBlockId = blockId;
+                    syncEditorContent();
+                }
+                return;
+            }
+
+            if (target.matches('[data-editor-image-alt]')) {
+                const blockId = target.dataset.blockId || '';
+                const block = getBlockById(blockId);
+                if (block?.type === 'image' && target instanceof HTMLInputElement) {
+                    block.alt = target.value;
+                    editorState.focusedBlockId = blockId;
+                    syncEditorContent();
+                }
+            }
+        });
+
+        editorRoot.addEventListener('keydown', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement) || !target.matches('[data-editor-paragraph]')) return;
+
+            const blockId = target.dataset.blockId || '';
+            const block = getBlockById(blockId);
+            if (!block || block.type !== 'paragraph') return;
+
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                const caretOffset = getBlogEditorCaretOffset(target);
+                const currentText = getBlogEditorTextFromElement(target);
+                const beforeText = currentText.slice(0, caretOffset);
+                const afterText = currentText.slice(caretOffset);
+                block.text = beforeText;
+                insertParagraphAfterBlock(blockId, afterText, 'start');
+                return;
+            }
+
+            if (event.key === 'Backspace') {
+                const currentText = getBlogEditorTextFromElement(target);
+                if (!currentText && editorState.blocks.length > 1) {
+                    event.preventDefault();
+                    removeBlock(blockId);
+                }
+            }
+        });
+
+        editorRoot.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            const actionButton = target.closest('[data-editor-action]');
+            if (!(actionButton instanceof HTMLButtonElement)) return;
+
+            const action = actionButton.dataset.editorAction;
+            const blockId = actionButton.dataset.blockId || '';
+            if (!action || !blockId) return;
+
+            if (action === 'insert-paragraph-after') {
+                insertParagraphAfterBlock(blockId, '', 'start');
+                return;
+            }
+
+            if (action === 'remove-block') {
+                removeBlock(blockId);
+                return;
+            }
+
+            if (action === 'replace-image' && imagePicker instanceof HTMLInputElement) {
+                pendingImageReplaceBlockId = blockId;
+                editorState.focusedBlockId = blockId;
+                imagePicker.click();
+            }
+        });
+
+        editorRoot.addEventListener('paste', async (event) => {
+            const clipboardItems = Array.from(event.clipboardData?.items || []);
+            const imageFiles = clipboardItems
+                .map((item) => item.getAsFile?.())
+                .filter((file) => file instanceof File);
+
+            if (!imageFiles.length) return;
+            event.preventDefault();
+            await uploadAndInsertImages(imageFiles, { afterBlockId: editorState.focusedBlockId });
         });
     }
 
     if (pickImageButton instanceof HTMLButtonElement && imagePicker instanceof HTMLInputElement) {
         pickImageButton.addEventListener('click', () => {
+            pendingImageReplaceBlockId = '';
             imagePicker.click();
         });
         imagePicker.addEventListener('change', async () => {
-            await uploadAndInsertImages(imagePicker.files);
+            const options = pendingImageReplaceBlockId
+                ? { replaceBlockId: pendingImageReplaceBlockId }
+                : { afterBlockId: editorState.focusedBlockId };
+            await uploadAndInsertImages(imagePicker.files, options);
+        });
+    }
+
+    if (addParagraphButton instanceof HTMLButtonElement) {
+        addParagraphButton.addEventListener('click', () => {
+            insertParagraphAfterBlock(editorState.focusedBlockId, '', 'start');
         });
     }
 
@@ -433,7 +841,7 @@ const renderAdminComposer = () => {
         dropzone.addEventListener('drop', async (event) => {
             event.preventDefault();
             const dataTransfer = event.dataTransfer;
-            await uploadAndInsertImages(dataTransfer?.files);
+            await uploadAndInsertImages(dataTransfer?.files, { afterBlockId: editorState.focusedBlockId });
         });
     }
 
@@ -467,12 +875,11 @@ const renderAdminComposer = () => {
             if (categoryInput instanceof HTMLInputElement) categoryInput.value = '서비스 업데이트';
             const authorInput = form.elements.namedItem('authorName');
             if (authorInput instanceof HTMLInputElement) authorInput.value = '평가원기출VOCA';
-            if (contentInput instanceof HTMLTextAreaElement) {
-                renderComposerPreview(contentInput, preview);
-            }
+            editorState.blocks = createBlogEditorBlocks('');
+            editorState.focusedBlockId = editorState.blocks[0]?.id || '';
+            renderEditorBlocks({ blockId: editorState.focusedBlockId, offset: 'start' });
             setFormStatus('글이 저장되었습니다.', 'success');
             renderPostList();
-            history.replaceState({}, '', getBlogPostUrl(post.slug));
             setStatus('새 글이 공개되었습니다.', 'success');
         } catch (error) {
             setFormStatus(error instanceof Error ? error.message : '글 저장에 실패했습니다.', 'error');
@@ -512,7 +919,6 @@ const bindAdminComposer = () => {
 const refreshPosts = async () => {
     const posts = await listBlogPosts();
     state.posts = posts;
-    syncSelectedSlug();
     ensureSelectedSlugExists();
     renderPostList();
     setStatus('');
@@ -529,7 +935,6 @@ const bindPostSelection = () => {
 
         const slug = button.dataset.blogSlug || '';
         state.selectedSlug = state.selectedSlug === slug ? '' : slug;
-        history.replaceState({}, '', state.selectedSlug ? getBlogPostUrl(state.selectedSlug) : '/blog/');
         renderPostList();
     });
 };
@@ -546,7 +951,16 @@ const syncAdminState = async () => {
 };
 
 export const initBlogPage = async () => {
-    renderFallbackPosts();
+    syncSelectedSlug();
+
+    const initialPosts = readInitialPosts();
+    if (initialPosts.length) {
+        state.posts = initialPosts;
+        ensureSelectedSlugExists();
+        renderPostList();
+    } else {
+        renderFallbackPosts();
+    }
 
     void initAuthNavLinks({
         loggedInLabel: '마이페이지',
