@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const PDF_ASSET_VERSION = '20260319g';
+    const PDF_ASSET_VERSION = '20260319h';
     const ENTITLEMENT_REQUEST_TIMEOUT_MS = 8000;
     const MAX_QUESTION_COUNT = 200;
     const UNVERIFIED_MAX_QUESTION_COUNT = 50;
@@ -23,10 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Library Instances ---
     let PDFDocument = null;
     let rgb = null;
-    let StandardFonts = null;
     const hasFontkit = typeof window.fontkit !== 'undefined';
     if (typeof window.PDFLib !== 'undefined') {
-        ({ PDFDocument, rgb, StandardFonts } = window.PDFLib);
+        ({ PDFDocument, rgb } = window.PDFLib);
         if (!hasFontkit) {
             console.warn('fontkit 라이브러리를 찾을 수 없어 PDF 한글 폰트 등록을 건너뜁니다.');
         }
@@ -654,7 +653,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return normalizeSpacingText((delimiterMatch?.[1] || trimmed));
     };
     const normalizePdfWordText = (text) => normalizeSpacingText(text);
-    const hasKoreanText = (value) => /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ''));
     const formatPdfExamTitle = (value) => {
         const normalized = normalizeSpacingText(value || '어휘 시험지') || '어휘 시험지';
         const dayRangeMatch = normalized.match(/^day\s*0?(\d{1,2})\s*~\s*day\s*0?(\d{1,2})$/i)
@@ -1618,50 +1616,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let font;
         try {
-            font = await pdfDoc.embedFont(state.koreanFont, { subset: true });
+            // CJK fonts with pdf-lib/fontkit can render unreliably when subsetted.
+            font = await pdfDoc.embedFont(state.koreanFont, { subset: false });
         } catch (fontError) {
             throw new Error('한글 폰트 포맷이 올바르지 않아 PDF 생성이 불가능합니다.');
         }
         let boldFont = font;
         if (state.koreanBoldFont) {
             try {
-                boldFont = await pdfDoc.embedFont(state.koreanBoldFont, { subset: true });
+                boldFont = await pdfDoc.embedFont(state.koreanBoldFont, { subset: false });
             } catch (fontError) {
                 boldFont = font;
                 console.warn('PDF 볼드 한글 폰트 임베딩 실패:', fontError.message || fontError);
             }
         }
-        let latinFont = font;
-        if (StandardFonts?.Helvetica) {
-            try {
-                latinFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            } catch (_) {
-                latinFont = font;
-            }
-        }
-        let latinBoldFont = boldFont;
-        if (StandardFonts?.HelveticaBold) {
-            try {
-                latinBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-            } catch (_) {
-                latinBoldFont = boldFont;
-            }
-        }
-        const canRenderWithFont = (targetFont, text) => {
-            try {
-                targetFont.widthOfTextAtSize(String(text || ''), 10);
-                return true;
-            } catch (_) {
-                return false;
-            }
-        };
         const resolvePdfFont = (text, options = {}) => {
-            const useBold = Boolean(options.bold);
-            const defaultFont = useBold ? boldFont : font;
-            const latinCandidate = useBold ? latinBoldFont : latinFont;
-            if (hasKoreanText(text)) return defaultFont;
-            if (latinCandidate !== defaultFont && canRenderWithFont(latinCandidate, text)) return latinCandidate;
-            return defaultFont;
+            return options.bold ? boldFont : font;
         };
 
         const pages = [];

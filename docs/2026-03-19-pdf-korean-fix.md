@@ -35,6 +35,8 @@
 - Updated body text truncation to measure width with the resolved font actually used for drawing.
 - Added versioned asset query strings for the PDF font fetch and generator `main.js` include so browsers do not keep serving stale cached PDF assets after deployment.
 - Switched the PDF Korean font assets again to `assets/fonts/NanumGothic-Regular.ttf` and `assets/fonts/NanumGothic-Bold.ttf` to cut browser-side PDF generation cost from tens of megabytes per run to roughly 4MB total font payload.
+- Disabled `pdf-lib` font subsetting for the embedded Korean PDF fonts because the library's own documentation warns that subsetting does not work for all fonts, and the symptom matched Korean glyphs being present in the text layer but not painted reliably by some viewers.
+- Simplified PDF font selection so the same embedded Nanum regular/bold family is used for both Korean and Latin text in the generated PDF, eliminating mixed-family rendering differences inside a single sheet.
 - Fixed blob download handling so the object URL is not revoked immediately after `click()`, which could cancel the start of larger downloads in some browsers.
 - Added an entitlement API timeout so the generator falls back instead of waiting indefinitely on quota consumption.
 - Added prepared download links under the generate button so users can still fetch the files even when the browser blocks automatic downloads.
@@ -62,6 +64,12 @@ node --check main.js
 - After switching to `assets/fonts/NotoSansKR-Regular.otf`, a fresh synthetic PDF embedded:
   - `NotoSansCJKkr-Regular-*`
   - `NotoSansCJKkr-Bold-*`
+
+- `pdf-lib` upstream documentation explicitly notes:
+
+> Note that subsetting does not work for all fonts.
+
+  Source: <https://github.com/Hopding/pdf-lib>
 
 Result:
 
