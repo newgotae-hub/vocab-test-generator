@@ -8,11 +8,11 @@ import {
     isBlogAdminUser,
     listBlogPosts,
     uploadBlogImages,
-} from '/src/lib/blog.js';
+} from '/src/lib/blog.js?v=20260319-blog-upload-key-fix';
 import {
     estimateBlogReadingMinutes,
     parseBlogContentBlocks,
-} from '/src/lib/blog-content.js';
+} from '/src/lib/blog-content.js?v=20260319-blog-upload-key-fix';
 
 const state = {
     posts: [],
