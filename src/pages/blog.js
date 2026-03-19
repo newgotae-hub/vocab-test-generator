@@ -563,7 +563,7 @@ const renderAdminComposer = () => {
                     <input name="coverImageAlt" type="text" maxlength="160" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900">
                 </label>
                 <div class="block md:col-span-2">
-                    <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <span id="blog-admin-editor-label" class="block text-sm font-medium text-slate-700">본문</span>
                             <p class="mt-1 text-xs text-slate-500">Enter로 새 문단, Shift+Enter로 줄바꿈, 이미지 드래그앤드롭/붙여넣기를 지원합니다.</p>
@@ -586,16 +586,17 @@ const renderAdminComposer = () => {
                             </button>
                         </div>
                     </div>
-                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white transition">
-                        <div class="border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                            Notion-style editor
+                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.05)] transition">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
+                            <span class="font-semibold uppercase tracking-[0.18em] text-slate-500">Editor</span>
+                            <span class="text-[11px] text-slate-400">이미지 붙여넣기, 드롭, Shift+Enter 줄바꿈</span>
                         </div>
-                        <div id="blog-admin-dropzone" class="p-3 transition">
-                            <div id="blog-admin-editor" class="space-y-3"></div>
+                        <div id="blog-admin-dropzone" class="min-h-[20rem] bg-white p-4 transition md:p-5">
+                            <div id="blog-admin-editor" class="space-y-1"></div>
                         </div>
                         <textarea id="blog-admin-content" name="content" required class="hidden"></textarea>
                     </div>
-                    <span class="mt-2 block text-xs text-slate-500">노션처럼 블록 단위로 바로 수정할 수 있습니다. 이미지는 현재 위치 뒤에 자동 삽입됩니다.</span>
+                    <span class="mt-2 block text-xs text-slate-500">노션처럼 이어지는 본문 흐름으로 수정됩니다. 이미지는 현재 위치 뒤에 삽입됩니다.</span>
                 </div>
                 <div class="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <div class="flex items-center justify-between gap-3">
@@ -778,6 +779,15 @@ const renderAdminComposer = () => {
         return '';
     };
 
+    const getLastParagraphBlockId = () => findNearestParagraphForFocus(editorState.blocks.length - 1, -1) || editorState.blocks[0]?.id || '';
+
+    const focusLastParagraphBlock = (offset = 'end') => {
+        const blockId = getLastParagraphBlockId();
+        if (!blockId) return;
+        editorState.focusedBlockId = blockId;
+        focusBlogEditorParagraph(editorRoot, blockId, offset);
+    };
+
     const renderEditorBlocks = (focusOptions = null) => {
         if (!(editorRoot instanceof HTMLElement)) return;
 
@@ -785,16 +795,16 @@ const renderAdminComposer = () => {
         editorRoot.innerHTML = editorState.blocks.map((block) => {
             if (block.type === 'image') {
                 return `
-                    <article data-editor-block-id="${escapeHtml(block.id)}" class="group overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-3">
+                    <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative my-3 overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4">
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Image block</div>
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Image</div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">아래 문단</button>
                                 <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100">이미지 교체</button>
                                 <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">삭제</button>
                             </div>
                         </div>
-                        <div class="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-white">
+                        <div class="mt-3 overflow-hidden rounded-[1.1rem] border border-slate-200 bg-white">
                             <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
                         </div>
                         <label class="mt-3 block">
@@ -812,21 +822,22 @@ const renderAdminComposer = () => {
             }
 
             return `
-                <article data-editor-block-id="${escapeHtml(block.id)}" class="group rounded-[1.25rem] border border-transparent bg-white px-3 py-2 transition hover:border-slate-200 hover:bg-slate-50/70">
-                    <div class="flex items-start gap-3">
-                        <div class="pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">Text</div>
+                <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative -mx-2 rounded-xl px-2 py-1 transition hover:bg-slate-50/70 focus-within:bg-slate-50/70">
+                    <div class="flex items-start gap-2">
+                        <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-base text-slate-400 transition hover:bg-white hover:text-slate-700">+</button>
+                        </div>
                         <div class="min-w-0 flex-1">
                             <div
                                 contenteditable="true"
                                 spellcheck="true"
                                 data-editor-paragraph="${escapeHtml(block.id)}"
                                 data-block-id="${escapeHtml(block.id)}"
-                                class="min-h-[2rem] rounded-[0.9rem] px-3 py-2 text-[1.02rem] leading-8 text-slate-800 outline-none transition focus:bg-white focus:shadow-[0_0_0_1px_rgba(15,23,42,0.08)] whitespace-pre-wrap"
+                                class="min-h-[2rem] px-1 py-1 text-[1.04rem] leading-8 text-slate-800 outline-none whitespace-pre-wrap"
                             >${paragraphTextToEditableHtml(block.text)}</div>
                         </div>
-                        <div class="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-800">+</button>
-                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-sm text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">×</button>
+                        <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-slate-300 transition hover:bg-white hover:text-slate-600">×</button>
                         </div>
                     </div>
                 </article>
@@ -1114,6 +1125,13 @@ const renderAdminComposer = () => {
     });
 
     if (dropzone instanceof HTMLElement) {
+        dropzone.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (target.closest('[data-editor-action], [data-editor-paragraph], [data-editor-image-alt], button, input, img')) return;
+            focusLastParagraphBlock('end');
+        });
+
         ['dragenter', 'dragover'].forEach((eventName) => {
             dropzone.addEventListener(eventName, (event) => {
                 event.preventDefault();
