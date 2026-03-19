@@ -938,7 +938,7 @@ const renderAdminComposer = () => {
                 replaceImageBlock(options.replaceBlockId, uploads);
                 setFormStatus(
                     usedInlineFallback
-                        ? '스토리지 버킷이 아직 없어 이미지를 본문에 직접 포함해 교체했습니다.'
+                        ? '스토리지 업로드를 사용할 수 없어 이미지를 본문에 직접 포함해 교체했습니다.'
                         : '이미지가 교체되었습니다.',
                     'success'
                 );
@@ -946,7 +946,7 @@ const renderAdminComposer = () => {
                 insertImagesAfterBlock(options.afterBlockId || editorState.focusedBlockId, uploads);
                 setFormStatus(
                     usedInlineFallback
-                        ? '스토리지 버킷이 아직 없어 이미지를 본문에 직접 포함했습니다.'
+                        ? '스토리지 업로드를 사용할 수 없어 이미지를 본문에 직접 포함했습니다.'
                         : '이미지가 본문에 삽입되었습니다.',
                     'success'
                 );

@@ -21,6 +21,19 @@ const MAX_BLOG_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
 const INLINE_BLOG_IMAGE_MAX_DIMENSION = 1600;
 const INLINE_BLOG_IMAGE_OUTPUT_QUALITY = 0.86;
 
+const shouldInlineBlogImageFallback = (error) => {
+    const message = normalizeSpacingText(error?.message).toLowerCase();
+    return message.includes('bucket')
+        || message.includes('row-level security')
+        || message.includes('permission')
+        || message.includes('not authorized')
+        || message.includes('unauthorized')
+        || error?.statusCode === '401'
+        || error?.statusCode === '403'
+        || error?.status === 401
+        || error?.status === 403;
+};
+
 const sanitizeBlogImageStem = (value) => {
     return normalizeSpacingText(value)
         .toLowerCase()
@@ -229,8 +242,7 @@ export const uploadBlogImages = async (files, options = {}) => {
             });
 
         if (uploadError) {
-            const message = normalizeSpacingText(uploadError.message).toLowerCase();
-            if (message.includes('bucket')) {
+            if (shouldInlineBlogImageFallback(uploadError)) {
                 const inlineDataUrl = await createInlineBlogImageDataUrl(file);
                 uploads.push({
                     alt: sanitizeBlogImageStem(file.name).replace(/-/g, ' '),
@@ -239,9 +251,6 @@ export const uploadBlogImages = async (files, options = {}) => {
                     url: inlineDataUrl,
                 });
                 continue;
-            }
-            if (message.includes('row-level security') || uploadError.statusCode === '403') {
-                throw new Error('관리자 권한이 있는 계정만 이미지를 업로드할 수 있습니다.');
             }
             throw new Error(normalizeSpacingText(uploadError.message) || '이미지 업로드에 실패했습니다.');
         }
