@@ -34,13 +34,25 @@ const shouldInlineBlogImageFallback = (error) => {
         || error?.status === 403;
 };
 
-const sanitizeBlogImageStem = (value) => {
-    return normalizeSpacingText(value)
+const sanitizeBlogStorageKeyPart = (value, fallback = 'item') => {
+    const normalized = normalizeSpacingText(value)
         .toLowerCase()
-        .replace(/\.[a-z0-9]+$/i, '')
-        .replace(/[^a-z0-9가-힣-]+/g, '-')
+        .replace(/\.[^./\\]+$/u, '')
+        .replace(/[^\p{Letter}\p{Number}-]+/gu, '-')
         .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || 'image';
+        .replace(/^-|-$/g, '');
+
+    return normalized || fallback;
+};
+
+const sanitizeBlogImageStem = (value) => sanitizeBlogStorageKeyPart(value, 'image');
+
+const getBlogImageAltText = (value, fallback = '본문 이미지') => {
+    const normalized = normalizeSpacingText(value)
+        .replace(/\.[^./\\]+$/u, '')
+        .trim();
+
+    return normalized || fallback;
 };
 
 const getBlogImageExtension = (file) => {
@@ -67,7 +79,7 @@ const parseBooleanLike = (value) => {
 const createBlogImagePath = (file, slugHint = '') => {
     const extension = getBlogImageExtension(file);
     const datePath = new Date().toISOString().slice(0, 10);
-    const slugPath = slugifyBlogText(slugHint || 'draft');
+    const slugPath = sanitizeBlogStorageKeyPart(slugHint || 'draft', 'draft');
     const fileStem = sanitizeBlogImageStem(file?.name || 'image');
     return `${datePath}/${slugPath}/${crypto.randomUUID()}-${fileStem}.${extension}`;
 };
@@ -245,7 +257,7 @@ export const uploadBlogImages = async (files, options = {}) => {
             if (shouldInlineBlogImageFallback(uploadError)) {
                 const inlineDataUrl = await createInlineBlogImageDataUrl(file);
                 uploads.push({
-                    alt: sanitizeBlogImageStem(file.name).replace(/-/g, ' '),
+                    alt: getBlogImageAltText(file.name),
                     path: '',
                     storage: 'inline',
                     url: inlineDataUrl,
@@ -262,7 +274,7 @@ export const uploadBlogImages = async (files, options = {}) => {
         }
 
         uploads.push({
-            alt: sanitizeBlogImageStem(file.name).replace(/-/g, ' '),
+            alt: getBlogImageAltText(file.name),
             path,
             storage: 'bucket',
             url: publicUrl,
