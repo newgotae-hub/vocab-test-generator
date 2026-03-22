@@ -4,48 +4,418 @@
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-adsense-account" content="ca-pub-1010168647313500">
-    
+
     <script defer src="/src/analytics-loader.js"></script>
-<title>랭크 매치 안내 | 평가원기출VOCA</title>
-    <meta name="description" content="평가원기출VOCA 랭크 매치 기능 안내 페이지입니다.">
+<title>랭킹 보드 | 평가원기출VOCA</title>
+    <meta name="description" content="평가원기출VOCA 단어 게임 랭킹 보드입니다. 기간과 교재 범위별로 점수를 비교할 수 있습니다.">
     <meta name="robots" content="noindex,follow,max-image-preview:large">
     <link rel="canonical" href="https://voca.plus/ranked/">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="ko_KR">
     <meta property="og:site_name" content="평가원기출VOCA">
-    <meta property="og:title" content="랭크 매치 안내 | 평가원기출VOCA">
-    <meta property="og:description" content="평가원기출VOCA 랭크 매치 기능 안내 페이지입니다.">
+    <meta property="og:title" content="랭킹 보드 | 평가원기출VOCA">
+    <meta property="og:description" content="평가원기출VOCA 단어 게임 랭킹 보드입니다. 기간과 교재 범위별로 점수를 비교할 수 있습니다.">
     <meta property="og:image" content="https://voca.plus/assets/images/베이직.jpg">
     <meta property="og:image:alt" content="평가원기출VOCA 베이직 교재 표지">
     <meta property="og:url" content="https://voca.plus/ranked/">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="랭크 매치 안내 | 평가원기출VOCA">
-    <meta name="twitter:description" content="평가원기출VOCA 랭크 매치 기능 안내 페이지입니다.">
+    <meta name="twitter:title" content="랭킹 보드 | 평가원기출VOCA">
+    <meta name="twitter:description" content="평가원기출VOCA 단어 게임 랭킹 보드입니다. 기간과 교재 범위별로 점수를 비교할 수 있습니다.">
     <meta name="twitter:image" content="https://voca.plus/assets/images/베이직.jpg">
     <link rel="stylesheet" href="/style.css">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body[data-page="ranked"] .ranked-main {
+            display: block;
+        }
+
+        body[data-page="ranked"] .ranked-stack {
+            display: grid;
+            gap: 1rem;
+        }
+
+        body[data-page="ranked"] .ranked-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+            gap: 1rem;
+        }
+
+        body[data-page="ranked"] .ranked-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        body[data-page="ranked"] .ranked-stat {
+            padding: 0.85rem;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-soft);
+        }
+
+        body[data-page="ranked"] .ranked-stat span {
+            display: block;
+            color: var(--text-subtle);
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+
+        body[data-page="ranked"] .ranked-stat strong {
+            font-size: 1.02rem;
+        }
+
+        body[data-page="ranked"] .ranked-toolbar,
+        body[data-page="ranked"] .ranked-filter-row,
+        body[data-page="ranked"] .ranked-toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        body[data-page="ranked"] .ranked-filter-row {
+            justify-content: flex-start;
+            margin-top: 0.8rem;
+        }
+
+        body[data-page="ranked"] .ranked-filter-row > span:first-child {
+            min-width: 52px;
+            font-size: 0.86rem;
+            color: var(--text-subtle);
+        }
+
+        body[data-page="ranked"] .ranked-filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        body[data-page="ranked"] .ranked-button,
+        body[data-page="ranked"] .ranked-filter-chip {
+            font: inherit;
+        }
+
+        body[data-page="ranked"] .ranked-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0.68rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(30, 58, 138, 0.12);
+            background: #fff;
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        body[data-page="ranked"] .ranked-button--primary {
+            background: linear-gradient(180deg, #2448a5 0%, #1e3a8a 100%);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        body[data-page="ranked"] .ranked-filter-chip {
+            min-height: 38px;
+            padding: 0.58rem 0.82rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        body[data-page="ranked"] .ranked-filter-chip.is-active {
+            border-color: rgba(30, 58, 138, 0.34);
+            background: rgba(30, 58, 138, 0.08);
+            color: var(--brand-strong);
+        }
+
+        body[data-page="ranked"] .ranked-source-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 0.24rem 0.72rem;
+            border-radius: 999px;
+            background: var(--surface-soft);
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            border: 1px solid var(--line);
+        }
+
+        body[data-page="ranked"] .ranked-source-pill[data-source="remote"] {
+            color: #166534;
+            background: rgba(22, 163, 74, 0.08);
+            border-color: rgba(22, 163, 74, 0.18);
+        }
+
+        body[data-page="ranked"] .ranked-source-pill[data-source="fallback-preview"],
+        body[data-page="ranked"] .ranked-source-pill[data-source="local"] {
+            color: #9a3412;
+            background: rgba(249, 115, 22, 0.08);
+            border-color: rgba(249, 115, 22, 0.18);
+        }
+
+        body[data-page="ranked"] .ranked-loading,
+        body[data-page="ranked"] .ranked-empty,
+        body[data-page="ranked"] .ranked-board-note {
+            color: var(--text-subtle);
+            font-size: 0.9rem;
+        }
+
+        body[data-page="ranked"] .ranked-podium {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        body[data-page="ranked"] .ranked-podium-card {
+            padding: 0.95rem;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        body[data-page="ranked"] .ranked-podium-place,
+        body[data-page="ranked"] .ranked-podium-meta {
+            color: var(--text-subtle);
+            font-size: 0.84rem;
+        }
+
+        body[data-page="ranked"] .ranked-podium-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: rgba(30, 58, 138, 0.08);
+            color: var(--brand-strong);
+            font-weight: 700;
+        }
+
+        body[data-page="ranked"] .ranked-podium-score {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        body[data-page="ranked"] .ranked-podium-stats,
+        body[data-page="ranked"] .ranked-my-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            color: var(--text-subtle);
+            font-size: 0.84rem;
+        }
+
+        body[data-page="ranked"] .ranked-table-wrap {
+            margin-top: 1rem;
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+        }
+
+        body[data-page="ranked"] .ranked-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+            background: #fff;
+        }
+
+        body[data-page="ranked"] .ranked-table th,
+        body[data-page="ranked"] .ranked-table td {
+            padding: 0.85rem 0.95rem;
+            border-bottom: 1px solid #eef2f8;
+            text-align: left;
+        }
+
+        body[data-page="ranked"] .ranked-table th {
+            color: var(--text-subtle);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        body[data-page="ranked"] .ranked-table tr.is-me {
+            background: rgba(30, 58, 138, 0.06);
+        }
+
+        body[data-page="ranked"] .ranked-rank-cell {
+            font-weight: 700;
+        }
+
+        body[data-page="ranked"] .ranked-player-cell {
+            display: grid;
+            gap: 0.2rem;
+        }
+
+        body[data-page="ranked"] .ranked-sidebar {
+            display: grid;
+            gap: 1rem;
+        }
+
+        body[data-page="ranked"] .ranked-my-card,
+        body[data-page="ranked"] .ranked-my-card--empty {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        body[data-page="ranked"] .ranked-my-rank {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        body[data-page="ranked"] .ranked-sidebar ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: var(--text-subtle);
+            line-height: 1.7;
+        }
+
+        @media (max-width: 960px) {
+            body[data-page="ranked"] .ranked-grid,
+            body[data-page="ranked"] .ranked-summary-grid,
+            body[data-page="ranked"] .ranked-podium {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body data-page="ranked">
     <div id="app">
         <header>
             <a class="logo" href="/"><img class="logo-icon" src="/assets/images/logo-mark.svg" alt=""> 평가원기출VOCA</a>
             <nav aria-label="주요 메뉴">
+                <a href="/dashboard/" data-route="/dashboard/">대시보드</a>
                 <a href="/generator/" data-route="/generator/">시험지만들기</a>
                 <a href="/test/" data-route="/test/">온라인 테스트</a>
+                <a href="/game/" data-route="/game/">게임</a>
                 <a href="/mypage/" data-route="/mypage/">마이페이지</a>
+                <a href="/ranked/" data-route="/ranked/">랭킹</a>
             </nav>
         </header>
-        <main class="placeholder-main">
-            <h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">랭크 매치 안내</h1>
-            <section class="card placeholder-card">
-                <h2>랭크 매치 기능 안내</h2>
-                <p class="subtitle">현재는 개인 학습 중심의 시험지 만들기와 온라인 테스트를 운영하고 있습니다. 랭킹 경쟁 기능은 아직 공개하지 않았습니다.</p>
-                <p>성적 비교가 필요할 때는 마이페이지에서 최근 응시 기록과 정답률을 다시 확인할 수 있습니다.</p>
-                <a class="button-primary placeholder-back" href="/mypage/">내 학습 기록 보기</a>
-            </section>
+        <main class="ranked-main">
+            <h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">랭킹 보드</h1>
+            <div class="ranked-stack">
+                <section class="card">
+                    <p id="leaderboard-hero-eyebrow" class="mypage-kicker">랭킹 스프린트</p>
+                    <h2 id="leaderboard-hero-title">현재 리그 순위를 확인해 보세요.</h2>
+                    <p id="leaderboard-hero-description" class="subtitle">기간별, 교재별로 점수를 비교할 수 있습니다. 게임을 마치면 바로 이 랭킹 보드에 기록이 반영됩니다.</p>
+                    <div class="ranked-toolbar-actions">
+                        <a id="leaderboard-primary-cta" class="ranked-button ranked-button--primary" href="/game/">게임 시작</a>
+                        <a class="ranked-button" href="/dashboard/">대시보드로 이동</a>
+                    </div>
+                    <div class="ranked-summary-grid">
+                        <div class="ranked-stat">
+                            <span>현재 범위</span>
+                            <strong id="leaderboard-scope-label">Today · Basic League</strong>
+                        </div>
+                        <div class="ranked-stat">
+                            <span>랭킹 참여자</span>
+                            <strong id="leaderboard-summary-players">0</strong>
+                        </div>
+                        <div class="ranked-stat">
+                            <span>최고 점수</span>
+                            <strong id="leaderboard-summary-best">0 pts</strong>
+                        </div>
+                        <div class="ranked-stat">
+                            <span>평균 정답률</span>
+                            <strong id="leaderboard-summary-accuracy">0.0%</strong>
+                        </div>
+                        <div class="ranked-stat">
+                            <span id="leaderboard-summary-format-label">진행 방식</span>
+                            <strong id="leaderboard-summary-format">60s · unlimited misses</strong>
+                        </div>
+                        <div class="ranked-stat">
+                            <span id="leaderboard-summary-podium-label">포디움 컷</span>
+                            <strong id="leaderboard-summary-podium">Open</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ranked-grid">
+                    <section class="card">
+                        <div class="ranked-toolbar">
+                            <div>
+                                <h2 style="margin:0 0 0.35rem;">공유 랭킹 보드</h2>
+                                <p id="leaderboard-source-note" class="subtitle">Supabase에 저장된 점수를 기준으로 순위를 표시합니다.</p>
+                            </div>
+                            <div class="ranked-toolbar-actions">
+                                <span id="leaderboard-source-badge" class="ranked-source-pill" data-source="remote">Live board</span>
+                                <button id="leaderboard-refresh" type="button" class="ranked-button">새로고침</button>
+                                <span id="leaderboard-last-updated" class="ranked-board-note">Ready</span>
+                            </div>
+                        </div>
+
+                        <div class="ranked-filter-row">
+                            <span>모드</span>
+                            <div id="leaderboard-mode-filters" class="ranked-filter-group"></div>
+                        </div>
+                        <div class="ranked-filter-row">
+                            <span>기간</span>
+                            <div id="leaderboard-period-filters" class="ranked-filter-group"></div>
+                        </div>
+                        <div class="ranked-filter-row">
+                            <span>교재</span>
+                            <div id="leaderboard-book-filters" class="ranked-filter-group"></div>
+                        </div>
+
+                        <div id="leaderboard-loading" class="ranked-loading" hidden>Loading leaderboard...</div>
+                        <div id="leaderboard-podium" class="ranked-podium"></div>
+
+                        <div class="ranked-table-wrap">
+                            <table class="ranked-table">
+                                <thead>
+                                    <tr>
+                                        <th>순위</th>
+                                        <th>플레이어</th>
+                                        <th>점수</th>
+                                        <th>정답률</th>
+                                        <th>연속 정답</th>
+                                        <th>시간</th>
+                                        <th>날짜</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboard-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div id="leaderboard-empty" class="ranked-empty" hidden>
+                            아직 이 조건의 기록이 없습니다.
+                        </div>
+                    </section>
+
+                    <aside class="ranked-sidebar">
+                        <section class="card">
+                            <p class="mypage-kicker" style="margin-bottom:0.65rem;">내 순위</p>
+                            <div id="leaderboard-my-standing"></div>
+                        </section>
+
+                        <section class="card">
+                            <h2 id="leaderboard-rules-title">정렬 기준</h2>
+                            <ul>
+                                <li id="leaderboard-rule-1">Higher score ranks first.</li>
+                                <li id="leaderboard-rule-2">Accuracy breaks ties before streak.</li>
+                                <li id="leaderboard-rule-3">Longer streaks beat shorter streaks.</li>
+                                <li id="leaderboard-rule-4">Faster clear times win the final tiebreak.</li>
+                            </ul>
+                        </section>
+
+                        <section class="card">
+                            <h2 id="leaderboard-sidebar-title">현재 범위</h2>
+                            <p id="leaderboard-sidebar-description" class="subtitle">랭킹 보드는 Basic, Advanced, Etymology 교재 기준으로 집계됩니다.</p>
+                        </section>
+                    </aside>
+                </section>
+            </div>
         </main>
     </div>
     <script type="module" src="/src/app.js"></script>

@@ -1,6 +1,8 @@
 import { initDashboardPage } from '/src/pages/dashboard.js';
 import { initGeneratorPage } from '/src/pages/generator.js';
+import { initGamePage } from '/src/pages/game.js';
 import { initMyPage } from '/src/pages/mypage.js';
+import { initRankedPage } from '/src/pages/ranked.js';
 import { enforceAuthOrRedirect } from '/src/lib/authGuard.js';
 import { initAuthNavLinks } from '/src/lib/authNav.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
@@ -30,7 +32,9 @@ const markActiveNav = () => {
 const pageInits = {
     dashboard: initDashboardPage,
     generator: initGeneratorPage,
+    game: initGamePage,
     mypage: initMyPage,
+    ranked: initRankedPage,
 };
 
 const bootstrap = async () => {
@@ -60,7 +64,7 @@ const bootstrap = async () => {
     markActiveNav();
     const initPage = pageInits[pageName];
     if (typeof initPage === 'function') {
-        initPage();
+        await initPage();
     }
 };
 

@@ -1,4 +1,5 @@
 import { supabase } from '/src/lib/supabaseClient.js';
+import { canUseLocalPreviewForPage, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
 
 const PROTECTED_PAGES = new Set([
     'dashboard',
@@ -19,7 +20,13 @@ const redirectToAuth = () => {
 };
 
 export const enforceAuthOrRedirect = async (pageName) => {
+    syncLocalPreviewPreference();
+
     if (!PROTECTED_PAGES.has(pageName)) {
+        return true;
+    }
+
+    if (canUseLocalPreviewForPage(pageName)) {
         return true;
     }
 

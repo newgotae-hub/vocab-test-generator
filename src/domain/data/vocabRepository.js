@@ -359,6 +359,45 @@ export const getDayTocs = async (bookKey) => {
     return sortDayLabels([...new Set(tocs)]);
 };
 
+export const getPlayScopes = async (bookKey) => {
+    const normalizedBookKey = normalizeBookKey(bookKey);
+    if (!normalizedBookKey) return [];
+
+    if (normalizedBookKey === 'etymology') {
+        const dataset = await loadBookDataset('etymology');
+        const seen = new Set();
+        const scopes = [];
+
+        (dataset.rows || []).forEach((row) => {
+            const chapter = normalizeSpacingText(row?.chapter);
+            const toc = normalizeSpacingText(row?.toc);
+            if (!toc) return;
+
+            const value = `${chapter}||${toc}`;
+            if (seen.has(value)) return;
+            seen.add(value);
+
+            scopes.push({
+                value,
+                label: chapter ? `${chapter} · ${toc}` : toc,
+                chapterId: chapter,
+                toc,
+                type: 'toc',
+            });
+        });
+
+        return sortLabels(scopes.map((scope) => scope.label)).map((label) => scopes.find((scope) => scope.label === label));
+    }
+
+    return (await getDayTocs(normalizedBookKey)).map((toc) => ({
+        value: toc,
+        label: toc,
+        chapterId: 'DAY',
+        toc,
+        type: 'day',
+    }));
+};
+
 export const getScopePool = async ({
     bookKey,
     chapterId,

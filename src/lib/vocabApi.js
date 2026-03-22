@@ -1,3 +1,5 @@
+import { VOCAB_PREVIEW_FIXTURES } from '/src/data/vocabPreviewFixtures.js';
+import { isLocalPreviewEnabled, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
 import { supabase } from '/src/lib/supabaseClient.js';
 
 const normalizeSpacingText = (value) => {
@@ -16,6 +18,12 @@ const normalizeBookKey = (bookKey) => {
         return normalized;
     }
     return '';
+};
+
+const getPreviewRows = (bookKey) => {
+    const rows = VOCAB_PREVIEW_FIXTURES?.[bookKey];
+    if (!Array.isArray(rows)) return [];
+    return rows.map((row) => ({ ...row }));
 };
 
 const getAccessToken = async () => {
@@ -45,7 +53,7 @@ const postJson = async (url, body) => {
     }
 
     if (!response.ok || !payload?.ok) {
-        const message = normalizeSpacingText(payload?.error) || '데이터를 불러오는 데 실패했습니다.';
+        const message = normalizeSpacingText(payload?.error) || '?곗씠?곕? 遺덈윭?ㅻ뒗 ???ㅽ뙣?덉뒿?덈떎.';
         throw new Error(message);
     }
 
@@ -55,13 +63,28 @@ const postJson = async (url, body) => {
 export const fetchVocabRows = async (bookKey) => {
     const normalizedBookKey = normalizeBookKey(bookKey);
     if (!normalizedBookKey) {
-        throw new Error(`지원되지 않는 교재입니다: ${bookKey}`);
+        throw new Error(`吏?먮릺吏 ?딅뒗 援먯옱?낅땲?? ${bookKey}`);
     }
 
-    const payload = await postJson('/api/vocab/book', { bookKey: normalizedBookKey });
-    if (!Array.isArray(payload?.rows)) {
-        throw new Error('데이터 형식이 올바르지 않습니다.');
+    syncLocalPreviewPreference();
+    const useLocalPreview = isLocalPreviewEnabled();
+
+    try {
+        const payload = await postJson('/api/vocab/book', { bookKey: normalizedBookKey });
+        if (!Array.isArray(payload?.rows)) {
+            throw new Error('?곗씠???뺤떇???щ컮瑜댁? ?딆뒿?덈떎.');
+        }
+        return payload.rows;
+    } catch (error) {
+        if (!useLocalPreview) {
+            throw error;
+        }
+
+        const previewRows = getPreviewRows(normalizedBookKey);
+        if (previewRows.length > 0) {
+            return previewRows;
+        }
+
+        throw error;
     }
-    return payload.rows;
 };
-
