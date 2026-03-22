@@ -9,7 +9,6 @@ const PROTECTED_PAGES = new Set([
     'cards',
     'ranked',
     'stats',
-    'game',
 ]);
 
 const redirectToAuth = () => {

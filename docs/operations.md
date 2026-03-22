@@ -16,6 +16,11 @@ Then open:
 - `http://localhost:4173/mypage/`
 
 On Windows PowerShell, use `cmd /c npx ...` if direct `npx` is blocked by execution policy.
+If `bash` is not on PATH, run the bundle step with Git Bash:
+
+```bash
+"C:\Program Files\Git\bin\bash.exe" ./scripts/prepare_cloudflare_pages.sh
+```
 
 ## Important Verification Commands
 Syntax checks:
@@ -66,6 +71,10 @@ Minimum manual checks before deploy:
 5. Confirm starting a game reflects the selected 교재 / DAY / 파생어 범위.
 6. Confirm `/game/` still links to `/ranked/`.
 7. Confirm `/ranked/` still links back to `/game/`.
+8. Confirm `/game/` works even when the ranking save session is not available:
+   - game page opens
+   - 문제를 시작할 수 있음
+   - 기록 저장은 로그인 상태에 따라 실시간 저장 또는 현재 기기 저장으로 동작
 
 ## ranked_runs Supabase Setup
 The ranking backend depends on `public.ranked_runs`.

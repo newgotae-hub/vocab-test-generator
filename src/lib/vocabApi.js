@@ -1,3 +1,4 @@
+import { BOOK_CSV_TEXT } from '/functions/private_data/vocabCsvData.js';
 import { VOCAB_PREVIEW_FIXTURES } from '/src/data/vocabPreviewFixtures.js';
 import { isLocalPreviewEnabled, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
 import { supabase } from '/src/lib/supabaseClient.js';
@@ -24,6 +25,84 @@ const getPreviewRows = (bookKey) => {
     const rows = VOCAB_PREVIEW_FIXTURES?.[bookKey];
     if (!Array.isArray(rows)) return [];
     return rows.map((row) => ({ ...row }));
+};
+
+const parseCsvRowsFallback = (csvText) => {
+    const text = String(csvText || '');
+    const table = [];
+    let row = [];
+    let field = '';
+    let index = 0;
+    let inQuotes = false;
+
+    while (index < text.length) {
+        const char = text[index];
+
+        if (char === '"') {
+            const nextChar = text[index + 1];
+            if (inQuotes && nextChar === '"') {
+                field += '"';
+                index += 2;
+                continue;
+            }
+            inQuotes = !inQuotes;
+            index += 1;
+            continue;
+        }
+
+        if (char === ',' && !inQuotes) {
+            row.push(field);
+            field = '';
+            index += 1;
+            continue;
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[index + 1] === '\n') {
+                index += 1;
+            }
+            row.push(field);
+            field = '';
+
+            if (row.some((cell) => normalizeSpacingText(cell))) {
+                table.push(row);
+            }
+            row = [];
+            index += 1;
+            continue;
+        }
+
+        field += char;
+        index += 1;
+    }
+
+    row.push(field);
+    if (row.some((cell) => normalizeSpacingText(cell))) {
+        table.push(row);
+    }
+    if (table.length === 0) return [];
+
+    const headers = table[0].map((value) => String(value || ''));
+    return table.slice(1).map((cells) => {
+        const output = {};
+        headers.forEach((header, headerIndex) => {
+            output[header] = cells[headerIndex] ?? '';
+        });
+        return output;
+    });
+};
+
+const getBundledRows = (bookKey) => {
+    const csvText = BOOK_CSV_TEXT?.[bookKey];
+    if (!csvText) return [];
+    return parseCsvRowsFallback(csvText);
+};
+
+const shouldUseBundledGameRows = () => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+    const pageName = normalizeSpacingText(document.body?.dataset?.page).toLowerCase();
+    if (pageName === 'game') return true;
+    return normalizeSpacingText(window.location.pathname).startsWith('/game/');
 };
 
 const getAccessToken = async () => {
@@ -68,6 +147,7 @@ export const fetchVocabRows = async (bookKey) => {
 
     syncLocalPreviewPreference();
     const useLocalPreview = isLocalPreviewEnabled();
+    const useBundledGameRows = shouldUseBundledGameRows();
 
     try {
         const payload = await postJson('/api/vocab/book', { bookKey: normalizedBookKey });
@@ -76,6 +156,13 @@ export const fetchVocabRows = async (bookKey) => {
         }
         return payload.rows;
     } catch (error) {
+        if (useBundledGameRows) {
+            const bundledRows = getBundledRows(normalizedBookKey);
+            if (bundledRows.length > 0) {
+                return bundledRows;
+            }
+        }
+
         if (!useLocalPreview) {
             throw error;
         }

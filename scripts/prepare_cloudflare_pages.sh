@@ -6,6 +6,9 @@ OUT_DIR="$ROOT_DIR/.cloudflare-pages"
 
 copy_path() {
     local relative_path="$1"
+    if [ ! -e "$ROOT_DIR/$relative_path" ]; then
+        return 0
+    fi
     mkdir -p "$(dirname "$OUT_DIR/$relative_path")"
     cp -a "$ROOT_DIR/$relative_path" "$OUT_DIR/$relative_path"
 }
@@ -14,6 +17,7 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR/assets"
 
 for relative_path in \
+    functions/private_data \
     auth \
     author \
     blog \
@@ -25,6 +29,7 @@ for relative_path in \
     mypage \
     ranked \
     signup \
+    travel \
     src \
     stats \
     test
