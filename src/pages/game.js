@@ -30,6 +30,8 @@ const BOOK_OPTIONS = [
     { key: 'etymology', label: 'Etymology', supportsDerivatives: false, scopeLabel: '범위 선택' },
 ];
 
+const ALL_SCOPE_VALUE = '__all__';
+
 const MODE_CONFIG = {
     ranked_sprint: {
         key: 'ranked_sprint',
@@ -73,9 +75,10 @@ const DIRECTION_LABELS = {
 const state = {
     phase: 'loading',
     selectedMode: DEFAULT_MODE,
+    modeLockedFromEntry: false,
     selectedBookKey: 'basic',
     includeDerivatives: false,
-    selectedScopeValue: '',
+    selectedScopeValue: ALL_SCOPE_VALUE,
     currentQuestion: null,
     questionQueue: [],
     activeScopePool: [],
@@ -110,10 +113,12 @@ const ui = {
     heroStatus: document.getElementById('sprint-hero-status'),
     heroCopy: document.getElementById('sprint-hero-copy'),
     startBtn: document.getElementById('sprint-start-btn'),
+    modeSection: document.getElementById('sprint-mode-section'),
     selectedLabel: document.getElementById('sprint-selected-label'),
     selectedPool: document.getElementById('sprint-selected-pool'),
     saveMode: document.getElementById('sprint-save-mode'),
     modeOptions: [...document.querySelectorAll('#sprint-mode-options [data-mode-key]')],
+    modeCards: [...document.querySelectorAll('#sprint-mode-cards [data-mode-key]')],
     bookOptions: [...document.querySelectorAll('#sprint-book-options [data-book-key]')],
     derivativeSection: document.getElementById('sprint-derivative-section'),
     derivativeToggle: document.getElementById('sprint-derivative-toggle'),
@@ -180,6 +185,7 @@ const getModeConfig = (modeKey = state.selectedMode) => MODE_CONFIG[normalizeMod
 const getBookOption = (bookKey) => BOOK_OPTIONS.find((book) => book.key === bookKey) || BOOK_OPTIONS[0];
 const getCurrentDurationMs = () => getModeConfig().durationMs;
 const getCurrentMaxMistakes = () => getModeConfig().maxMistakes;
+const isAllScopeSelected = () => state.selectedScopeValue === ALL_SCOPE_VALUE;
 
 const formatAccuracy = () => {
     if (!state.answeredCount) return '0%';
@@ -222,6 +228,15 @@ const shouldIncludeDerivatives = () => {
 };
 
 const getSelectedScope = () => {
+    if (isAllScopeSelected()) {
+        return {
+            value: ALL_SCOPE_VALUE,
+            label: '전체 범위',
+            chapterId: '',
+            toc: '',
+            type: 'all',
+        };
+    }
     const book = state.books[state.selectedBookKey];
     return (book?.scopes || []).find((scope) => scope.value === state.selectedScopeValue) || null;
 };
@@ -254,20 +269,31 @@ const ensureBookLibrary = async (bookKey) => {
 const syncSelectedScope = () => {
     const book = state.books[state.selectedBookKey];
     const scopes = book?.scopes || [];
+    if (state.selectedScopeValue === ALL_SCOPE_VALUE) return;
     if (!scopes.length) {
-        state.selectedScopeValue = '';
+        state.selectedScopeValue = ALL_SCOPE_VALUE;
         return;
     }
 
     const exists = scopes.some((scope) => scope.value === state.selectedScopeValue);
     if (!exists) {
-        state.selectedScopeValue = scopes[0].value;
+        state.selectedScopeValue = ALL_SCOPE_VALUE;
     }
 };
 
 const buildScopeRequest = () => {
     const selectedScope = getSelectedScope();
     if (!selectedScope) return null;
+
+    if (selectedScope.type === 'all') {
+        return {
+            bookKey: state.selectedBookKey,
+            chapterId: '',
+            selectedTocs: [],
+            includeDerivatives: shouldIncludeDerivatives(),
+            all: true,
+        };
+    }
 
     return {
         bookKey: state.selectedBookKey,
@@ -281,13 +307,12 @@ const buildQuestionQueue = async () => {
     const request = buildScopeRequest();
     if (!request) return [];
 
-    const [scopePool, bookPool] = await Promise.all([
-        getScopePool(request),
-        getAllBookPool({
-            bookKey: state.selectedBookKey,
-            includeDerivatives: shouldIncludeDerivatives(),
-        }),
-    ]);
+    const bookPool = await getAllBookPool({
+        bookKey: state.selectedBookKey,
+        includeDerivatives: shouldIncludeDerivatives(),
+    });
+
+    const scopePool = request.all ? [...bookPool] : await getScopePool(request);
 
     state.activeScopePool = scopePool;
     state.activeScopeLabel = getSelectedScope()?.label || '';
@@ -378,7 +403,11 @@ const getResultMetricsMarkup = () => {
 const renderScopeOptions = () => {
     if (!ui.scopeSelect) return;
     const scopes = state.books[state.selectedBookKey]?.scopes || [];
-    ui.scopeSelect.innerHTML = scopes.map((scope) => `
+    const options = [
+        { value: ALL_SCOPE_VALUE, label: '전체 범위' },
+        ...scopes,
+    ];
+    ui.scopeSelect.innerHTML = options.map((scope) => `
         <option value="${escapeHtml(scope.value)}">${escapeHtml(scope.label)}</option>
     `).join('');
     ui.scopeSelect.value = state.selectedScopeValue;
@@ -416,10 +445,20 @@ const renderSetup = () => {
             : getModeConfig().readyCopy;
     }
 
+    if (ui.modeSection) {
+        ui.modeSection.hidden = state.modeLockedFromEntry;
+    }
+
     ui.modeOptions.forEach((button) => {
         const isActive = button.dataset.modeKey === state.selectedMode;
         button.classList.toggle('is-active', isActive);
         button.disabled = state.phase === 'running';
+    });
+    ui.modeCards.forEach((button) => {
+        const isActive = button.dataset.modeKey === state.selectedMode;
+        button.classList.toggle('is-active', isActive);
+        button.disabled = state.phase === 'running';
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     ui.bookOptions.forEach((button) => {
@@ -443,12 +482,12 @@ const renderSetup = () => {
             : '어원편은 파생어 토글 없이 본문 범위만 사용합니다.';
     }
     if (ui.scopeLabel) {
-        ui.scopeLabel.textContent = bookOption.scopeLabel;
+        ui.scopeLabel.textContent = bookOption.scopeLabel === 'DAY 선택' ? '범위 선택' : bookOption.scopeLabel;
     }
     if (ui.scopeHint) {
         ui.scopeHint.textContent = selectedScope
             ? `${selectedScope.label} 범위로 게임을 준비합니다.`
-            : '플레이할 DAY 또는 범위를 선택해 주세요.';
+            : '전체 범위 또는 원하는 DAY를 선택해 주세요.';
     }
     if (ui.setupStatus) {
         ui.setupStatus.textContent = bookState.ready
@@ -514,7 +553,7 @@ const renderRunState = () => {
     if (ui.startBtn) {
         const canStart = state.phase !== 'loading'
             && state.phase !== 'running'
-            && Boolean(getSelectedScope())
+            && (isAllScopeSelected() || Boolean(getSelectedScope()))
             && Boolean(state.books[state.selectedBookKey]?.ready);
         ui.startBtn.disabled = !canStart;
         ui.startBtn.textContent = state.phase === 'running' ? '진행 중...' : state.phase === 'finished' ? '다시 시작' : modeConfig.startLabel;
@@ -661,7 +700,9 @@ const syncModeToUrl = () => {
 };
 
 const readModeFromUrl = () => {
-    state.selectedMode = normalizeModeKey(new URLSearchParams(window.location.search).get(MODE_QUERY_KEY));
+    const rawMode = new URLSearchParams(window.location.search).get(MODE_QUERY_KEY);
+    state.modeLockedFromEntry = Boolean(normalizeSpacingText(rawMode));
+    state.selectedMode = normalizeModeKey(rawMode);
 };
 
 const nextQuestion = async () => {
@@ -877,6 +918,11 @@ const bindEvents = () => {
         void startRun();
     });
     ui.modeOptions.forEach((button) => {
+        button.addEventListener('click', () => {
+            setSelectedMode(button.dataset.modeKey || DEFAULT_MODE);
+        });
+    });
+    ui.modeCards.forEach((button) => {
         button.addEventListener('click', () => {
             setSelectedMode(button.dataset.modeKey || DEFAULT_MODE);
         });
