@@ -881,10 +881,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cacheBookData(normalizedBook, mapDayRowsToWords(parsedRows));
     };
-    const buildQuestionPool = (entries) => {
+    const buildQuestionPool = (entries, options = {}) => {
         const pool = [];
         let hasEmptyWord = false;
         const seenPoolKeys = new Set();
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        const includeDerivatives = Boolean(options.includeDerivatives);
 
         const pushPoolItem = ({ word, meaning, chapter, toc }) => {
             const normalizedWord = normalizeSpacingText(word);
@@ -925,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toc: entry?.toc,
             });
 
-            if (state.selectedBook === 'etymology' || !state.includeDerivatives) return;
+            if (activeBookKey === 'etymology' || !includeDerivatives) return;
             (entry?.derivatives || []).forEach((derivative) => {
                 const derivativeWord = normalizeSpacingText(derivative?.word);
                 if (!derivativeWord) return;
@@ -945,24 +947,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return pool;
     };
+    const getEntriesForToc = (toc, options = {}) => {
+        const normalizedToc = normalizeSpacingText(toc);
+        if (!normalizedToc) return [];
+
+        const tocEntries = state.wordsByToc[normalizedToc] || [];
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        const chapterId = normalizeSpacingText(options.chapterId ?? state.selectedChapter);
+
+        if (activeBookKey !== 'etymology') {
+            return tocEntries;
+        }
+
+        if (!chapterId) return [];
+        return tocEntries.filter((entry) => normalizeSpacingText(entry?.chapter) === chapterId);
+    };
+    const getSelectableWordCountForToc = (toc, options = {}) => {
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        const includeDerivatives = Boolean(options.includeDerivatives ?? state.includeDerivatives);
+        const entries = getEntriesForToc(toc, {
+            bookKey: activeBookKey,
+            chapterId: options.chapterId,
+        });
+
+        return buildQuestionPool(entries, {
+            bookKey: activeBookKey,
+            includeDerivatives,
+        }).length;
+    };
     const getSelectedWordsForTocs = (selectedTocs) => {
         if (!selectedTocs || selectedTocs.size === 0) return [];
 
         const sourceEntries = [];
         selectedTocs.forEach((toc) => {
-            const tocWords = state.wordsByToc[toc];
-            if (!tocWords) return;
-
-            if (state.selectedBook === 'etymology') {
-                if (!state.selectedChapter) return;
-                sourceEntries.push(...tocWords.filter((word) => word.chapter === state.selectedChapter));
-                return;
-            }
-
-            sourceEntries.push(...tocWords);
+            sourceEntries.push(...getEntriesForToc(toc));
         });
 
-        return buildQuestionPool(sourceEntries);
+        return buildQuestionPool(sourceEntries, {
+            bookKey: state.selectedBook,
+            includeDerivatives: state.includeDerivatives,
+        });
     };
     const getCheckedTocsFromChecklist = () => {
         const checked = state.ui.tocChecklist?.querySelectorAll('input[type="checkbox"]:checked') || [];
@@ -1180,17 +1204,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.selectedBook && state.selectedBook !== 'etymology') {
             const dayLabels = Array.from({ length: 30 }, (_, idx) => `DAY ${String(idx + 1).padStart(2, '0')}`);
             state.ui.tocChecklist.innerHTML = dayLabels.map((dayLabel) => {
-                const dayEntries = state.wordsByToc[dayLabel] || [];
-                const baseCount = dayEntries.filter((entry) => normalizeSpacingText(entry?.word)).length;
-                const derivativeCount = dayEntries.reduce((count, entry) => {
-                    const baseWord = normalizeSpacingText(entry?.word);
-                    if (!baseWord) return count;
-                    const derivatives = (entry?.derivatives || []).filter((derivative) => (
-                        Boolean(normalizeSpacingText(derivative?.word))
-                    ));
-                    return count + derivatives.length;
-                }, 0);
-                const wordCount = state.includeDerivatives ? (baseCount + derivativeCount) : baseCount;
+                const wordCount = getSelectableWordCountForToc(dayLabel, {
+                    bookKey: state.selectedBook,
+                    includeDerivatives: state.includeDerivatives,
+                });
                 const isChecked = state.selectedTocs.has(dayLabel) ? 'checked' : '';
                 return `
                     <label class="toc-checklist-item">
@@ -1212,7 +1229,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const tocsInChapter = [...new Set(wordsInChapter.map(word => word.toc).filter(Boolean))];
         state.ui.tocChecklist.innerHTML = tocsInChapter.map(toc => {
             if (!toc) return '';
-            const wordCount = state.wordsByToc[toc]?.filter(w => w.chapter === chapterId).length || 0;
+            const wordCount = getSelectableWordCountForToc(toc, {
+                bookKey: 'etymology',
+                chapterId,
+                includeDerivatives: false,
+            });
             const isChecked = state.selectedTocs.has(toc) ? 'checked' : '';
             return `
                 <label class="toc-checklist-item">
