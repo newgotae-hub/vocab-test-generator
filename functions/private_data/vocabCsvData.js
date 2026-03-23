@@ -49,11 +49,10 @@ CH1,"a- / an- / ab (~이 아닌, 없는)",ahistorical,"비역사적인, 역사�
 CH1,"a- / an- / ab (~이 아닌, 없는)",anonymous,익명의
 CH1,"a- / an- / ab (~이 아닌, 없는)",anarchy,무정부 상태
 CH1,"a- / an- / ab (~이 아닌, 없는)",asymmetric,비대칭의
-CH1,"a- / an- / ab (~이 아닌, 없는)",abnormal,"정상에서 벗어난, 비정상적인"
+CH1,"a- / an- / ab (~이 아닌, 없는)",abnormal,"정상에서 벗어난, 비정상적인, 이상한"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abroad,"해외로, 멀리 떨어져"
 CH1,"a- / an- / ab (~이 아닌, 없는)",absent,"결석한, 부재한"
 CH1,"a- / an- / ab (~이 아닌, 없는)",absence,"결석, 부재"
-CH1,"a- / an- / ab (~이 아닌, 없는)",abnormal,"비정상적인, 이상한"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abolish,"폐지하다, 없애다"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abstract,추출하다; 추상적인
 CH1,"a- / an- / ab (~이 아닌, 없는)",abduct,"유괴하다, 납치하다"
@@ -61,15 +60,15 @@ CH1,"a- / an- / ab (~이 아닌, 없는)",abduction,"유괴, 납치"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abandon,"버리다, 포기하다"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abuse,"남용하다, 학대하다"
 CH1,"a- / an- / ab (~이 아닌, 없는)",abrupt,돌연한
-CH1,non- (~이 아닌),nonstop,"허튼소리, 무의미한 것"
-CH1,non- (~이 아닌),nonsense,존재하지 않는
-CH1,non- (~이 아닌),nonexistent,"허구가 아닌, 논픽션"
-CH1,non- (~이 아닌),nonfiction,"이익을 추구하지 않는, 비영리의"
-CH1,non- (~이 아닌),nonprofit,"비언어적인, 말이 아닌"
-CH1,non- (~이 아닌),nonverbal,"비인간의, 인간이 아닌 것"
-CH1,non- (~이 아닌),nonhuman,"비본질적인, 불필요한"
-CH1,non- (~이 아닌),nonessential,전통적이지 않은
-CH1,non- (~이 아닌),nontraditional,"독이 없는, 무해한"
+CH1,non- (~이 아닌),nonstop,"멈추지 않는, 쉬지 않는"
+CH1,non- (~이 아닌),nonsense,"허튼소리, 무의미한 것"
+CH1,non- (~이 아닌),nonexistent,존재하지 않는
+CH1,non- (~이 아닌),nonfiction,"허구가 아닌, 논픽션"
+CH1,non- (~이 아닌),nonprofit,"이익을 추구하지 않는, 비영리의"
+CH1,non- (~이 아닌),nonverbal,"비언어적인, 말이 아닌"
+CH1,non- (~이 아닌),nonhuman,"비인간의, 인간이 아닌 것"
+CH1,non- (~이 아닌),nonessential,"비본질적인, 불필요한"
+CH1,non- (~이 아닌),nontraditional,전통적이지 않은
 CH1,"dis- (반대, ~이 아닌, 떨어져)",dislike,"싫어하다, 반감"
 CH1,"dis- (반대, ~이 아닌, 떨어져)",dishonest,"부정직한, 불성실한"
 CH1,"dis- (반대, ~이 아닌, 떨어져)",disagree,반대하다
@@ -440,9 +439,8 @@ CH1,"homo- (같은, 동일한)",homograph,동철이의어 (철자만 공유)
 CH1,"homo- (같은, 동일한)",homonym,동음이의어 (소리와 철자를 공유)
 CH1,"hetero- (다른, 이질적인)",heterogeneous,"다른 종류의, 이질적인"
 CH1,"hetero- (다른, 이질적인)",heterogeneity,다양성
-CH1,"hetero- (다른, 이질적인)",heterosexual,이성애자
+CH1,"hetero- (다른, 이질적인)",heterosexual,"이성애의, 이성애자"
 CH1,"hetero- (다른, 이질적인)",heterodox,"이단의, 정통에서 벗어난"
-CH1,"hetero- (다른, 이질적인)",heterosexual,이성애
 CH1,"pseudo- (거짓, 허위의)",pseudonym,"필명, 가명"
 CH1,"pseudo- (거짓, 허위의)",pseudoscience,사이비 과학
 CH1,"pseudo- (거짓, 허위의)",pseudo-intellectual,가짜 지식인
@@ -749,9 +747,9 @@ CH2,"-ly (부사형, ~하게, 형용사 → 부사)",happily,행복하게
 CH2,"-ly (부사형, ~하게, 형용사 → 부사)",suddenly,갑자기
 CH2,"-ward(s) (~쪽으로, 방향성)",forward,앞으로
 CH2,"-ward(s) (~쪽으로, 방향성)",backward,뒤로
-CH2,"-ward(s) (~쪽으로, 방향성)",backward,위로
-CH2,"-ward(s) (~쪽으로, 방향성)",backward,아래로
-CH2,"-ward(s) (~쪽으로, 방향성)",backward,북쪽으로
+CH2,"-ward(s) (~쪽으로, 방향성)",upward,위로
+CH2,"-ward(s) (~쪽으로, 방향성)",downward,아래로
+CH2,"-ward(s) (~쪽으로, 방향성)",northward,북쪽으로
 CH2,"-wardly (부사형, ~하게, ~성향으로)",outwardly,겉으로는
 CH2,"-wardly (부사형, ~하게, ~성향으로)",inwardly,"내심, 속으로"
 CH2,"-wardly (부사형, ~하게, ~성향으로)",forwardly,"앞으로, 진취적으로"
@@ -906,8 +904,7 @@ CH3,bi- (둘),biannual,반년마다
 CH3,bi- (둘),biodegradable,생분해성의
 CH3,di- (둘),dioxide,이산화물
 CH3,di- (둘),dilemma,딜레마
-CH3,di- (둘),diploma,두 번 접은 증서(공식 문서는 두 번 접었음)
-CH3,di- (둘),diploma,졸업장
+CH3,di- (둘),diploma,"두 번 접은 증서(공식 문서는 두 번 접었음), 졸업장"
 CH3,di- (둘),dichotomy,이분법
 CH3,di- (둘),diameter,지름
 CH3,tri- (셋),triangle,삼각형
@@ -929,7 +926,6 @@ CH3,"multi- (많음, 다양한)",multicultural,다문화의
 CH3,"multi- (많음, 다양한)",multitude,"다수, 군중"
 CH3,"multi- (많음, 다양한)",multinational,다국가의
 CH3,"multi- (많음, 다양한)",multipurpose,다용도(의)
-CH3,"multi- (많음, 다양한)",multiply,겹치다)
 CH3,"multi- (많음, 다양한)",multiply,"곱하다, 증가시키다"
 CH3,"omni- (모두, 전부)",omnivore,잡식동물
 CH3,"omni- (모두, 전부)",omnivorous,잡식성의
@@ -1240,8 +1236,7 @@ CH3,labor (노동하다),labor,노동하다; 애쓰다
 CH3,labor (노동하다),laborer,"노동자, 일꾼"
 CH3,labor (노동하다),laborious,"힘든, 고된"
 CH3,labor (노동하다),laboratory,실험실
-CH3,labor (노동하다),elaborate,"정교한, 공들인"
-CH3,labor (노동하다),elaborate,정교하게 만들다; 상세히 설명하다
+CH3,labor (노동하다),elaborate,"정교한, 공들인; 정교하게 만들다; 상세히 설명하다"
 CH3,labor (노동하다),elaboration,"정교화, 정성 들임"
 CH3,labor (노동하다),collaborate,협력하다
 CH3,labor (노동하다),collaboration,"협력, 공동 작업"
@@ -1351,10 +1346,9 @@ CH3,liter (글자),literal,"문자 그대로의, 축어적인"
 CH3,liter (글자),literally,"문자 그대로, 정말로"
 CH3,liter (글자),literary,"문학의, 문학적인"
 CH3,liter (글자),literature,"문학, 문헌"
-CH3,liter (글자),illiterate,"문맹의, 무식한"
+CH3,liter (글자),illiterate,"문맹의, 무식한; 문맹자"
 CH3,liter (글자),illiteracy,"문맹, 무식"
 CH3,liter (글자),literate,읽고 쓸 줄 아는
-CH3,liter (글자),illiterate,문맹자
 CH3,liter (글자),obliterate,"말살하다, 지워 없애다"
 CH3,liter (글자),obliteration,"말살, 제거"
 CH3,liter (글자),obliterated,완전히 지워진
@@ -1433,7 +1427,6 @@ CH3,milit (군사),militaristic,"군국주의적인, 군사적인"
 CH3,milit (군사),militant,"공격적인, 전투적인; 투사"
 CH3,milit (군사),militia,"민병대, 의용군"
 CH3,milit (군사),demilitarize,비무장화하다
-CH3,milit (군사),demilitarize,비무장지대
 CH3,milit (군사),paramilitary,"준군사조직의, 반군의"
 CH3,milit (군사),militarize,"군사화하다, 무장시키다"
 CH3,milit (군사),militarization,"군사화, 무장 강화"
@@ -1741,8 +1734,7 @@ CH3,"mut (바꾸다, 변하다)",mutate,"변형되다, 돌연변이가 되다"
 CH3,"mut (바꾸다, 변하다)",mutation,"변화, 돌연변이"
 CH3,"mut (바꾸다, 변하다)",mutant,돌연변이체
 CH3,"mut (바꾸다, 변하다)",mutable,변하기 쉬운
-CH3,"mut (바꾸다, 변하다)",immutability,불변성
-`,
+CH3,"mut (바꾸다, 변하다)",immutability,불변성`,
   basic: `﻿단어,의미,파생어1,파생어1 뜻,파생어2,파생어2 뜻,파생어3,파생어3 뜻,파생어4,파생어4 뜻,파생어5,파생어5 뜻,파생어6,파생어6 뜻
 the,그 (특정한 사람·사물 지칭),,,,,,,,,,,,
 be,"존재하다, 있다, ~이다",,,,,,,,,,,,

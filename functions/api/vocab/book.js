@@ -1,4 +1,5 @@
 import { BOOK_CSV_TEXT } from '../../private_data/vocabCsvData.js';
+import { applyBookRowFixes } from '../../../src/lib/vocabDataFixes.js';
 
 const DEFAULT_SUPABASE_URL = 'https://ymzygbjihhttszijdkei.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_cUXkuDrgyqtyRqh1rmH1HQ_PYwi7nxX';
@@ -119,7 +120,7 @@ const getBookRows = (bookKey) => {
         throw new Error('지원되지 않는 교재입니다.');
     }
 
-    const rows = parseCsvRows(csvText);
+    const rows = applyBookRowFixes(bookKey, parseCsvRows(csvText));
     parsedBookCache.set(bookKey, rows);
     return rows;
 };

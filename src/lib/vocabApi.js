@@ -1,5 +1,6 @@
 import { BOOK_CSV_TEXT } from '/functions/private_data/vocabCsvData.js';
 import { VOCAB_PREVIEW_FIXTURES } from '/src/data/vocabPreviewFixtures.js';
+import { applyBookRowFixes } from '/src/lib/vocabDataFixes.js';
 import { isLocalPreviewEnabled, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
 import { supabase } from '/src/lib/supabaseClient.js';
 
@@ -95,7 +96,7 @@ const parseCsvRowsFallback = (csvText) => {
 const getBundledRows = (bookKey) => {
     const csvText = BOOK_CSV_TEXT?.[bookKey];
     if (!csvText) return [];
-    return parseCsvRowsFallback(csvText);
+    return applyBookRowFixes(bookKey, parseCsvRowsFallback(csvText));
 };
 
 const shouldUseBundledGameRows = () => {
