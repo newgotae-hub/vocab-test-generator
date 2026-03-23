@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectAllToc: document.getElementById('select-all-toc'),
             deselectAllToc: document.getElementById('deselect-all-toc'),
             tocSummary: document.getElementById('toc-summary'),
+            selectedTotalBadge: document.getElementById('selected-total-badge'),
             testTypeOptions: document.querySelector('.test-type-options'),
             numQuestions: document.getElementById('num-questions'),
             numQuestionsHint: document.getElementById('num-questions-hint'),
@@ -988,6 +989,10 @@ document.addEventListener('DOMContentLoaded', () => {
             includeDerivatives: state.includeDerivatives,
         });
     };
+    const syncSelectedTotalBadge = (totalWords = 0) => {
+        if (!state.ui.selectedTotalBadge) return;
+        state.ui.selectedTotalBadge.textContent = `총 ${Math.max(0, totalWords)}개`;
+    };
     const getCheckedTocsFromChecklist = () => {
         const checked = state.ui.tocChecklist?.querySelectorAll('input[type="checkbox"]:checked') || [];
         return new Set(
@@ -1155,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.ui.tocSummary) {
                 state.ui.tocSummary.textContent = '';
             }
+            syncSelectedTotalBadge(0);
         } else {
             setSectionOpen('toc', true);
             state.ui.subChapterSelectionCard.classList.add('hidden');
@@ -1255,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const totalWords = state.selectedWords.length;
+        syncSelectedTotalBadge(totalWords);
         if (state.selectedBook && state.selectedBook !== 'etymology') {
             const selectedBaseEntries = [];
             state.selectedTocs.forEach((toc) => {
