@@ -448,9 +448,14 @@ const focusBlogEditorParagraph = (editorRoot, blockId, offset = 'end') => {
         if (!(target instanceof HTMLElement)) return;
 
         target.focus();
-        const caretOffset = offset === 'start'
-            ? 0
-            : String(target.innerText || '').length;
+        let caretOffset = 0;
+        if (offset === 'start') {
+            caretOffset = 0;
+        } else if (typeof offset === 'number') {
+            caretOffset = offset;
+        } else {
+            caretOffset = String(target.innerText || '').length;
+        }
         setBlogEditorCaretOffset(target, caretOffset);
     });
 };
@@ -1156,11 +1161,13 @@ const renderAdminComposer = () => {
                         event.preventDefault();
                         const prevBlockId = findNearestParagraphForFocus(blockIndex - 1, -1);
                         if (prevBlockId) {
+                            const prevNode = editorRoot.querySelector(`[data-editor-paragraph="${prevBlockId}"]`);
+                            const oldOffset = prevNode ? String(prevNode.innerText || '').length : 0;
                             const prevBlock = getBlockById(prevBlockId);
                             prevBlock.text = (prevBlock.text || '') + (block.text || '');
                             editorState.blocks.splice(blockIndex, 1);
                             editorState.focusedBlockId = prevBlockId;
-                            renderEditorBlocks({ blockId: prevBlockId, offset: 'end' });
+                            renderEditorBlocks({ blockId: prevBlockId, offset: oldOffset });
                             scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
                         }
                         return;
