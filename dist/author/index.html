@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-adsense-account" content="ca-pub-1010168647313500">
     
-    <script defer src="/src/analytics-loader.js"></script>
+    <script async src="/src/analytics-loader.js"></script>
 <title>저자 및 제작 의도 | 평가원기출VOCA</title>
     <meta name="description" content="평가원기출VOCA를 만든 배경과 집필 원칙, 저자 소개를 확인하세요.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
@@ -35,15 +35,18 @@
 </head>
 <body class="bg-white text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
 
+        <!-- Navbar -->
     <nav class="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="/" class="text-lg font-bold tracking-tight text-slate-900">평가원기출VOCA</a>
-            <div class="flex items-center gap-8">
+        <div class="max-w-6xl mx-auto px-6 h-16 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
+            <a href="/" class="justify-self-start text-lg font-bold tracking-tight text-slate-900">평가원기출VOCA</a>
+            <img src="/oxbridge-partners-black-on-white.svg" alt="Oxbridge Partners 로고" class="w-28 md:w-36 h-auto">
+            <div class="flex items-center justify-self-end gap-4 md:gap-8">
                 <a href="/blog/" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">블로그</a>
-                <a href="/auth/" data-auth-link class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">로그인</a>
+                <a href="/auth/" data-auth-link class="text-sm font-medium text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors px-4 py-2 rounded-full hidden md:block">로그인</a>
             </div>
         </div>
     </nav>
+
 
     <main class="pt-32 pb-20">
         <section class="max-w-4xl mx-auto px-6">
@@ -83,6 +86,7 @@
         </section>
     </main>
 
+        <!-- Footer -->
     <footer class="bg-white border-t border-slate-100 pt-8 pb-10">
         <div class="max-w-6xl mx-auto px-6 grid items-center gap-4 text-center md:grid-cols-[1fr_auto_1fr]">
             <div class="md:justify-self-start md:text-left">
@@ -90,20 +94,21 @@
                 <p class="text-slate-500 text-xs mt-2">© 2026 평가원기출VOCA. All rights reserved.</p>
                 <p class="text-[11px] leading-relaxed text-slate-400 mt-1">Designed and Developed by Juntae Ko (고준태)</p>
             </div>
-            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MjAgMjQwIiByb2xlPSJpbWciIGFyaWEtbGFiZWxsZWRieT0idGl0bGUgZGVzYyI+DQogIDx0aXRsZSBpZD0idGl0bGUiPk94YnJpZGdlIFBhcnRuZXJzIGxvZ288L3RpdGxlPg0KICA8ZGVzYyBpZD0iZGVzYyI+Q2VudGVyZWQgdHdvLWxpbmUgT3hicmlkZ2UgUGFydG5lcnMgd29yZG1hcmsgd2l0aCB0cmFuc3BhcmVudCBiYWNrZ3JvdW5kLjwvZGVzYz4NCiAgPHN0eWxlPg0KICAgIC5veCB7DQogICAgICBmb250LWZhbWlseTogIlBsYXlmYWlyIERpc3BsYXkiLCAiVGltZXMgTmV3IFJvbWFuIiwgc2VyaWY7DQogICAgICBmb250LXNpemU6IDg4cHg7DQogICAgICBmb250LXdlaWdodDogNjAwOw0KICAgICAgbGV0dGVyLXNwYWNpbmc6IDAuMThlbTsNCiAgICB9DQoNCiAgICAucGFydG5lcnMgew0KICAgICAgZm9udC1mYW1pbHk6ICJQbGF5ZmFpciBEaXNwbGF5IiwgIlRpbWVzIE5ldyBSb21hbiIsIHNlcmlmOw0KICAgICAgZm9udC1zaXplOiA1OHB4Ow0KICAgICAgZm9udC13ZWlnaHQ6IDUwMDsNCiAgICAgIGxldHRlci1zcGFjaW5nOiAwLjI2ZW07DQogICAgfQ0KICA8L3N0eWxlPg0KICA8dGV4dCBjbGFzcz0ib3giIHg9IjUwJSIgeT0iOTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiMxMTExMTEiPk9YQlJJREdFPC90ZXh0Pg0KICA8dGV4dCBjbGFzcz0icGFydG5lcnMiIHg9IjUwJSIgeT0iMTY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjMTExMTExIj5QQVJUTkVSUzwvdGV4dD4NCjwvc3ZnPg0K" alt="Oxbridge Partners 로고" class="w-28 md:w-36 h-auto justify-self-center">
+            <img src="/oxbridge-partners-black-on-white.svg" alt="Oxbridge Partners 로고" class="w-28 md:w-36 h-auto justify-self-center">
             <div class="flex justify-center gap-6 text-slate-400 md:justify-self-end">
-                <a href="https://www.instagram.com/juntaeko_tr/" target="_blank" rel="noopener noreferrer" class="hover:text-slate-900 transition-colors">
-                    <iconify-icon icon="solar:camera-linear" width="20" class=""></iconify-icon>
+                <a href="https://www.instagram.com/juntaeko_tr/" target="_blank" rel="noopener noreferrer" class="hover:text-slate-900 transition-colors" aria-label="인스타그램으로 이동">
+                    <iconify-icon icon="solar:camera-linear" width="20"></iconify-icon>
                 </a>
-                <a href="#" class="hover:text-slate-900 transition-colors">
-                    <iconify-icon icon="solar:global-linear" width="20" class=""></iconify-icon>
+                <a href="https://voca.plus/" class="hover:text-slate-900 transition-colors" aria-label="메인 페이지로 이동">
+                    <iconify-icon icon="solar:global-linear" width="20"></iconify-icon>
                 </a>
                 <a href="/contact/" class="hover:text-slate-900 transition-colors" aria-label="문의 페이지로 이동">
-                    <iconify-icon icon="solar:letter-linear" width="20" class=""></iconify-icon>
+                    <iconify-icon icon="solar:letter-linear" width="20"></iconify-icon>
                 </a>
             </div>
         </div>
     </footer>
+
 
 
     <script>

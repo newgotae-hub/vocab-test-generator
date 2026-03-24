@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-adsense-account" content="ca-pub-1010168647313500">
     
-    <script defer src="/src/analytics-loader.js"></script>
+    <script async src="/src/analytics-loader.js"></script>
 <title>평가원기출VOCA | 수능기출 영단어 · 평가원 기출 영단어 학습</title>
     <meta name="description" content="수능기출 영단어의 출제 확률과 빈도수를 제시하는 최초의 단어장입니다.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
@@ -78,17 +78,7 @@
 </head>
 <body class="bg-white text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
 
-    <!-- Navbar -->
-    <nav class="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div class="max-w-6xl mx-auto px-6 min-h-16 py-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
-            <a href="/" class="justify-self-start text-lg font-bold tracking-tight text-slate-900">평가원기출VOCA</a>
-            <img src="/oxbridge-partners-black-on-white.svg" alt="Oxbridge Partners 로고" class="w-28 md:w-36 h-auto">
-            <div class="flex items-center justify-self-end gap-4 md:gap-8">
-                <a href="/blog/" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">블로그</a>
-                <a href="/auth/" data-auth-link class="hover:text-slate-900 transition-colors text-sm font-medium text-slate-500">로그인</a>
-            </div>
-        </div>
-    </nav>
+    <marketing-header></marketing-header>
 
     <!-- Hero Section -->
     <section class="relative pt-32 pb-20 overflow-hidden">
@@ -357,28 +347,7 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-100 pt-8 pb-10">
-        <div class="max-w-6xl mx-auto px-6 grid items-center gap-4 text-center md:grid-cols-[1fr_auto_1fr]">
-            <div class="md:justify-self-start md:text-left">
-                <span class="text-lg font-bold tracking-tight text-slate-900">평가원기출VOCA</span>
-                <p class="text-slate-500 text-xs mt-2">© 2026 평가원기출VOCA. All rights reserved.</p>
-                <p class="text-[11px] leading-relaxed text-slate-400 mt-1">Designed and Developed by Juntae Ko (고준태)</p>
-            </div>
-            <img src="/oxbridge-partners-black-on-white.svg" alt="Oxbridge Partners 로고" class="w-28 md:w-36 h-auto justify-self-center">
-            <div class="flex justify-center gap-6 text-slate-400 md:justify-self-end">
-                <a href="https://www.instagram.com/juntaeko_tr/" target="_blank" rel="noopener noreferrer" class="hover:text-slate-900 transition-colors">
-                    <iconify-icon icon="solar:camera-linear" width="20" class=""></iconify-icon>
-                </a>
-                <a href="#" class="hover:text-slate-900 transition-colors">
-                    <iconify-icon icon="solar:global-linear" width="20" class=""></iconify-icon>
-                </a>
-                <a href="/contact/" class="hover:text-slate-900 transition-colors" aria-label="문의 페이지로 이동">
-                    <iconify-icon icon="solar:letter-linear" width="20" class=""></iconify-icon>
-                </a>
-            </div>
-        </div>
-    </footer>
+    <marketing-footer></marketing-footer>
 
     <script type="module">
         import { initLandingPage } from '/src/pages/landing.js';

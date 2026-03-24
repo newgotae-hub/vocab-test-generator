@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-adsense-account" content="ca-pub-1010168647313500">
 
-    <script defer src="/src/analytics-loader.js"></script>
+    <script async src="/src/analytics-loader.js"></script>
 <title>평가원기출VOCA 대시보드 | 학습 모드 선택</title>
     <meta name="description" content="시험지 만들기, 온라인 테스트, 마이페이지, 게임 학습 기능을 한 곳에서 확인하고 바로 시작하세요.">
     <meta name="robots" content="noindex,follow,max-image-preview:large">
@@ -58,17 +58,7 @@
 </head>
 <body data-page="dashboard">
     <div id="app">
-        <header>
-            <a class="logo" href="/"><img class="logo-icon" src="/assets/images/logo-mark.svg" alt=""> 평가원기출VOCA</a>
-            <nav aria-label="주요 메뉴">
-                <a href="/" data-route="/">홈</a>
-                <a href="/dashboard/" data-route="/dashboard/">대시보드</a>
-                <a href="/generator/" data-route="/generator/">시험지만들기</a>
-                <a href="/test/" data-route="/test/">온라인 테스트</a>
-                <a href="/game/" data-route="/game/">게임</a>
-                <a href="/mypage/" data-route="/mypage/">마이페이지</a>
-            </nav>
-        </header>
+        <app-header></app-header>
 
         <main class="dashboard-main">
             <h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">평가원기출VOCA 대시보드</h1>
