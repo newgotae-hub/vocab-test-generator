@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
             URL.revokeObjectURL(url);
         }, 60000);
     };
-    const DOWNLOAD_GAP_MS = 800;
+    const DOWNLOAD_GAP_MS = 250;
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const showToast = (message, type = 'info', duration = 2200) => {
         const container = document.getElementById('toast-container');
@@ -1424,6 +1424,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseFileName = normalizeFileName(`${getBookPrefixForFile(state.selectedBook)}${settings.fileBaseName || settings.examTitle}`);
         showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
+            // ✅ 쿼터 소모를 파일 생성 전에 먼저 처리해 다운로드 직전 대기를 제거
+            if (!(await consumeDailyDownloadQuota())) {
+                throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
+            }
+
             const generatedFiles = [];
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
@@ -1447,9 +1452,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            if (!(await consumeDailyDownloadQuota())) {
-                throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
-            }
             for (let i = 0; i < generatedFiles.length; i += 1) {
                 const file = generatedFiles[i];
                 downloadBlob(file.blob, file.name);
