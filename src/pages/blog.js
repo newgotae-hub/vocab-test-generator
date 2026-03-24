@@ -926,20 +926,14 @@ const renderAdminComposer = () => {
             }
 
             return `
-                <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative">
-                    <div class="absolute right-0 top-1 z-10 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                        <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-base text-slate-300 transition hover:bg-slate-100 hover:text-slate-700">+</button>
-                        <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-slate-300 transition hover:bg-slate-100 hover:text-slate-600">×</button>
-                    </div>
-                    <div class="pr-12">
-                        <div
-                            contenteditable="true"
-                            spellcheck="true"
-                            data-editor-paragraph="${escapeHtml(block.id)}"
-                            data-block-id="${escapeHtml(block.id)}"
-                            class="min-h-[2rem] py-0.5 text-[1.08rem] leading-[1.65rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[1.75rem]"
-                        >${paragraphTextToEditableHtml(block.text)}</div>
-                    </div>
+                <article data-editor-block-id="${escapeHtml(block.id)}">
+                    <div
+                        contenteditable="true"
+                        spellcheck="true"
+                        data-editor-paragraph="${escapeHtml(block.id)}"
+                        data-block-id="${escapeHtml(block.id)}"
+                        class="min-h-[1.5rem] py-0.5 text-[1.08rem] leading-[1.65rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[1.75rem]"
+                    >${paragraphTextToEditableHtml(block.text)}</div>
                 </article>
             `;
         }).join('');
@@ -1154,10 +1148,52 @@ const renderAdminComposer = () => {
             }
 
             if (event.key === 'Backspace') {
+                const caretOffset = getBlogEditorCaretOffset(target);
                 const currentText = getBlogEditorTextFromElement(target);
+                if (caretOffset === 0) {
+                    const blockIndex = getBlockIndex(blockId);
+                    if (blockIndex > 0) {
+                        event.preventDefault();
+                        const prevBlockId = findNearestParagraphForFocus(blockIndex - 1, -1);
+                        if (prevBlockId) {
+                            const prevBlock = getBlockById(prevBlockId);
+                            prevBlock.text = (prevBlock.text || '') + (block.text || '');
+                            editorState.blocks.splice(blockIndex, 1);
+                            editorState.focusedBlockId = prevBlockId;
+                            renderEditorBlocks({ blockId: prevBlockId, offset: 'end' });
+                            scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
+                        }
+                        return;
+                    }
+                }
                 if (!currentText && editorState.blocks.length > 1) {
                     event.preventDefault();
                     removeBlock(blockId);
+                }
+            }
+            if (event.key === 'Delete') {
+                const caretOffset = getBlogEditorCaretOffset(target);
+                const currentText = getBlogEditorTextFromElement(target);
+                if (caretOffset === currentText.length) {
+                    const blockIndex = getBlockIndex(blockId);
+                    if (blockIndex < editorState.blocks.length - 1) {
+                        event.preventDefault();
+                        const nextBlockId = findNearestParagraphForFocus(blockIndex + 1, 1);
+                        if (nextBlockId) {
+                            const nextBlock = getBlockById(nextBlockId);
+                            block.text = (block.text || '') + (nextBlock.text || '');
+                            editorState.blocks.splice(getBlockIndex(nextBlockId), 1);
+                            editorState.focusedBlockId = blockId;
+                            const oldOffset = caretOffset;
+                            renderEditorBlocks();
+                            scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
+                            setTimeout(() => {
+                                const newTarget = editorRoot.querySelector(`[data-editor-paragraph="${blockId}"]`);
+                                if (newTarget) setBlogEditorCaretOffset(newTarget, oldOffset);
+                            }, 50);
+                        }
+                        return;
+                    }
                 }
             }
         });
