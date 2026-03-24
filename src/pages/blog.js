@@ -425,7 +425,7 @@ const renderPostList = () => {
                         <span>${escapeHtml(`${readingMinutes}분 읽기`)}</span>
                     </div>
                     ${imageMarkup}
-                    <div class="mt-6 space-y-6">${paragraphsToHtml(post.content)}</div>
+                    <div class="mt-6 space-y-2">${paragraphsToHtml(post.content)}</div>
                     <div class="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <p class="text-sm text-slate-500">최근 업데이트: ${escapeHtml(publishedLabel)}</p>
                         <a href="${escapeHtml(articleUrl)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">정식 글 페이지</a>
@@ -588,7 +588,7 @@ const renderAdminComposer = () => {
                     </div>
                     <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.06)] transition">
                         <div id="blog-admin-dropzone" class="min-h-[30rem] bg-white px-6 py-7 transition md:px-10 md:py-10">
-                            <div id="blog-admin-editor" class="space-y-6"></div>
+                            <div id="blog-admin-editor" class="space-y-2"></div>
                         </div>
                         <textarea id="blog-admin-content" name="content" required class="hidden"></textarea>
                     </div>
@@ -599,7 +599,7 @@ const renderAdminComposer = () => {
                         <h3 class="text-sm font-semibold text-slate-900">실시간 미리보기</h3>
                         <p class="text-xs text-slate-400">본문 저장 전 렌더링 확인용</p>
                     </div>
-                    <div id="blog-admin-preview" class="mt-4 space-y-6"></div>
+                    <div id="blog-admin-preview" class="mt-4 space-y-2"></div>
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p id="blog-admin-form-status" class="text-sm text-slate-500">새 글은 저장 즉시 공개됩니다.</p>
@@ -826,7 +826,7 @@ const renderAdminComposer = () => {
                             spellcheck="true"
                             data-editor-paragraph="${escapeHtml(block.id)}"
                             data-block-id="${escapeHtml(block.id)}"
-                            class="min-h-[2.8rem] py-0.5 text-[1.08rem] leading-[2.1rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[2.15rem]"
+                            class="min-h-[2rem] py-0.5 text-[1.08rem] leading-[1.8rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[1.9rem]"
                         >${paragraphTextToEditableHtml(block.text)}</div>
                     </div>
                 </article>
