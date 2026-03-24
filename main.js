@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
             URL.revokeObjectURL(url);
         }, 60000);
     };
-    const DOWNLOAD_GAP_MS = 250;
+    const DOWNLOAD_GAP_MS = 800;
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const showToast = (message, type = 'info', duration = 2200) => {
         const container = document.getElementById('toast-container');
@@ -1087,12 +1087,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             state.isDataReady = true;
             updatePdfOptionState();
+
+            // 🚀 교재 선택 딜레이 제거: basic/advanced를 백그라운드에서 미리 프리페치
+            void Promise.allSettled([
+                ensureBookDataLoaded('basic'),
+                ensureBookDataLoaded('advanced'),
+            ]).then(() => {
+                // 데이터만 캐시해두고 UI는 건드리지 않음 (조용히 준비만)
+            });
         } catch (error) {
             console.error(error);
             state.isDataReady = true;
             showToast('데이터 로드 중 오류가 발생했습니다.', 'error');
         }
     };
+
 
     const selectBook = async (bookName) => {
         if (!state.isDataReady) {
@@ -1424,11 +1433,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseFileName = normalizeFileName(`${getBookPrefixForFile(state.selectedBook)}${settings.fileBaseName || settings.examTitle}`);
         showToast(settings.outputFormat === 'WORD' ? 'WORD 형식으로 시험지를 생성합니다.' : 'PDF 형식으로 시험지를 생성합니다.');
         try {
-            // ✅ 쿼터 소모를 파일 생성 전에 먼저 처리해 다운로드 직전 대기를 제거
-            if (!(await consumeDailyDownloadQuota())) {
-                throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
-            }
-
             const generatedFiles = [];
             if (settings.outputFormat === 'PDF') {
                 const questionPdfBytes = await createPdf(questions, settings, false);
@@ -1452,6 +1456,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            if (!(await consumeDailyDownloadQuota())) {
+                throw new Error('책구매 인증 전에는 시험지 다운로드를 하루 1회만 할 수 있습니다.');
+            }
             for (let i = 0; i < generatedFiles.length; i += 1) {
                 const file = generatedFiles[i];
                 downloadBlob(file.blob, file.name);
