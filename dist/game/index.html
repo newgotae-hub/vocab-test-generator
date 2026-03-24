@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-adsense-account" content="ca-pub-1010168647313500">
+
+    <script defer src="/src/analytics-loader.js"></script>
+<title>게임 학습 | 평가원기출VOCA</title>
+    <meta name="description" content="평가원기출VOCA 단어 게임 학습 페이지입니다. 랭킹 스프린트와 생존 모드를 바로 시작할 수 있습니다.">
+    <meta name="robots" content="noindex,follow,max-image-preview:large">
+    <link rel="canonical" href="https://voca.plus/game/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:site_name" content="평가원기출VOCA">
+    <meta property="og:title" content="게임 학습 | 평가원기출VOCA">
+    <meta property="og:description" content="평가원기출VOCA 단어 게임 학습 페이지입니다. 랭킹 스프린트와 생존 모드를 바로 시작할 수 있습니다.">
+    <meta property="og:image" content="https://voca.plus/assets/images/베이직.jpg">
+    <meta property="og:image:alt" content="평가원기출VOCA 베이직 교재 표지">
+    <meta property="og:url" content="https://voca.plus/game/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="게임 학습 | 평가원기출VOCA">
+    <meta name="twitter:description" content="평가원기출VOCA 단어 게임 학습 페이지입니다. 랭킹 스프린트와 생존 모드를 바로 시작할 수 있습니다.">
+    <meta name="twitter:image" content="https://voca.plus/assets/images/베이직.jpg">
+    <link rel="icon" href="/assets/favicon-CX4hssxF.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body[data-page="game"] .game-main {
+            display: block;
+        }
+
+        body[data-page="game"] .game-stack {
+            display: grid;
+            gap: 1rem;
+        }
+
+        body[data-page="game"] .game-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        body[data-page="game"] .game-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        body[data-page="game"] .game-mode-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: var(--surface-soft);
+            padding: 1rem;
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        body[data-page="game"] .game-mode-card.is-active {
+            border-color: rgba(30, 58, 138, 0.34);
+            background: rgba(30, 58, 138, 0.06);
+        }
+
+        body[data-page="game"] .game-mode-card h3 {
+            margin: 0;
+        }
+
+        body[data-page="game"] .game-mode-card p {
+            margin: 0;
+            color: var(--text-subtle);
+            line-height: 1.6;
+        }
+
+        body[data-page="game"] .game-subtitle {
+            margin: 0;
+            color: var(--text-subtle);
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+
+        body[data-page="game"] .game-inline-row,
+        body[data-page="game"] .game-chip-row,
+        body[data-page="game"] .game-board-filters,
+        body[data-page="game"] .game-result-actions,
+        body[data-page="game"] .game-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        body[data-page="game"] .game-inline-row {
+            margin-top: 0.9rem;
+        }
+
+        body[data-page="game"] .game-label {
+            font-size: 0.86rem;
+            color: var(--text-subtle);
+        }
+
+        body[data-page="game"] .game-value {
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+
+        body[data-page="game"] .game-button,
+        body[data-page="game"] .game-chip,
+        body[data-page="game"] .game-choice,
+        body[data-page="game"] .game-link {
+            font: inherit;
+        }
+
+        body[data-page="game"] .game-button,
+        body[data-page="game"] .game-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0.68rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(30, 58, 138, 0.12);
+            background: #fff;
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        body[data-page="game"] .game-button--primary,
+        body[data-page="game"] .game-link--primary {
+            background: linear-gradient(180deg, #2448a5 0%, #1e3a8a 100%);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        body[data-page="game"] .game-chip {
+            min-height: 40px;
+            padding: 0.62rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        body[data-page="game"] .game-chip.is-active {
+            border-color: rgba(30, 58, 138, 0.34);
+            background: rgba(30, 58, 138, 0.08);
+            color: var(--brand-strong);
+        }
+
+        body[data-page="game"] .game-progress {
+            display: grid;
+            gap: 0.6rem;
+        }
+
+        body[data-page="game"] .game-progress-bar {
+            height: 10px;
+            border-radius: 999px;
+            background: #e5ebf6;
+            overflow: hidden;
+        }
+
+        body[data-page="game"] #sprint-time-fill {
+            display: block;
+            height: 100%;
+            width: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #1d4ed8 0%, #60a5fa 100%);
+            transition: width 120ms linear;
+        }
+
+        body[data-page="game"] .game-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        body[data-page="game"] .game-stat {
+            padding: 0.85rem;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-soft);
+        }
+
+        body[data-page="game"] .game-stat span {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+            margin-bottom: 0.2rem;
+        }
+
+        body[data-page="game"] .game-stat strong {
+            font-size: 1.15rem;
+        }
+
+        body[data-page="game"] .game-question-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin-bottom: 0.8rem;
+        }
+
+        body[data-page="game"] .game-question-meta span {
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            background: var(--surface-soft);
+            color: var(--text-muted);
+            font-size: 0.84rem;
+        }
+
+        body[data-page="game"] #sprint-question-prompt {
+            margin: 0 0 1rem;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        body[data-page="game"] #sprint-choice-list {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        body[data-page="game"] .game-choice {
+            width: 100%;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.9rem;
+            align-items: center;
+            text-align: left;
+            padding: 0.95rem 1rem;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #fff;
+            cursor: pointer;
+        }
+
+        body[data-page="game"] .game-choice:hover {
+            border-color: rgba(30, 58, 138, 0.28);
+        }
+
+        body[data-page="game"] .game-choice.is-selected {
+            border-color: rgba(30, 58, 138, 0.35);
+            background: rgba(30, 58, 138, 0.06);
+        }
+
+        body[data-page="game"] .game-choice.is-correct {
+            border-color: rgba(22, 163, 74, 0.28);
+            background: rgba(22, 163, 74, 0.08);
+        }
+
+        body[data-page="game"] .game-choice.is-wrong {
+            border-color: rgba(220, 38, 38, 0.22);
+            background: rgba(220, 38, 38, 0.07);
+        }
+
+        body[data-page="game"] .game-choice-key {
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: var(--surface-soft);
+            color: var(--brand-strong);
+            font-weight: 700;
+        }
+
+        body[data-page="game"] .game-choice-body {
+            display: grid;
+            gap: 0.2rem;
+        }
+
+        body[data-page="game"] .game-inline-status,
+        body[data-page="game"] #sprint-board-status,
+        body[data-page="game"] #sprint-save-status {
+            margin: 0;
+            color: var(--text-subtle);
+            font-size: 0.9rem;
+        }
+
+        body[data-page="game"] .game-inline-status.is-positive {
+            color: #15803d;
+        }
+
+        body[data-page="game"] .game-inline-status.is-negative {
+            color: #b91c1c;
+        }
+
+        body[data-page="game"] .game-board-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        body[data-page="game"] .game-board-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 0.8rem;
+            align-items: center;
+            padding: 0.85rem 0.95rem;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-soft);
+        }
+
+        body[data-page="game"] .game-board-rank,
+        body[data-page="game"] .game-board-score {
+            font-weight: 700;
+        }
+
+        body[data-page="game"] .game-board-meta {
+            color: var(--text-subtle);
+            font-size: 0.84rem;
+        }
+
+        body[data-page="game"] .game-result-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        body[data-page="game"] .game-result-metrics > div,
+        body[data-page="game"] .game-result-metrics > article {
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        @media (max-width: 900px) {
+            body[data-page="game"] .game-mode-grid,
+            body[data-page="game"] .game-grid,
+            body[data-page="game"] .game-metrics,
+            body[data-page="game"] .game-result-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+  <script type="module" crossorigin src="https://esm.sh/@supabase/supabase-js@2"></script>
+  <script type="module" crossorigin src="/assets/supabaseClient-Cq76Rikx.js"></script>
+  <script type="module" crossorigin src="/assets/authCallback-CUU16yxY.js"></script>
+  <script type="module" crossorigin src="/assets/authNav-DfHJ-GDt.js"></script>
+  <script type="module" crossorigin src="/assets/app-DjGqs_Xu.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/supabaseClient-Buh4uQ7U.css">
+</head>
+<body data-page="game">
+    <div id="app">
+        <header>
+            <a class="logo" href="/"><img class="logo-icon" src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'%20role='img'%20aria-label='평가원기출VOCA%20로고'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='32'%20y1='24'%20x2='224'%20y2='232'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='0'%20stop-color='%231f1f1f'/%3e%3cstop%20offset='1'%20stop-color='%23000000'/%3e%3c/linearGradient%3e%3c/defs%3e%3crect%20width='256'%20height='256'%20rx='64'%20fill='url(%23bg)'/%3e%3crect%20x='16'%20y='16'%20width='224'%20height='224'%20rx='48'%20fill='none'%20stroke='%23ffffff'%20stroke-opacity='0.22'%20stroke-width='4'/%3e%3cpath%20d='M52%2060L96%20196H124L172%2060H140L110%20160L82%2060Z'%20fill='%23ffffff'/%3e%3ccircle%20cx='200'%20cy='188'%20r='17'%20fill='%23ffffff'/%3e%3c/svg%3e" alt=""> 평가원기출VOCA</a>
+            <nav aria-label="주요 메뉴">
+                <a href="/dashboard/" data-route="/dashboard/">대시보드</a>
+                <a href="/generator/" data-route="/generator/">시험지만들기</a>
+                <a href="/test/" data-route="/test/">온라인 테스트</a>
+                <a href="/game/" data-route="/game/">게임</a>
+                <a href="/mypage/" data-route="/mypage/">마이페이지</a>
+                <a href="/ranked/" data-route="/ranked/">랭킹</a>
+            </nav>
+        </header>
+        <main class="game-main">
+            <h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">게임 학습</h1>
+            <div class="game-stack">
+                <section class="card">
+                    <p id="sprint-hero-kicker" class="mypage-kicker">게임 학습</p>
+                    <h2 id="sprint-hero-title">게임 이름을 보고 바로 시작할 수 있게 단순하게 정리했습니다.</h2>
+                    <p id="sprint-hero-status" class="subtitle">게임을 먼저 고르고, 교재와 범위만 정한 뒤 곧바로 첫 문제를 시작합니다.</p>
+                    <div class="game-inline-row">
+                        <button type="button" class="game-button game-button--primary" id="sprint-start-btn">시작하기</button>
+                        <a class="game-link" href="/ranked/">랭킹 보기</a>
+                    </div>
+                    <div class="game-inline-row">
+                        <div>
+                            <div class="game-label" id="sprint-selected-label">선택한 범위</div>
+                            <div class="game-value" id="sprint-selected-pool">불러오는 중...</div>
+                        </div>
+                        <div>
+                            <div class="game-label">저장 방식</div>
+                            <div class="game-value" id="sprint-save-mode">확인 중</div>
+                        </div>
+                    </div>
+                    <p id="sprint-hero-copy" class="game-subtitle">먼저 모드와 교재 범위를 고른 다음 시작 버튼을 눌러 주세요.</p>
+                </section>
+
+                <section class="card" id="sprint-mode-section">
+                    <h2>게임 고르기</h2>
+                    <p class="subtitle">복잡한 모드 선택 화면 대신, 하고 싶은 게임 카드를 바로 누르면 됩니다.</p>
+                    <div class="game-mode-grid" id="sprint-mode-cards">
+                        <button type="button" class="game-mode-card" data-mode-key="ranked_sprint">
+                            <h3>랭킹 스프린트</h3>
+                            <p>짧은 시간 동안 많이 맞혀 점수를 올리는 게임입니다.</p>
+                        </button>
+                        <button type="button" class="game-mode-card" data-mode-key="survival_ladder">
+                            <h3>생존 모드</h3>
+                            <p>실수 3번 안에 오래 버티는 게임입니다.</p>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="game-grid">
+                    <section class="card">
+                        <h2>시작 전 간단 설정</h2>
+                        <p class="subtitle">교재와 범위만 고르면 바로 시작할 수 있습니다. 전체 범위가 기본값입니다.</p>
+                        <div class="game-chip-row" id="sprint-book-options">
+                            <button type="button" class="game-chip" data-book-key="basic">Basic</button>
+                            <button type="button" class="game-chip" data-book-key="advanced">Advanced</button>
+                            <button type="button" class="game-chip" data-book-key="etymology">Etymology</button>
+                        </div>
+                        <div id="sprint-derivative-section" style="margin-top:1rem;">
+                            <h2 style="margin-bottom:0.45rem;">파생어 설정</h2>
+                            <label style="display:flex;align-items:center;gap:0.65rem;">
+                                <input id="sprint-derivative-toggle" type="checkbox">
+                                <span>파생어 포함</span>
+                            </label>
+                            <p id="sprint-derivative-hint" class="subtitle" style="margin-top:0.55rem;">표제어 기준으로 시작합니다.</p>
+                        </div>
+                        <div style="margin-top:1rem;">
+                            <h2 id="sprint-scope-label" style="margin-bottom:0.45rem;">범위 선택</h2>
+                            <select id="sprint-scope-select" class="text-input"></select>
+                            <p id="sprint-scope-hint" class="subtitle" style="margin-top:0.55rem;">전체 범위 또는 원하는 DAY를 고르면 바로 시작할 수 있습니다.</p>
+                        </div>
+                        <div class="game-links" style="margin-top:1rem;justify-content:space-between;">
+                            <p id="sprint-setup-status" class="game-subtitle">교재를 불러오는 중입니다.</p>
+                            <a class="section-link" href="/ranked/">현재 랭킹 확인</a>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <div class="game-progress">
+                            <div>
+                                <div id="sprint-phase-label" class="game-value">준비</div>
+                                <p id="sprint-phase-copy" class="subtitle">게임 카드 하나를 고르고, 교재와 범위를 확인한 뒤 시작하면 됩니다.</p>
+                            </div>
+                            <div>
+                                <div class="game-label">남은 시간</div>
+                                <div class="game-value" id="sprint-timer">60.0</div>
+                            </div>
+                            <div class="game-progress-bar">
+                                <span id="sprint-time-fill"></span>
+                            </div>
+                        </div>
+                        <div class="game-metrics" style="margin-top:1rem;">
+                            <div class="game-stat"><span>점수</span><strong id="sprint-score">0</strong></div>
+                            <div class="game-stat"><span>콤보</span><strong id="sprint-combo">0x</strong></div>
+                            <div class="game-stat"><span>정답률</span><strong id="sprint-accuracy">0%</strong></div>
+                            <div class="game-stat"><span>최고 연속</span><strong id="sprint-streak">0</strong></div>
+                        </div>
+                    </section>
+                </section>
+
+                <section class="card">
+                    <div class="game-question-meta">
+                        <span id="sprint-question-index">Q 00</span>
+                        <span id="sprint-question-direction">영어 -> 뜻</span>
+                        <span id="sprint-question-book">Basic / DAY 01</span>
+                    </div>
+                    <h2 id="sprint-question-prompt">첫 문제를 기다리는 중입니다.</h2>
+                    <div id="sprint-choice-list"></div>
+                    <p class="game-inline-status" id="sprint-inline-status">시작 버튼을 누르면 문제가 나타납니다.</p>
+                </section>
+
+                <section class="game-grid">
+                    <section class="card">
+                        <div class="game-inline-row" style="justify-content:space-between;">
+                            <h2 id="sprint-board-title" style="margin:0;">오늘의 랭킹</h2>
+                            <div id="sprint-board-source" class="game-label">불러오는 중</div>
+                        </div>
+                        <p id="sprint-board-status" class="subtitle">첫 플레이 결과가 기록되면 이곳에서 바로 순위를 확인할 수 있습니다.</p>
+                        <div class="game-board-filters" id="sprint-board-filters">
+                            <button type="button" class="game-chip" data-book-key="basic">Basic</button>
+                            <button type="button" class="game-chip" data-book-key="advanced">Advanced</button>
+                            <button type="button" class="game-chip" data-book-key="etymology">Etymology</button>
+                        </div>
+                        <ul class="game-board-list" id="sprint-board-list"></ul>
+                    </section>
+
+                    <section class="card game-result-card" id="sprint-result-card" hidden>
+                        <h2 id="sprint-result-headline">플레이 결과</h2>
+                        <p id="sprint-result-copy" class="subtitle">게임이 끝나면 점수와 저장 상태를 이곳에서 확인할 수 있습니다.</p>
+                        <div class="game-result-metrics" id="sprint-result-metrics"></div>
+                        <p id="sprint-save-status">저장 중...</p>
+                        <div class="game-result-actions">
+                            <button type="button" class="game-button game-button--primary" id="sprint-restart-btn">다시 하기</button>
+                        </div>
+                    </section>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+      window.Userback = window.Userback || {};
+      Userback.access_token = "A-vV6YCxc6cQKtRBem24yA3IgC8";
+      (function(d) {
+        var s = d.createElement('script');s.async = true;s.src = 'https://static.userback.io/widget/v1.js';(d.head || d.body).appendChild(s);
+      })(document);
+    </script>
+</body>
+</html>

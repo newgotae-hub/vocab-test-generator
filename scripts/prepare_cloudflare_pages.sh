@@ -4,58 +4,31 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/.cloudflare-pages"
 
-copy_path() {
-    local relative_path="$1"
-    if [ ! -e "$ROOT_DIR/$relative_path" ]; then
-        return 0
-    fi
-    mkdir -p "$(dirname "$OUT_DIR/$relative_path")"
-    cp -a "$ROOT_DIR/$relative_path" "$OUT_DIR/$relative_path"
-}
+echo "Installing node modules..."
+npm install
 
+echo "Building with Vite..."
+npm run build
+
+echo "Setting up Cloudflare Pages output directory..."
 rm -rf "$OUT_DIR"
-mkdir -p "$OUT_DIR/assets"
+mkdir -p "$OUT_DIR"
 
-for relative_path in \
-    functions/private_data \
-    auth \
-    author \
-    blog \
-    cards \
-    contact \
-    dashboard \
-    game \
-    generator \
-    mypage \
-    ranked \
-    signup \
-    travel \
-    src \
-    stats \
-    test
-do
-    copy_path "$relative_path"
+# Copy Vite build output to Cloudflare Pages directory
+cp -a "$ROOT_DIR/dist/." "$OUT_DIR/"
+
+# Make sure functions are copied if they exist
+if [ -d "$ROOT_DIR/functions/private_data" ]; then
+    mkdir -p "$OUT_DIR/functions/private_data"
+    cp -a "$ROOT_DIR/functions/private_data/." "$OUT_DIR/functions/private_data/"
+fi
+
+# Additional static files not explicitly handled by Vite input chunks
+# but needed by Cloudflare Pages root
+for f in _redirects ads.txt robots.txt sitemap.xml rss.xml; do
+    if [ -f "$ROOT_DIR/$f" ]; then
+        cp -a "$ROOT_DIR/$f" "$OUT_DIR/"
+    fi
 done
 
-for relative_path in \
-    assets/docx \
-    assets/fonts \
-    assets/images
-do
-    copy_path "$relative_path"
-done
-
-for relative_path in \
-    _redirects \
-    ads.txt \
-    favicon.svg \
-    index.html \
-    main.js \
-    oxbridge-partners-black-on-white.svg \
-    robots.txt \
-    rss.xml \
-    sitemap.xml \
-    style.css
-do
-    copy_path "$relative_path"
-done
+echo "Done! Ready for Cloudflare Pages deployment."

@@ -8,7 +8,7 @@ import {
     normalizeBlogPosts,
     normalizeSpacingText,
     slugifyBlogText,
-} from '/src/lib/blog-content.js?v=20260319-blog-upload-key-fix';
+} from '/src/lib/blog-content.js';
 
 export {
     formatBlogDate,
