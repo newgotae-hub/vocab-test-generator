@@ -1,4 +1,4 @@
-import { BOOK_CSV_TEXT } from '../../../src/data/vocabCsvData.js';
+import { BOOK_CSV_TEXT } from '../../private_data/vocabCsvData.js';
 import { applyBookRowFixes } from '../../../src/lib/vocabDataFixes.js';
 
 const DEFAULT_SUPABASE_URL = 'https://ymzygbjihhttszijdkei.supabase.co';
