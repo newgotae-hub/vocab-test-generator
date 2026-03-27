@@ -1087,21 +1087,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             state.isDataReady = true;
             updatePdfOptionState();
-
-            // 🚀 교재 선택 딜레이 제거: basic/advanced를 백그라운드에서 미리 프리페치
-            void Promise.allSettled([
-                ensureBookDataLoaded('basic'),
-                ensureBookDataLoaded('advanced'),
-            ]).then(() => {
-                // 데이터만 캐시해두고 UI는 건드리지 않음 (조용히 준비만)
-            });
         } catch (error) {
             console.error(error);
             state.isDataReady = true;
             showToast('데이터 로드 중 오류가 발생했습니다.', 'error');
         }
     };
-
 
     const selectBook = async (bookName) => {
         if (!state.isDataReady) {

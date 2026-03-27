@@ -1,1 +1,0 @@
-import"./supabaseClient-Cq76Rikx.js";import{t as e}from"./authNav-DfHJ-GDt.js";await e({loggedInLabel:`마이페이지`,loggedInPath:`/mypage/`,loggedInAction:`mypage`});

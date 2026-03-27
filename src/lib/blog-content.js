@@ -214,29 +214,10 @@ export const parseBlogContentBlocks = (content) => {
             const imageMatch = block.match(BLOG_IMAGE_BLOCK_PATTERN);
             if (imageMatch) {
                 const [, alt, src] = imageMatch;
-                let align = 'center';
-                let width = '100';
-                let cleanSrc = normalizeSpacingText(src);
-                
-                try {
-                    const srcParts = cleanSrc.split('#');
-                    if (srcParts.length > 1) {
-                        const params = new URLSearchParams(srcParts[1]);
-                        if (params.has('align')) align = params.get('align');
-                        if (params.has('width')) width = params.get('width');
-                        cleanSrc = srcParts[0];
-                    }
-                } catch {
-                    // ignore
-                }
-
                 return {
                     type: 'image',
                     alt: normalizeSpacingText(alt || '본문 이미지'),
-                    src: cleanSrc,
-                    align,
-                    width,
-                    rawSrc: normalizeSpacingText(src),
+                    src: normalizeSpacingText(src),
                 };
             }
 

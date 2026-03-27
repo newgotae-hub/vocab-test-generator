@@ -8,11 +8,11 @@ import {
     isBlogAdminUser,
     listBlogPosts,
     uploadBlogImages,
-} from '/src/lib/blog.js';
+} from '/src/lib/blog.js?v=20260319-blog-upload-key-fix';
 import {
     estimateBlogReadingMinutes,
     parseBlogContentBlocks,
-} from '/src/lib/blog-content.js';
+} from '/src/lib/blog-content.js?v=20260319-blog-upload-key-fix';
 
 const state = {
     posts: [],
@@ -211,25 +211,14 @@ const escapeHtml = (value) => {
 const paragraphsToHtml = (content) => {
     return parseBlogContentBlocks(content).map((block) => {
         if (block.type === 'image') {
-            let flexClass = 'justify-center';
-            if (block.align === 'left') flexClass = 'justify-start';
-            if (block.align === 'right') flexClass = 'justify-end';
-            
-            let widthClass = 'w-full';
-            if (block.width === '75') widthClass = 'w-full md:w-3/4';
-            if (block.width === '50') widthClass = 'w-3/4 md:w-1/2';
-            if (block.width === '25') widthClass = 'w-1/2 md:w-1/3 max-w-sm';
-
             return `
-                <div class="flex ${flexClass} w-full my-6">
-                    <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50 ${widthClass}">
-                        <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                    </figure>
-                </div>
+                <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
+                    <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                </figure>
             `;
         }
 
-        return `<p class="text-[1.02rem] leading-7 text-slate-700">${String(block.text || '').replace(/\n/g, '<br>')}</p>`;
+        return `<p class="text-[1.02rem] leading-8 text-slate-700">${escapeHtml(block.text).replace(/\n/g, '<br>')}</p>`;
     }).join('');
 };
 
@@ -281,7 +270,7 @@ const renderComposerPreview = (input, preview) => {
     if (!(preview instanceof HTMLElement) || !(input instanceof HTMLTextAreaElement)) return;
 
     const html = paragraphsToHtml(input.value);
-    preview.innerHTML = html || '<p class="text-sm leading-6 text-slate-400">본문 미리보기가 여기에 표시됩니다.</p>';
+    preview.innerHTML = html || '<p class="text-sm leading-7 text-slate-400">본문 미리보기가 여기에 표시됩니다.</p>';
 };
 
 const createBlogEditorBlockId = () => {
@@ -305,8 +294,6 @@ const createBlogEditorBlocks = (content) => {
                 type: 'image',
                 src: block.src,
                 alt: block.alt || '본문 이미지',
-                align: block.align || 'center',
-                width: String(block.width || '100'),
             };
         }
 
@@ -323,10 +310,7 @@ const serializeBlogEditorBlocks = (blocks) => {
                 const src = String(block.src || '').trim();
                 if (!src) return '';
                 const alt = String(block.alt || '본문 이미지').trim() || '본문 이미지';
-                const align = block.align || 'center';
-                const width = block.width || '100';
-                const suffix = (align !== 'center' || width !== '100') ? `#align=${align}&width=${width}` : '';
-                return `![${alt}](${src}${suffix})`;
+                return `![${alt}](${src})`;
             }
 
             return String(block?.text || '').replace(/\r/g, '').trim();
@@ -336,62 +320,14 @@ const serializeBlogEditorBlocks = (blocks) => {
         .trim();
 };
 
-const sanitizeRichText = (html) => {
-    if (!html) return '';
-    if (typeof document === 'undefined') return escapeHtml(html);
-    
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    
-    // Whitelist tags
-    const allowedTags = ['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DEL', 'MARK', 'SPAN', 'BR', 'A', 'FONT'];
-    
-    const cleanNodes = (node) => {
-        const children = Array.from(node.childNodes);
-        for (const child of children) {
-            if (child.nodeType === Node.TEXT_NODE) {
-                continue;
-            } else if (child.nodeType === Node.ELEMENT_NODE) {
-                const tagName = child.tagName.toUpperCase();
-                if (!allowedTags.includes(tagName)) {
-                    while (child.firstChild) {
-                        node.insertBefore(child.firstChild, child);
-                    }
-                    node.removeChild(child);
-                } else {
-                    const attrs = Array.from(child.attributes);
-                    for (const attr of attrs) {
-                        const attrName = attr.name.toLowerCase();
-                        if (!['class', 'style', 'href', 'target', 'color'].includes(attrName)) {
-                            child.removeAttribute(attrName);
-                        } else if (attrName === 'href' && child.tagName === 'A') {
-                            if (!child.href.startsWith('http') && !child.href.startsWith('mailto:') && !child.href.startsWith('/')) {
-                                child.removeAttribute('href');
-                            }
-                        }
-                    }
-                    cleanNodes(child);
-                }
-            } else {
-                node.removeChild(child);
-            }
-        }
-    };
-    cleanNodes(temp);
-    return temp.innerHTML;
-};
-
-const paragraphTextToEditableHtml = (text) => {
-    const html = String(text || '');
-    if (!html.includes('<br>') && !html.includes('<') && html.includes('\n')) {
-        return escapeHtml(html).replace(/\n/g, '<br>');
-    }
-    return html;
-};
+const paragraphTextToEditableHtml = (text) => escapeHtml(String(text || '')).replace(/\n/g, '<br>');
 
 const getBlogEditorTextFromElement = (element) => {
     if (!(element instanceof HTMLElement)) return '';
-    return sanitizeRichText(element.innerHTML);
+    return String(element.innerText || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\r/g, '')
+        .replace(/\n$/, '');
 };
 
 const getBlogEditorCaretOffset = (element) => {
@@ -448,14 +384,9 @@ const focusBlogEditorParagraph = (editorRoot, blockId, offset = 'end') => {
         if (!(target instanceof HTMLElement)) return;
 
         target.focus();
-        let caretOffset = 0;
-        if (offset === 'start') {
-            caretOffset = 0;
-        } else if (typeof offset === 'number') {
-            caretOffset = offset;
-        } else {
-            caretOffset = String(target.innerText || '').length;
-        }
+        const caretOffset = offset === 'start'
+            ? 0
+            : String(target.innerText || '').length;
         setBlogEditorCaretOffset(target, caretOffset);
     });
 };
@@ -518,7 +449,7 @@ const renderPostList = () => {
                             <h2 class="mt-4 text-xl font-semibold tracking-tight text-slate-900">
                                 <a href="${escapeHtml(articleUrl)}" class="transition hover:text-blue-700">${escapeHtml(post.title)}</a>
                             </h2>
-                            <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-500">${escapeHtml(post.summary)}</p>
+                            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-500">${escapeHtml(post.summary)}</p>
                         </div>
                         <div class="flex shrink-0 flex-wrap items-center gap-2">
                             <a href="${escapeHtml(articleUrl)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">글 보기</a>
@@ -655,30 +586,7 @@ const renderAdminComposer = () => {
                             </button>
                         </div>
                     </div>
-                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" tabindex="-1" class="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.06)] transition outline-none">
-                        <div id="blog-admin-toolbar" class="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50/90 backdrop-blur px-4 py-2 sticky top-0 z-20">
-                            <button type="button" data-rich-action="bold" class="font-bold w-8 h-8 rounded hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer" title="굵게">B</button>
-                            <button type="button" data-rich-action="italic" class="italic font-serif w-8 h-8 rounded hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer" title="기울임체">I</button>
-                            <button type="button" data-rich-action="underline" class="underline w-8 h-8 rounded hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer" title="밑줄">U</button>
-                            <button type="button" data-rich-action="strikeThrough" class="line-through w-8 h-8 rounded hover:bg-slate-200 text-slate-700 flex items-center justify-center cursor-pointer" title="취소선">S</button>
-                            <div class="w-[1px] h-5 bg-slate-300 mx-1"></div>
-                            <button type="button" data-rich-action="backColor" data-value="#fef08a" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center group cursor-pointer" title="노란색 형광펜">
-                                <span class="block w-4 h-4 bg-yellow-300 rounded-[3px] ring-1 ring-black/10"></span>
-                            </button>
-                            <button type="button" data-rich-action="backColor" data-value="#d9f99d" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center group cursor-pointer" title="연두색 형광펜">
-                                <span class="block w-4 h-4 bg-lime-300 rounded-[3px] ring-1 ring-black/10"></span>
-                            </button>
-                            <button type="button" data-rich-action="backColor" data-value="#a5f3fc" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center group cursor-pointer" title="하늘색 형광펜">
-                                <span class="block w-4 h-4 bg-cyan-200 rounded-[3px] ring-1 ring-black/10"></span>
-                            </button>
-                            <button type="button" data-rich-action="backColor" data-value="transparent" class="w-8 h-8 rounded hover:bg-slate-200 text-slate-400 flex items-center justify-center text-xs ml-1 cursor-pointer" title="배경 지우기">지움</button>
-                            <div class="w-[1px] h-5 bg-slate-300 mx-1"></div>
-                            <button type="button" data-rich-action="foreColor" data-value="#0f172a" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-slate-900 cursor-pointer" title="기본색">A</button>
-                            <button type="button" data-rich-action="foreColor" data-value="#ef4444" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-red-500 cursor-pointer" title="빨간색">A</button>
-                            <button type="button" data-rich-action="foreColor" data-value="#3b82f6" class="w-8 h-8 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-blue-500 cursor-pointer" title="파란색">A</button>
-                            <div class="flex-1"></div>
-                            <span class="text-[11px] text-slate-400 hidden sm:inline-block">텍스트를 드래그하고 버튼을 누르세요.</span>
-                        </div>
+                    <div id="blog-admin-editor-shell" aria-labelledby="blog-admin-editor-label" class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.06)] transition">
                         <div id="blog-admin-dropzone" class="min-h-[30rem] bg-white px-6 py-7 transition md:px-10 md:py-10">
                             <div id="blog-admin-editor" class="space-y-2"></div>
                         </div>
@@ -882,41 +790,17 @@ const renderAdminComposer = () => {
         ensureEditorHasBlock();
         editorRoot.innerHTML = editorState.blocks.map((block) => {
             if (block.type === 'image') {
-                let flexClass = 'justify-center';
-                if (block.align === 'left') flexClass = 'justify-start';
-                if (block.align === 'right') flexClass = 'justify-end';
-                
-                let widthClass = 'w-full';
-                if (block.width === '75') widthClass = 'w-full md:w-3/4';
-                if (block.width === '50') widthClass = 'w-3/4 md:w-1/2';
-                if (block.width === '25') widthClass = 'w-1/2 md:w-1/3 max-w-sm';
-
-                const align = block.align || 'center';
-
                 return `
                     <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative my-2">
-                        <div class="absolute right-0 top-1 z-10 flex flex-wrap items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 bg-white/90 backdrop-blur-sm p-1 rounded-[1.25rem] shadow-sm border border-slate-200">
-                            <button type="button" data-editor-action="move-up" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100" title="위로 이동">↑</button>
-                            <button type="button" data-editor-action="move-down" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100" title="아래로 이동">↓</button>
-                            <div class="w-[1px] h-4 bg-slate-200 mx-1"></div>
-                            <button type="button" data-editor-action="align-left" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 px-2 items-center justify-center rounded-full text-xs font-medium ${align === 'left' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}">좌</button>
-                            <button type="button" data-editor-action="align-center" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 px-2 items-center justify-center rounded-full text-xs font-medium ${align === 'center' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}">중</button>
-                            <button type="button" data-editor-action="align-right" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 px-2 items-center justify-center rounded-full text-xs font-medium ${align === 'right' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}">우</button>
-                            <div class="w-[1px] h-4 bg-slate-200 mx-1"></div>
-                            <button type="button" data-editor-action="size-decrease" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100" title="축소">-</button>
-                            <span class="text-xs font-medium text-slate-600 w-8 text-center flex items-center justify-center">${block.width || '100'}%</span>
-                            <button type="button" data-editor-action="size-increase" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100" title="확대">+</button>
-                            <div class="w-[1px] h-4 bg-slate-200 mx-1"></div>
-                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 px-2 items-center justify-center rounded-full text-xs font-medium text-slate-600 hover:bg-slate-100">아래 문단</button>
-                            <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 px-2 items-center justify-center rounded-full text-xs font-medium text-slate-600 hover:bg-slate-100" title="이미지 교체">교체</button>
-                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-full text-red-500 hover:bg-red-50" title="삭제">×</button>
+                        <div class="absolute right-0 top-0 z-10 flex flex-wrap items-center gap-2 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-100">아래 문단</button>
+                            <button type="button" data-editor-action="replace-image" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-100">이미지 교체</button>
+                            <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex items-center justify-center rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:bg-white hover:text-slate-700">삭제</button>
                         </div>
-                        <div class="flex ${flexClass} w-full mt-12 mb-2 relative z-0">
-                            <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50 ${widthClass}">
-                                <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                            </figure>
-                        </div>
-                        <label class="mt-3 block relative z-0">
+                        <figure class="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-slate-50">
+                            <img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt || '본문 이미지')}" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                        </figure>
+                        <label class="mt-3 block">
                             <span class="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">이미지 설명</span>
                             <input
                                 type="text"
@@ -931,14 +815,20 @@ const renderAdminComposer = () => {
             }
 
             return `
-                <article data-editor-block-id="${escapeHtml(block.id)}">
-                    <div
-                        contenteditable="true"
-                        spellcheck="true"
-                        data-editor-paragraph="${escapeHtml(block.id)}"
-                        data-block-id="${escapeHtml(block.id)}"
-                        class="min-h-[1.5rem] py-0.5 text-[1.08rem] leading-[1.65rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[1.75rem]"
-                    >${paragraphTextToEditableHtml(block.text)}</div>
+                <article data-editor-block-id="${escapeHtml(block.id)}" class="group relative">
+                    <div class="absolute right-0 top-1 z-10 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                        <button type="button" data-editor-action="insert-paragraph-after" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-base text-slate-300 transition hover:bg-slate-100 hover:text-slate-700">+</button>
+                        <button type="button" data-editor-action="remove-block" data-block-id="${escapeHtml(block.id)}" class="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-slate-300 transition hover:bg-slate-100 hover:text-slate-600">×</button>
+                    </div>
+                    <div class="pr-12">
+                        <div
+                            contenteditable="true"
+                            spellcheck="true"
+                            data-editor-paragraph="${escapeHtml(block.id)}"
+                            data-block-id="${escapeHtml(block.id)}"
+                            class="min-h-[2rem] py-0.5 text-[1.08rem] leading-[1.8rem] text-slate-700 outline-none whitespace-pre-wrap md:text-[1.12rem] md:leading-[1.9rem]"
+                        >${paragraphTextToEditableHtml(block.text)}</div>
+                    </div>
                 </article>
             `;
         }).join('');
@@ -987,8 +877,6 @@ const renderAdminComposer = () => {
             type: 'image',
             src: upload.url,
             alt: upload.alt || '본문 이미지',
-            align: 'center',
-            width: '100',
         }));
 
         const blockIndex = getBlockIndex(blockId);
@@ -1018,8 +906,6 @@ const renderAdminComposer = () => {
                 type: 'image',
                 src: upload.url,
                 alt: upload.alt || '본문 이미지',
-                align: 'center',
-                width: '100',
             }));
             const blockIndex = getBlockIndex(blockId);
             editorState.blocks.splice(blockIndex + 1, 0, ...imageBlocks);
@@ -1153,54 +1039,10 @@ const renderAdminComposer = () => {
             }
 
             if (event.key === 'Backspace') {
-                const caretOffset = getBlogEditorCaretOffset(target);
                 const currentText = getBlogEditorTextFromElement(target);
-                if (caretOffset === 0) {
-                    const blockIndex = getBlockIndex(blockId);
-                    if (blockIndex > 0) {
-                        event.preventDefault();
-                        const prevBlockId = findNearestParagraphForFocus(blockIndex - 1, -1);
-                        if (prevBlockId) {
-                            const prevNode = editorRoot.querySelector(`[data-editor-paragraph="${prevBlockId}"]`);
-                            const oldOffset = prevNode ? String(prevNode.innerText || '').length : 0;
-                            const prevBlock = getBlockById(prevBlockId);
-                            prevBlock.text = (prevBlock.text || '') + (block.text || '');
-                            editorState.blocks.splice(blockIndex, 1);
-                            editorState.focusedBlockId = prevBlockId;
-                            renderEditorBlocks({ blockId: prevBlockId, offset: oldOffset });
-                            scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
-                        }
-                        return;
-                    }
-                }
                 if (!currentText && editorState.blocks.length > 1) {
                     event.preventDefault();
                     removeBlock(blockId);
-                }
-            }
-            if (event.key === 'Delete') {
-                const caretOffset = getBlogEditorCaretOffset(target);
-                const currentText = getBlogEditorTextFromElement(target);
-                if (caretOffset === currentText.length) {
-                    const blockIndex = getBlockIndex(blockId);
-                    if (blockIndex < editorState.blocks.length - 1) {
-                        event.preventDefault();
-                        const nextBlockId = findNearestParagraphForFocus(blockIndex + 1, 1);
-                        if (nextBlockId) {
-                            const nextBlock = getBlockById(nextBlockId);
-                            block.text = (block.text || '') + (nextBlock.text || '');
-                            editorState.blocks.splice(getBlockIndex(nextBlockId), 1);
-                            editorState.focusedBlockId = blockId;
-                            const oldOffset = caretOffset;
-                            renderEditorBlocks();
-                            scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
-                            setTimeout(() => {
-                                const newTarget = editorRoot.querySelector(`[data-editor-paragraph="${blockId}"]`);
-                                if (newTarget) setBlogEditorCaretOffset(newTarget, oldOffset);
-                            }, 50);
-                        }
-                        return;
-                    }
                 }
             }
         });
@@ -1215,51 +1057,6 @@ const renderAdminComposer = () => {
             const action = actionButton.dataset.editorAction;
             const blockId = actionButton.dataset.blockId || '';
             if (!action || !blockId) return;
-
-            const block = getBlockById(blockId);
-            const blockIndex = getBlockIndex(blockId);
-
-            if (action === 'move-up' && blockIndex > 0) {
-                const temp = editorState.blocks[blockIndex - 1];
-                editorState.blocks[blockIndex - 1] = editorState.blocks[blockIndex];
-                editorState.blocks[blockIndex] = temp;
-                renderEditorBlocks({ blockId });
-                scheduleComposerDraftPersist();
-                return;
-            }
-
-            if (action === 'move-down' && blockIndex < editorState.blocks.length - 1) {
-                const temp = editorState.blocks[blockIndex + 1];
-                editorState.blocks[blockIndex + 1] = editorState.blocks[blockIndex];
-                editorState.blocks[blockIndex] = temp;
-                renderEditorBlocks({ blockId });
-                scheduleComposerDraftPersist();
-                return;
-            }
-
-            if (action.startsWith('align-')) {
-                if (block && block.type === 'image') {
-                    block.align = action.replace('align-', '');
-                    renderEditorBlocks({ blockId });
-                    scheduleComposerDraftPersist();
-                }
-                return;
-            }
-
-            if (action === 'size-decrease' || action === 'size-increase') {
-                if (block && block.type === 'image') {
-                    const sizes = ['25', '50', '75', '100'];
-                    const currentIndex = sizes.indexOf(String(block.width || '100'));
-                    if (action === 'size-decrease' && currentIndex > 0) {
-                        block.width = sizes[currentIndex - 1];
-                    } else if (action === 'size-increase' && currentIndex < sizes.length - 1) {
-                        block.width = sizes[currentIndex + 1];
-                    }
-                    renderEditorBlocks({ blockId });
-                    scheduleComposerDraftPersist();
-                }
-                return;
-            }
 
             if (action === 'insert-paragraph-after') {
                 insertParagraphAfterBlock(blockId, '', 'start');
@@ -1290,39 +1087,6 @@ const renderAdminComposer = () => {
         });
     }
 
-    if (editorShell instanceof HTMLElement) {
-        editorShell.addEventListener('keydown', (event) => {
-            if (event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault();
-                const selection = window.getSelection();
-                if (selection) {
-                    const range = document.createRange();
-                    if (editorRoot) {
-                        range.selectNodeContents(editorRoot);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                        editorShell.focus();
-                    }
-                }
-                return;
-            }
-
-            if (event.key === 'Backspace' || event.key === 'Delete') {
-                const selection = window.getSelection();
-                if (selection && !selection.isCollapsed) {
-                    const range = selection.getRangeAt(0);
-                    if (range.commonAncestorContainer === editorRoot || range.commonAncestorContainer === editorShell) {
-                        event.preventDefault();
-                        editorState.blocks = [createEmptyBlogParagraphBlock('')];
-                        editorState.focusedBlockId = editorState.blocks[0]?.id || '';
-                        renderEditorBlocks({ blockId: editorState.focusedBlockId, offset: 'start' });
-                        scheduleComposerDraftPersist({ delay: 0, silent: true, force: true });
-                    }
-                }
-            }
-        });
-    }
-
     if (pickImageButton instanceof HTMLButtonElement && imagePicker instanceof HTMLInputElement) {
         pickImageButton.addEventListener('click', () => {
             pendingImageReplaceBlockId = '';
@@ -1333,35 +1097,6 @@ const renderAdminComposer = () => {
                 ? { replaceBlockId: pendingImageReplaceBlockId }
                 : { afterBlockId: editorState.focusedBlockId };
             await uploadAndInsertImages(imagePicker.files, options);
-        });
-    }
-
-    const toolbar = document.getElementById('blog-admin-toolbar');
-    if (toolbar instanceof HTMLElement) {
-        toolbar.addEventListener('mousedown', (event) => {
-            if (event.target.closest('[data-rich-action]')) {
-                event.preventDefault();
-            }
-        });
-        toolbar.addEventListener('click', (event) => {
-            const btn = event.target.closest('[data-rich-action]');
-            if (!btn) return;
-            const command = btn.dataset.richAction;
-            const value = btn.dataset.value || null;
-            
-            if (command === 'backColor' || command === 'foreColor') {
-                document.execCommand('styleWithCSS', false, true);
-                document.execCommand(command, false, value);
-            } else {
-                document.execCommand(command, false, null);
-            }
-            
-            if (editorState.focusedBlockId) {
-                const focusedEl = document.querySelector(`[data-editor-paragraph="${editorState.focusedBlockId}"]`);
-                if (focusedEl) {
-                    focusedEl.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-            }
         });
     }
 
