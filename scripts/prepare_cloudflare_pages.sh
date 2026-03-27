@@ -17,10 +17,10 @@ mkdir -p "$OUT_DIR"
 # Copy Vite build output to Cloudflare Pages directory
 cp -a "$ROOT_DIR/dist/." "$OUT_DIR/"
 
-# Make sure Pages Functions are copied if they exist
-if [ -d "$ROOT_DIR/functions" ]; then
-    mkdir -p "$OUT_DIR/functions"
-    cp -a "$ROOT_DIR/functions/." "$OUT_DIR/functions/"
+# Make sure functions are copied if they exist
+if [ -d "$ROOT_DIR/functions/private_data" ]; then
+    mkdir -p "$OUT_DIR/functions/private_data"
+    cp -a "$ROOT_DIR/functions/private_data/." "$OUT_DIR/functions/private_data/"
 fi
 
 # Additional static files not explicitly handled by Vite input chunks
@@ -30,10 +30,5 @@ for f in _redirects ads.txt robots.txt sitemap.xml rss.xml; do
         cp -a "$ROOT_DIR/$f" "$OUT_DIR/"
     fi
 done
-
-if [ -d "$ROOT_DIR/assets" ]; then
-    mkdir -p "$OUT_DIR/assets"
-    cp -a "$ROOT_DIR/assets/." "$OUT_DIR/assets/"
-fi
 
 echo "Done! Ready for Cloudflare Pages deployment."
