@@ -32,6 +32,16 @@ const BOOK_OPTIONS = [
 
 const ALL_SCOPE_VALUE = '__all__';
 
+const createBookState = () => ({
+    ready: false,
+    loading: false,
+    error: '',
+    loadPromise: null,
+    scopes: [],
+    baseCount: 0,
+    derivativeCount: 0,
+});
+
 const MODE_CONFIG = {
     ranked_sprint: {
         key: 'ranked_sprint',
@@ -101,9 +111,9 @@ const state = {
     boardState: { loading: false, source: '', runs: [], error: null },
     user: { id: '', displayName: 'Player' },
     books: {
-        basic: { ready: false, scopes: [], baseCount: 0, derivativeCount: 0 },
-        advanced: { ready: false, scopes: [], baseCount: 0, derivativeCount: 0 },
-        etymology: { ready: false, scopes: [], baseCount: 0, derivativeCount: 0 },
+        basic: createBookState(),
+        advanced: createBookState(),
+        etymology: createBookState(),
     },
 };
 
@@ -241,6 +251,11 @@ const getSelectedScope = () => {
     return (book?.scopes || []).find((scope) => scope.value === state.selectedScopeValue) || null;
 };
 
+const getBookLoadErrorMessage = (error) => {
+    const message = normalizeSpacingText(error?.message || error);
+    return message || '교재 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+};
+
 const buildLimitedChoices = (choices) => {
     const correct = (choices || []).find((choice) => choice?.isCorrect);
     if (!correct) return [];
@@ -252,18 +267,47 @@ const ensureBookLibrary = async (bookKey) => {
     const book = state.books[bookKey];
     if (!book) throw new Error(`지원하지 않는 교재입니다. ${bookKey}`);
     if (book.ready && book.scopes.length > 0) return book;
+    if (book.loadPromise) return book.loadPromise;
 
-    const [scopes, basePool, derivativePool] = await Promise.all([
+    book.loading = true;
+    book.error = '';
+
+    if (typeof render === 'function') {
+        render();
+    }
+
+    book.loadPromise = Promise.all([
         getPlayScopes(bookKey),
         getAllBookPool({ bookKey, includeDerivatives: false }),
         getAllBookPool({ bookKey, includeDerivatives: bookKey !== 'etymology' }),
-    ]);
+    ]).then(([scopes, basePool, derivativePool]) => {
+        book.scopes = scopes;
+        book.baseCount = basePool.length;
+        book.derivativeCount = derivativePool.length;
+        book.ready = true;
+        book.loading = false;
+        book.error = '';
+        book.loadPromise = null;
 
-    book.scopes = scopes;
-    book.baseCount = basePool.length;
-    book.derivativeCount = derivativePool.length;
-    book.ready = true;
-    return book;
+        if (typeof render === 'function') {
+            render();
+        }
+
+        return book;
+    }).catch((error) => {
+        book.ready = false;
+        book.loading = false;
+        book.error = getBookLoadErrorMessage(error);
+        book.loadPromise = null;
+
+        if (typeof render === 'function') {
+            render();
+        }
+
+        throw new Error(book.error);
+    });
+
+    return book.loadPromise;
 };
 
 const syncSelectedScope = () => {
@@ -402,7 +446,8 @@ const getResultMetricsMarkup = () => {
 
 const renderScopeOptions = () => {
     if (!ui.scopeSelect) return;
-    const scopes = state.books[state.selectedBookKey]?.scopes || [];
+    const bookState = state.books[state.selectedBookKey];
+    const scopes = bookState?.scopes || [];
     const options = [
         { value: ALL_SCOPE_VALUE, label: '전체 범위' },
         ...scopes,
@@ -411,20 +456,26 @@ const renderScopeOptions = () => {
         <option value="${escapeHtml(scope.value)}">${escapeHtml(scope.label)}</option>
     `).join('');
     ui.scopeSelect.value = state.selectedScopeValue;
-    ui.scopeSelect.disabled = state.phase === 'running' || scopes.length === 0;
+    ui.scopeSelect.disabled = state.phase === 'running' || bookState?.loading || Boolean(bookState?.error) || scopes.length === 0;
 };
 
 const renderSetup = () => {
     const bookOption = getBookOption(state.selectedBookKey);
     const bookState = state.books[state.selectedBookKey];
     const selectedScope = getSelectedScope();
+    const isBookLoading = Boolean(bookState?.loading);
+    const bookLoadError = bookState?.error || '';
     const totalCount = shouldIncludeDerivatives() ? bookState.derivativeCount : bookState.baseCount;
 
     if (ui.selectedLabel) {
         ui.selectedLabel.textContent = `${getModeConfig().label} · ${bookOption.label}`;
     }
     if (ui.selectedPool) {
-        ui.selectedPool.textContent = bookState.ready ? `${formatNumber(totalCount)} 단어` : '불러오는 중...';
+        ui.selectedPool.textContent = bookLoadError
+            ? '불러오기 실패'
+            : bookState.ready
+                ? `${formatNumber(totalCount)} 단어`
+                : '불러오는 중...';
     }
     if (ui.saveMode) {
         ui.saveMode.textContent = state.user.id ? '실시간 저장 + 예비 저장' : '현재 기기 저장';
@@ -495,6 +546,13 @@ const renderSetup = () => {
             : `${bookOption.label} 교재를 불러오는 중입니다.`;
     }
 
+    if (bookLoadError) {
+        if (ui.scopeHint) ui.scopeHint.textContent = bookLoadError;
+        if (ui.setupStatus) ui.setupStatus.textContent = bookLoadError;
+    } else if (!bookState.ready && !isBookLoading && ui.setupStatus) {
+        ui.setupStatus.textContent = '교재를 다시 불러올 준비 중입니다.';
+    }
+
     renderScopeOptions();
 };
 
@@ -554,7 +612,9 @@ const renderRunState = () => {
         const canStart = state.phase !== 'loading'
             && state.phase !== 'running'
             && (isAllScopeSelected() || Boolean(getSelectedScope()))
-            && Boolean(state.books[state.selectedBookKey]?.ready);
+            && Boolean(state.books[state.selectedBookKey]?.ready)
+            && !state.books[state.selectedBookKey]?.loading
+            && !state.books[state.selectedBookKey]?.error;
         ui.startBtn.disabled = !canStart;
         ui.startBtn.textContent = state.phase === 'running' ? '진행 중...' : state.phase === 'finished' ? '다시 시작' : modeConfig.startLabel;
     }
@@ -876,9 +936,20 @@ const setSelectedBook = async (bookKey) => {
     if (!getBookOption(bookKey).supportsDerivatives) {
         state.includeDerivatives = false;
     }
-    await ensureBookLibrary(bookKey);
-    syncSelectedScope();
+    state.selectedScopeValue = ALL_SCOPE_VALUE;
+    resetRunState();
     render();
+
+    try {
+        await ensureBookLibrary(bookKey);
+        syncSelectedScope();
+        render();
+    } catch (error) {
+        state.phase = 'ready';
+        setInlineStatus(getBookLoadErrorMessage(error), 'negative');
+        render();
+    }
+
     void refreshBoard();
 };
 
@@ -974,6 +1045,8 @@ const defineDebugHooks = () => {
         phase: state.phase,
         mode: state.selectedMode,
         book: state.selectedBookKey,
+        bookLoading: Boolean(state.books[state.selectedBookKey]?.loading),
+        bookError: state.books[state.selectedBookKey]?.error || '',
         includeDerivatives: shouldIncludeDerivatives(),
         scope: getSelectedScope()?.label || '',
         prompt: normalizeSpacingText(state.currentQuestion?.prompt),
@@ -1015,13 +1088,25 @@ export const initGamePage = async () => {
     render();
 
     await hydrateUser();
-    await Promise.allSettled([
+    const loadResults = await Promise.allSettled([
         ensureBookLibrary('basic'),
         ensureBookLibrary('advanced'),
         ensureBookLibrary('etymology'),
     ]);
 
+    const readyBookKey = Object.entries(state.books).find(([, book]) => book.ready)?.[0] || '';
+    if (!state.books[state.selectedBookKey]?.ready && readyBookKey) {
+        state.selectedBookKey = readyBookKey;
+    }
+
     syncSelectedScope();
+
+    if (!loadResults.some((result) => result.status === 'fulfilled')) {
+        setInlineStatus('교재 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.', 'negative');
+    } else if (state.books[state.selectedBookKey]?.error) {
+        setInlineStatus(state.books[state.selectedBookKey].error, 'negative');
+    }
+
     render();
     await refreshBoard();
 };

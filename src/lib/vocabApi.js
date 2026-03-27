@@ -1,4 +1,4 @@
-import { BOOK_CSV_TEXT } from '/functions/private_data/vocabCsvData.js';
+import { BOOK_CSV_TEXT } from '/src/data/vocabCsvData.js';
 import { VOCAB_PREVIEW_FIXTURES } from '/src/data/vocabPreviewFixtures.js';
 import { applyBookRowFixes } from '/src/lib/vocabDataFixes.js';
 import { isLocalPreviewEnabled, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
@@ -150,6 +150,13 @@ export const fetchVocabRows = async (bookKey) => {
     const useLocalPreview = isLocalPreviewEnabled();
     const useBundledGameRows = shouldUseBundledGameRows();
 
+    if (useBundledGameRows) {
+        const bundledRows = getBundledRows(normalizedBookKey);
+        if (bundledRows.length > 0) {
+            return bundledRows;
+        }
+    }
+
     try {
         const payload = await postJson('/api/vocab/book', { bookKey: normalizedBookKey });
         if (!Array.isArray(payload?.rows)) {
@@ -157,13 +164,6 @@ export const fetchVocabRows = async (bookKey) => {
         }
         return payload.rows;
     } catch (error) {
-        if (useBundledGameRows) {
-            const bundledRows = getBundledRows(normalizedBookKey);
-            if (bundledRows.length > 0) {
-                return bundledRows;
-            }
-        }
-
         if (!useLocalPreview) {
             throw error;
         }
