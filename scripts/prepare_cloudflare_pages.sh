@@ -23,6 +23,11 @@ if [ -d "$ROOT_DIR/functions" ]; then
     cp -a "$ROOT_DIR/functions/." "$OUT_DIR/functions/"
 fi
 
+if [ -f "$ROOT_DIR/src/data/vocabCsvData.js" ]; then
+    mkdir -p "$OUT_DIR/src/data"
+    cp -a "$ROOT_DIR/src/data/vocabCsvData.js" "$OUT_DIR/src/data/vocabCsvData.js"
+fi
+
 # Additional static files not explicitly handled by Vite input chunks
 # but needed by Cloudflare Pages root
 for f in _redirects ads.txt robots.txt sitemap.xml rss.xml; do
@@ -31,9 +36,9 @@ for f in _redirects ads.txt robots.txt sitemap.xml rss.xml; do
     fi
 done
 
-if [ -d "$ROOT_DIR/assets" ]; then
-    mkdir -p "$OUT_DIR/assets"
-    cp -a "$ROOT_DIR/assets/." "$OUT_DIR/assets/"
+if [ -d "$ROOT_DIR/assets/images" ]; then
+    mkdir -p "$OUT_DIR/assets/images"
+    cp -a "$ROOT_DIR/assets/images/." "$OUT_DIR/assets/images/"
 fi
 
 echo "Done! Ready for Cloudflare Pages deployment."
