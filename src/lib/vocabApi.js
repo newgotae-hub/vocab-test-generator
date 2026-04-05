@@ -1,4 +1,3 @@
-import { BOOK_CSV_TEXT } from '/functions/private_data/vocabCsvData.js';
 import { VOCAB_PREVIEW_FIXTURES } from '/src/data/vocabPreviewFixtures.js';
 import { applyBookRowFixes } from '/src/lib/vocabDataFixes.js';
 import { isLocalPreviewEnabled, syncLocalPreviewPreference } from '/src/lib/previewMode.js';
@@ -26,6 +25,18 @@ const getPreviewRows = (bookKey) => {
     const rows = VOCAB_PREVIEW_FIXTURES?.[bookKey];
     if (!Array.isArray(rows)) return [];
     return rows.map((row) => ({ ...row }));
+};
+
+let bundledCsvTextPromise = null;
+
+const loadBundledCsvText = async () => {
+    if (!bundledCsvTextPromise) {
+        bundledCsvTextPromise = import('/src/data/vocabCsvData.js')
+            .then((module) => module?.BOOK_CSV_TEXT || {})
+            .catch(() => ({}));
+    }
+
+    return bundledCsvTextPromise;
 };
 
 const parseCsvRowsFallback = (csvText) => {
@@ -93,8 +104,9 @@ const parseCsvRowsFallback = (csvText) => {
     });
 };
 
-const getBundledRows = (bookKey) => {
-    const csvText = BOOK_CSV_TEXT?.[bookKey];
+const getBundledRows = async (bookKey) => {
+    const bundledCsvText = await loadBundledCsvText();
+    const csvText = bundledCsvText?.[bookKey];
     if (!csvText) return [];
     return applyBookRowFixes(bookKey, parseCsvRowsFallback(csvText));
 };
@@ -157,8 +169,9 @@ export const fetchVocabRows = async (bookKey) => {
         }
         return payload.rows;
     } catch (error) {
-        if (useBundledGameRows) {
-            const bundledRows = getBundledRows(normalizedBookKey);
+        const shouldUseBundledRows = useBundledGameRows || normalizeSpacingText(error?.message).toUpperCase() === 'AUTH_REQUIRED';
+        if (shouldUseBundledRows) {
+            const bundledRows = await getBundledRows(normalizedBookKey);
             if (bundledRows.length > 0) {
                 return bundledRows;
             }
