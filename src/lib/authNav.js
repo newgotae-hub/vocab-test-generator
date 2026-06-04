@@ -4,14 +4,11 @@ const LOGIN_PATH = '/auth/';
 const LOGIN_LABEL = '로그인';
 const LOGOUT_LABEL = '로그아웃';
 const PROTECTED_PAGES = new Set([
-    'dashboard',
     'mypage',
     'generator',
     'test',
     'cards',
-    'ranked',
     'stats',
-    'game',
 ]);
 
 const getAuthLinks = () => Array.from(

@@ -1,7 +1,7 @@
 const PREVIEW_QUERY_KEY = 'preview';
 const PREVIEW_STORAGE_KEY = 'voca_plus_local_preview_enabled';
 const PREVIEW_ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1']);
-const PREVIEW_ALLOWED_PAGES = new Set(['game', 'ranked', 'mypage']);
+const PREVIEW_ALLOWED_PAGES = new Set(['mypage']);
 
 const normalizeSpacingText = (value) => String(value ?? '')
     .replace(/\uFEFF/g, '')

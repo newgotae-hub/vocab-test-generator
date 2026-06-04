@@ -9,7 +9,7 @@ export const initLandingPage = async () => {
 
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'success') {
-        window.location.replace('/dashboard/');
+        window.location.replace('/mypage/');
         return;
     }
 

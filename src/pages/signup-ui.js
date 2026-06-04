@@ -3,7 +3,7 @@ import { createRoot } from 'https://esm.sh/react-dom@18/client';
 import { supabase } from '/src/lib/supabaseClient.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
-const DEFAULT_REDIRECT_PATH = '/dashboard/';
+const DEFAULT_REDIRECT_PATH = '/mypage/';
 
 const sanitizeRedirectPath = (candidate) => {
     if (!candidate) return DEFAULT_REDIRECT_PATH;
@@ -11,6 +11,10 @@ const sanitizeRedirectPath = (candidate) => {
     try {
         const targetUrl = new URL(candidate, window.location.origin);
         if (targetUrl.origin !== window.location.origin) {
+            return DEFAULT_REDIRECT_PATH;
+        }
+        const normalizedPath = targetUrl.pathname.endsWith('/') ? targetUrl.pathname : `${targetUrl.pathname}/`;
+        if (normalizedPath === '/dashboard/' || normalizedPath === '/game/' || normalizedPath === '/ranked/') {
             return DEFAULT_REDIRECT_PATH;
         }
         const safePath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
@@ -57,6 +61,26 @@ const setNotice = (message, tone = 'info') => {
     if (tone === 'success') noticeEl.classList.add('auth-notice--success');
 };
 
+const setAuthTransition = (
+    title = '로그인 정보를 확인 중입니다',
+    detail = '불러오는 중입니다. 잠시 기다려주세요.',
+) => {
+    const transitionEl = document.getElementById('auth-transition-state');
+    if (!transitionEl) return;
+
+    const titleEl = transitionEl.querySelector('[data-auth-transition-title]');
+    const detailEl = transitionEl.querySelector('[data-auth-transition-detail]');
+    if (titleEl) titleEl.textContent = title;
+    if (detailEl) detailEl.textContent = detail;
+    transitionEl.hidden = false;
+};
+
+const hideAuthTransition = () => {
+    const transitionEl = document.getElementById('auth-transition-state');
+    if (!transitionEl) return;
+    transitionEl.hidden = true;
+};
+
 const mapAuthErrorMessage = (error) => {
     const status = Number(error?.status || 0);
     const code = String(error?.code || error?.error_code || '').toLowerCase();
@@ -83,6 +107,7 @@ const mapAuthErrorMessage = (error) => {
 const mountSignupUI = () => {
     const rootEl = document.getElementById('supabase-signup-root');
     if (!rootEl) return;
+    hideAuthTransition();
 
     const SignupApp = () => {
         const [email, setEmail] = React.useState('');
@@ -204,10 +229,12 @@ const mountSignupUI = () => {
 };
 
 const initSignupPage = async () => {
+    setAuthTransition();
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'success') {
         setNotice('이메일 인증이 완료되었습니다. 이동합니다...', 'success');
-        window.location.href = getRedirectPath();
+        setAuthTransition('인증 완료', '마이페이지로 이동 중입니다. 잠시 기다려주세요.');
+        window.location.replace(getRedirectPath());
         return;
     }
     if (callbackResult.status === 'error' && callbackResult.message) {
@@ -220,7 +247,8 @@ const initSignupPage = async () => {
             setNotice('세션 확인에 실패했습니다. 다시 시도해 주세요.', 'error');
         }
         if (data?.session) {
-            window.location.href = getRedirectPath();
+            setAuthTransition('로그인 성공', '마이페이지로 이동 중입니다. 잠시 기다려주세요.');
+            window.location.replace(getRedirectPath());
             return;
         }
     } catch (_error) {
@@ -231,7 +259,8 @@ const initSignupPage = async () => {
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
-            window.location.href = getRedirectPath();
+            setAuthTransition('로그인 성공', '마이페이지로 이동 중입니다. 잠시 기다려주세요.');
+            window.location.replace(getRedirectPath());
         }
     });
 };

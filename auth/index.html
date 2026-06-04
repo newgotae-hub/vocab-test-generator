@@ -33,6 +33,11 @@
         <main class="auth-main">
             <h1 style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">로그인</h1>
             <section class="card auth-supa-shell">
+                <div id="auth-transition-state" class="auth-transition-state" role="status" aria-live="polite">
+                    <span class="auth-transition-spinner" aria-hidden="true"></span>
+                    <strong data-auth-transition-title>로그인 정보를 확인 중입니다</strong>
+                    <span data-auth-transition-detail>불러오는 중입니다. 잠시 기다려주세요.</span>
+                </div>
                 <div id="auth-notice" class="auth-notice hidden" aria-live="polite"></div>
                 <div id="supabase-auth-root" class="auth-root"></div>
             </section>

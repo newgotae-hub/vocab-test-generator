@@ -5,7 +5,7 @@ import { ThemeSupa } from 'https://esm.sh/@supabase/auth-ui-shared';
 import { supabase } from '/src/lib/supabaseClient.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
-const DEFAULT_REDIRECT_PATH = '/dashboard/';
+const DEFAULT_REDIRECT_PATH = '/mypage/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
 const GOOGLE_GIS_CLIENT_ID = '1041300302202-ua00qcidtg5melhsqs8cl1u96gm3eqmh.apps.googleusercontent.com';
 const GOOGLE_GIS_SCRIPT_ID = 'google-gsi-client';
@@ -59,6 +59,10 @@ const sanitizeRedirectPath = (candidate) => {
         if (targetUrl.origin !== window.location.origin) {
             return DEFAULT_REDIRECT_PATH;
         }
+        const normalizedPath = targetUrl.pathname.endsWith('/') ? targetUrl.pathname : `${targetUrl.pathname}/`;
+        if (normalizedPath === '/dashboard/' || normalizedPath === '/game/' || normalizedPath === '/ranked/') {
+            return DEFAULT_REDIRECT_PATH;
+        }
         const safePath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
         if (!safePath.startsWith('/') || safePath.startsWith('/auth')) {
             return DEFAULT_REDIRECT_PATH;
@@ -107,6 +111,26 @@ const setNotice = (message, tone = 'info') => {
     }
     if (tone === 'error') noticeEl.classList.add('auth-notice--error');
     if (tone === 'success') noticeEl.classList.add('auth-notice--success');
+};
+
+const setAuthTransition = (
+    title = '로그인 정보를 확인 중입니다',
+    detail = '불러오는 중입니다. 잠시 기다려주세요.',
+) => {
+    const transitionEl = document.getElementById('auth-transition-state');
+    if (!transitionEl) return;
+
+    const titleEl = transitionEl.querySelector('[data-auth-transition-title]');
+    const detailEl = transitionEl.querySelector('[data-auth-transition-detail]');
+    if (titleEl) titleEl.textContent = title;
+    if (detailEl) detailEl.textContent = detail;
+    transitionEl.hidden = false;
+};
+
+const hideAuthTransition = () => {
+    const transitionEl = document.getElementById('auth-transition-state');
+    if (!transitionEl) return;
+    transitionEl.hidden = true;
 };
 
 const translateAuthError = (rawMessage) => {
@@ -301,12 +325,14 @@ const setupGoogleGisButton = async (rootEl, onClickGoogle) => {
 };
 
 const redirectToTarget = () => {
-    window.location.href = getRedirectPath();
+    setAuthTransition('로그인 성공', '마이페이지로 이동 중입니다. 잠시 기다려주세요.');
+    window.location.replace(getRedirectPath());
 };
 
 const mountAuthUI = () => {
     const rootEl = document.getElementById('supabase-auth-root');
     if (!rootEl) return;
+    hideAuthTransition();
 
     const setSocialLoadingState = (provider = '') => {
         const buttons = rootEl.querySelectorAll('.auth-social-btn, .auth-google-gis-overlay');
@@ -327,6 +353,7 @@ const mountAuthUI = () => {
 
     const signInWithProvider = async (provider) => {
         setSocialLoadingState(provider);
+        setAuthTransition('소셜 로그인을 준비 중입니다', '인증 화면으로 이동 중입니다. 잠시 기다려주세요.');
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -336,10 +363,12 @@ const mountAuthUI = () => {
             });
             if (error) {
                 setSocialLoadingState();
+                hideAuthTransition();
                 setNotice(translateAuthError(error.message), 'error');
             }
         } catch (_error) {
             setSocialLoadingState();
+            hideAuthTransition();
             setNotice('소셜 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.', 'error');
         }
     };
@@ -441,6 +470,7 @@ const mountAuthUI = () => {
 };
 
 const initAuthPage = async () => {
+    setAuthTransition();
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'success') {
         setNotice('이메일 인증이 완료되었습니다. 이동합니다...', 'success');
@@ -462,6 +492,7 @@ const initAuthPage = async () => {
             setNotice('세션 확인에 실패했습니다. 다시 시도해 주세요.', 'error');
         }
         if (data?.session) {
+            setAuthTransition('로그인 성공', '마이페이지로 이동 중입니다. 잠시 기다려주세요.');
             redirectToTarget();
             return;
         }
