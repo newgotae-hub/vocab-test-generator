@@ -9,7 +9,7 @@ export const initLandingPage = async () => {
 
     const callbackResult = await completeAuthFromUrl();
     if (callbackResult.status === 'success') {
-        window.location.replace('/mypage/');
+        window.location.replace('/generator/');
         return;
     }
 
@@ -19,9 +19,9 @@ export const initLandingPage = async () => {
     }
 
     await initAuthNavLinks({
-        loggedInLabel: '마이페이지',
-        loggedInPath: '/mypage/',
-        loggedInAction: 'mypage',
+        loggedInLabel: '시험지만들기',
+        loggedInPath: '/generator/',
+        loggedInAction: 'generator',
     });
 
     if (purchaseButton instanceof HTMLButtonElement) {

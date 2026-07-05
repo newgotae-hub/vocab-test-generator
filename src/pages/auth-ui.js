@@ -5,7 +5,7 @@ import { ThemeSupa } from 'https://esm.sh/@supabase/auth-ui-shared';
 import { supabase } from '/src/lib/supabaseClient.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
-const DEFAULT_REDIRECT_PATH = '/mypage/';
+const DEFAULT_REDIRECT_PATH = '/generator/';
 const AUTH_ALERT_COOLDOWN_MS = 4000;
 const GOOGLE_GIS_CLIENT_ID = '1041300302202-ua00qcidtg5melhsqs8cl1u96gm3eqmh.apps.googleusercontent.com';
 const GOOGLE_GIS_SCRIPT_ID = 'google-gsi-client';

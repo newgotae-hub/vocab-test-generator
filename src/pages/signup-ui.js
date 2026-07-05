@@ -3,7 +3,7 @@ import { createRoot } from 'https://esm.sh/react-dom@18/client';
 import { supabase } from '/src/lib/supabaseClient.js';
 import { completeAuthFromUrl } from '/src/lib/authCallback.js';
 
-const DEFAULT_REDIRECT_PATH = '/mypage/';
+const DEFAULT_REDIRECT_PATH = '/generator/';
 
 const sanitizeRedirectPath = (candidate) => {
     if (!candidate) return DEFAULT_REDIRECT_PATH;
