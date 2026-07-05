@@ -1268,9 +1268,9 @@ export const initBlogPage = async () => {
     }
 
     void initAuthNavLinks({
-        loggedInLabel: '시험지만들기',
+        loggedInLabel: '마이페이지',
         loggedInPath: '/generator/',
-        loggedInAction: 'generator',
+        loggedInAction: 'mypage',
     }).catch((error) => {
         console.warn('[blog-page] auth nav init failed', error);
     });

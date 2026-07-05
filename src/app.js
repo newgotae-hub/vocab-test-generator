@@ -92,9 +92,9 @@ const bootstrap = async () => {
     setAppLoadingState(pageName, false);
 
     await initAuthNavLinks({
-        loggedInLabel: '시험지만들기',
+        loggedInLabel: '마이페이지',
         loggedInPath: '/generator/',
-        loggedInAction: 'generator',
+        loggedInAction: 'mypage',
     });
     markActiveNav();
     const initPage = pageInits[pageName];
