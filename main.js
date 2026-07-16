@@ -1868,7 +1868,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameLineEndCandidate = scoreValueStartX - scoreTextGap;
         const nameLineEndX = Math.min(totalNameLineEndX, Math.max(nameLineStartX, nameLineEndCandidate));
         const frameColor = rgb(0, 0, 0);
-        const lineColor = rgb(0.78, 0.78, 0.78);
+        const lineColor = rgb(0.62, 0.62, 0.62);
         const mutedColor = rgb(0, 0, 0);
         const pageBottom = margin + 4;
         const pageTopFrame = height - margin + 2;
@@ -2092,7 +2092,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             page.drawLine({
                                 start: { x: x, y: currentLineY },
                                 end: { x: x + columnWidth, y: currentLineY },
-                                thickness: 0.3,
+                                thickness: 0.55,
                                 color: lineColor,
                             });
                         }
@@ -2191,9 +2191,10 @@ document.addEventListener('DOMContentLoaded', () => {
             top: { style: 'single', size: 12, color: '000000', space: 0 },
             bottom: { style: 'single', size: 12, color: '000000', space: 0 },
         };
+        const printGridLine = { style: 'single', size: 6, color: 'B8B8B8', space: 0 };
         const questionTableBorder = {
-            insideHorizontal: { style: 'single', size: 2, color: 'E6E6E6', space: 0 },
-            insideVertical: { style: 'single', size: 2, color: 'E6E6E6', space: 0 },
+            insideHorizontal: printGridLine,
+            insideVertical: printGridLine,
             ...tableBorderStyleNone,
         };
 
