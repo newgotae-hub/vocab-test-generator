@@ -398,6 +398,12 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     box-shadow: 0 8px 18px -14px rgba(37, 99, 235, 0.45);
 }
 
+.sub-chapter-item.has-selected-tocs {
+    border-color: rgba(37, 99, 235, 0.42);
+    background: rgba(239, 246, 255, 0.72);
+    box-shadow: inset 3px 0 0 rgba(37, 99, 235, 0.45);
+}
+
 #sub-chapter-selection-card.compact {
     padding-top: 0.6rem;
     padding-bottom: 0.6rem;
@@ -1215,6 +1221,7 @@ input:checked + .slider::before {
 
 .mypage-history-item {
     position: relative;
+    min-width: 0;
     gap: 0.4rem;
     padding: 0.78rem 0.8rem;
     border-color: #d6e2f6;
@@ -1226,6 +1233,7 @@ input:checked + .slider::before {
     align-items: center;
     justify-content: space-between;
     gap: 0.55rem;
+    min-width: 0;
 }
 
 .mypage-history-actions {
@@ -1233,6 +1241,7 @@ input:checked + .slider::before {
     align-items: center;
     justify-content: flex-end;
     gap: 0.35rem;
+    flex: 0 0 auto;
     margin-right: 0.65rem;
 }
 
@@ -1242,12 +1251,19 @@ input:checked + .slider::before {
     font-weight: 800;
     flex: 1 1 auto;
     min-width: 0;
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.32;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
 }
 
 .mypage-history-compact {
+    display: block;
+    min-width: 0;
     font-size: 0.81rem;
     color: #41536e;
     line-height: 1.38;
@@ -2808,6 +2824,14 @@ body[data-auth-ready="false"] .app-auth-loading ~ main {
 
     .mypage-history-head .mypage-history-btn {
         width: auto;
+    }
+
+    .mypage-history-head {
+        align-items: flex-start;
+    }
+
+    .mypage-history-title {
+        flex-basis: 0;
     }
 
     .book-library {

@@ -408,6 +408,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return `DAY ${String(dayNo).padStart(2, '0')}`;
     };
 
+    const getRestoreEtymologySelections = (config = {}) => {
+        const scopedSelections = Array.isArray(config.selectedTocScopes)
+            ? config.selectedTocScopes
+                .map((scope) => ({
+                    chapterId: normalizeSpacingText(scope?.chapter || scope?.chapterId),
+                    toc: normalizeSpacingText(scope?.toc),
+                }))
+                .filter((scope) => scope.chapterId && scope.toc)
+            : [];
+
+        if (scopedSelections.length > 0) return scopedSelections;
+
+        const fallbackChapterId = normalizeSpacingText(config.selectedChapter);
+        if (!fallbackChapterId) return [];
+
+        return (Array.isArray(config.selectedTocs) ? config.selectedTocs : [])
+            .map((toc) => ({
+                chapterId: fallbackChapterId,
+                toc: normalizeRestoreToc(toc, 'etymology'),
+            }))
+            .filter((scope) => scope.chapterId && scope.toc);
+    };
+
     const getBookNameForOutput = (bookKey) => {
         const normalized = normalizeBookKey(bookKey);
         const bookNames = {
@@ -427,6 +450,47 @@ document.addEventListener('DOMContentLoaded', () => {
         return prefixes[normalized] || '';
     };
 
+    const ETYMOLOGY_CHAPTER_LABELS = {
+        CH1: '접두사',
+        CH2: '접미사',
+        CH3: '어근',
+    };
+
+    const getEtymologyChapterLabel = (chapterId = '') => {
+        const normalized = normalizeSpacingText(chapterId).toUpperCase();
+        return ETYMOLOGY_CHAPTER_LABELS[normalized] || '';
+    };
+
+    const extractEtymologyTocTitle = (tocLabel = '') => {
+        const trimmed = normalizeSpacingText(tocLabel);
+        if (!trimmed) return '';
+        const beforeParen = trimmed.split(/[([]/)[0].trim();
+        const firstSegment = beforeParen.split('/')[0].trim();
+        return firstSegment.replace(/[()\[\],;:]+/g, '').trim() || '어원';
+    };
+
+    const buildEtymologyExamTitle = (tocLabels = [], chapterInput = '') => {
+        const titles = tocLabels
+            .map((toc) => extractEtymologyTocTitle(toc))
+            .filter(Boolean)
+            .filter((value, idx, arr) => arr.indexOf(value) === idx);
+        const chapterIds = (Array.isArray(chapterInput) ? chapterInput : [chapterInput])
+            .map((chapterId) => normalizeSpacingText(chapterId))
+            .filter(Boolean)
+            .filter((value, idx, arr) => arr.indexOf(value) === idx);
+        const chapterLabels = chapterIds
+            .map((chapterId) => getEtymologyChapterLabel(chapterId))
+            .filter(Boolean)
+            .filter((value, idx, arr) => arr.indexOf(value) === idx);
+        const prefix = chapterLabels.length === 0
+            ? '어원편'
+            : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편 통합');
+
+        if (titles.length === 0) return `${prefix} 시험지`;
+        if (titles.length === 1) return `${prefix} ${titles[0]}`;
+        return `${prefix} ${titles[0]} 외 ${titles.length - 1}개`;
+    };
+
     const extractExamTitleFromToc = (tocLabel = '') => {
         const trimmed = normalizeSpacingText(tocLabel);
         if (!trimmed) return '어휘 시험지';
@@ -436,7 +500,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return firstToken.replace(/[()\[\],;:]+/g, '').trim() || '어휘 시험지';
     };
 
-    const buildExamTitleFromSelectedTocs = (tocLabels = []) => {
+    const buildExamTitleFromSelectedTocs = (tocLabels = [], options = {}) => {
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        if (activeBookKey === 'etymology') {
+            return buildEtymologyExamTitle(tocLabels, options.chapterIds || options.chapterId || state.selectedChapter);
+        }
+
         const dayNumbers = tocLabels
             .map((toc) => {
                 const match = normalizeSpacingText(toc).match(/DAY\s*0?(\d{1,2})/i);
@@ -485,6 +554,77 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[\u0000-\u001F\u007F]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+    };
+
+    const ETYMOLOGY_TOC_KEY_SEPARATOR = '|||';
+
+    const makeEtymologyTocKey = (chapterId, toc) => {
+        const normalizedChapter = normalizeSpacingText(chapterId);
+        const normalizedToc = normalizeSpacingText(toc);
+        if (!normalizedChapter || !normalizedToc) return '';
+        return `${normalizedChapter}${ETYMOLOGY_TOC_KEY_SEPARATOR}${normalizedToc}`;
+    };
+
+    const parseEtymologyTocSelection = (selection, options = {}) => {
+        const raw = String(selection ?? '');
+        const separatorIndex = raw.indexOf(ETYMOLOGY_TOC_KEY_SEPARATOR);
+        if (separatorIndex >= 0) {
+            return {
+                chapterId: normalizeSpacingText(raw.slice(0, separatorIndex)),
+                toc: normalizeSpacingText(raw.slice(separatorIndex + ETYMOLOGY_TOC_KEY_SEPARATOR.length)),
+            };
+        }
+
+        return {
+            chapterId: normalizeSpacingText(options.chapterId ?? state.selectedChapter),
+            toc: normalizeSpacingText(selection),
+        };
+    };
+
+    const getTocSelectionKey = (toc, options = {}) => {
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        const normalizedToc = normalizeSpacingText(toc);
+        if (activeBookKey !== 'etymology') return normalizedToc;
+        return makeEtymologyTocKey(options.chapterId ?? state.selectedChapter, normalizedToc);
+    };
+
+    const getSelectedTocLabels = (selectedTocs, options = {}) => {
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        return [...(selectedTocs || [])]
+            .map((selection) => {
+                if (activeBookKey !== 'etymology') return normalizeSpacingText(selection);
+                return parseEtymologyTocSelection(selection, options).toc;
+            })
+            .filter(Boolean);
+    };
+
+    const getSelectedEtymologyScopes = (selectedTocs = state.selectedTocs, options = {}) => {
+        const seen = new Set();
+        return [...(selectedTocs || [])]
+            .map((selection) => parseEtymologyTocSelection(selection, options))
+            .filter(({ chapterId, toc }) => chapterId && toc)
+            .filter(({ chapterId, toc }) => {
+                const key = makeEtymologyTocKey(chapterId, toc);
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a, b) => (
+                a.chapterId.localeCompare(b.chapterId, 'ko', { numeric: true })
+                || a.toc.localeCompare(b.toc, 'ko', { numeric: true })
+            ));
+    };
+
+    const getSelectedEtymologyChapterIds = (selectedTocs = state.selectedTocs, options = {}) => {
+        return [...new Set(getSelectedEtymologyScopes(selectedTocs, options).map((scope) => scope.chapterId))];
+    };
+
+    const getSelectedEtymologyCountForChapter = (chapterId) => {
+        const normalizedChapter = normalizeSpacingText(chapterId);
+        if (!normalizedChapter) return 0;
+        return getSelectedEtymologyScopes()
+            .filter((scope) => scope.chapterId === normalizedChapter)
+            .length;
     };
 
     const normalizeFileName = (value) => {
@@ -949,12 +1089,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return pool;
     };
     const getEntriesForToc = (toc, options = {}) => {
-        const normalizedToc = normalizeSpacingText(toc);
+        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
+        const parsedSelection = activeBookKey === 'etymology'
+            ? parseEtymologyTocSelection(toc, { chapterId: options.chapterId ?? state.selectedChapter })
+            : { chapterId: '', toc: normalizeSpacingText(toc) };
+        const normalizedToc = parsedSelection.toc;
         if (!normalizedToc) return [];
 
         const tocEntries = state.wordsByToc[normalizedToc] || [];
-        const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
-        const chapterId = normalizeSpacingText(options.chapterId ?? state.selectedChapter);
+        const chapterId = normalizeSpacingText(parsedSelection.chapterId || options.chapterId || state.selectedChapter);
 
         if (activeBookKey !== 'etymology') {
             return tocEntries;
@@ -980,8 +1123,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedTocs || selectedTocs.size === 0) return [];
 
         const sourceEntries = [];
-        selectedTocs.forEach((toc) => {
-            sourceEntries.push(...getEntriesForToc(toc));
+        selectedTocs.forEach((selection) => {
+            sourceEntries.push(...getEntriesForToc(selection));
         });
 
         return buildQuestionPool(sourceEntries, {
@@ -997,15 +1140,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const checked = state.ui.tocChecklist?.querySelectorAll('input[type="checkbox"]:checked') || [];
         return new Set(
             [...checked]
-                .map((el) => el.dataset.toc)
+                .map((el) => normalizeSpacingText(el.dataset.tocKey || el.dataset.toc))
                 .filter(Boolean)
         );
+    };
+    const getSelectionSnapshotFromChecklist = () => {
+        const checkedTocs = getCheckedTocsFromChecklist();
+        if (normalizeBookKey(state.selectedBook) !== 'etymology' || !state.selectedChapter) {
+            return checkedTocs;
+        }
+
+        const activeChapter = normalizeSpacingText(state.selectedChapter);
+        const nextSelection = new Set(
+            [...state.selectedTocs].filter((selection) => (
+                parseEtymologyTocSelection(selection).chapterId !== activeChapter
+            )),
+        );
+        checkedTocs.forEach((selection) => nextSelection.add(selection));
+        return nextSelection;
     };
     const enforceTocSelectionLimit = (checkbox, { notify = true } = {}) => {
         if (!checkbox?.checked) return true;
 
         const questionLimit = getQuestionSelectionLimit();
-        const selectedTocs = getCheckedTocsFromChecklist();
+        const selectedTocs = getSelectionSnapshotFromChecklist();
         const totalWords = getSelectedWordsForTocs(selectedTocs).length;
         if (totalWords <= questionLimit) return true;
 
@@ -1181,12 +1339,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return (match?.[1] || label).trim();
     };
 
+    const syncSubChapterSelectionState = () => {
+        state.ui.subChapterSelectionCard?.querySelectorAll('.sub-chapter-item').forEach((item) => {
+            const chapterId = normalizeSpacingText(item.dataset.chapter);
+            const isActiveChapter = chapterId && chapterId === normalizeSpacingText(state.selectedChapter);
+            const hasSelections = getSelectedEtymologyCountForChapter(chapterId) > 0;
+            item.classList.toggle('selected-item', isActiveChapter);
+            item.classList.toggle('has-selected-tocs', !isActiveChapter && hasSelections);
+        });
+    };
+
     const selectSubChapter = (chapterId) => {
         state.selectedChapter = chapterId;
-        state.selectedTocs.clear();
-        state.ui.subChapterSelectionCard?.querySelectorAll('.sub-chapter-item').forEach(item => {
-            item.classList.toggle('selected-item', item.dataset.chapter === chapterId);
-        });
+        syncSubChapterSelectionState();
         const subChapterTitle = state.ui.subChapterSelectionCard?.querySelector('h2');
         if (subChapterTitle) {
             const chapterName = getSubChapterDisplayName(chapterId);
@@ -1198,12 +1363,12 @@ document.addEventListener('DOMContentLoaded', () => {
             subChapterSubtitle.textContent = `${bookLabel}에서 공부할 챕터를 선택하세요.`;
         }
         renderTocChecklist(chapterId);
-        modifyAllTocs(false);
         state.isExamTitleCustomized = false;
         state.ui.subChapterSelectionCard.classList.add('compact');
         setSectionOpen('toc', true);
         state.ui.subChapterSelectionCard.classList.remove('hidden');
         state.ui.tocSelectionCard.classList.remove('hidden');
+        updateUiState();
     };
 
     const renderTocChecklist = (chapterId) => {
@@ -1216,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const isChecked = state.selectedTocs.has(dayLabel) ? 'checked' : '';
                 return `
-                    <label class="toc-checklist-item">
+                    <label class="toc-checklist-item ${isChecked ? 'selected-item' : ''}">
                         <input type="checkbox" data-toc="${dayLabel}" ${isChecked}>
                         <span class="label">${dayLabel}</span>
                         <span class="badge">${wordCount}</span>
@@ -1240,10 +1405,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 chapterId,
                 includeDerivatives: false,
             });
-            const isChecked = state.selectedTocs.has(toc) ? 'checked' : '';
+            const selectionKey = getTocSelectionKey(toc, {
+                bookKey: 'etymology',
+                chapterId,
+            });
+            const isChecked = state.selectedTocs.has(selectionKey) ? 'checked' : '';
             return `
-                <label class="toc-checklist-item">
-                    <input type="checkbox" data-toc="${toc}" ${isChecked}>
+                <label class="toc-checklist-item ${isChecked ? 'selected-item' : ''}">
+                    <input type="checkbox" data-toc="${toc}" data-chapter="${chapterId}" data-toc-key="${selectionKey}" ${isChecked}>
                     <span class="label">${toc}</span>
                     <span class="badge">${wordCount}</span>
                 </label>
@@ -1253,8 +1422,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const updateUiState = () => {
         syncGeneratorBookStageLayout();
-        const checkedTocs = [...state.ui.tocChecklist.querySelectorAll('input:checked')].map(el => el.dataset.toc);
-        state.selectedTocs = new Set(checkedTocs);
+        state.selectedTocs = getSelectionSnapshotFromChecklist();
+        syncSubChapterSelectionState();
         state.ui.tocChecklist.querySelectorAll('.toc-checklist-item').forEach(item => {
             const checkbox = item.querySelector('input[type="checkbox"]');
             item.classList.toggle('selected-item', !!checkbox?.checked);
@@ -1288,7 +1457,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${baseCount}개`;
             }
         } else {
-            state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개 / 총 단어: ${totalWords}개`;
+            const selectedChapterCount = getSelectedEtymologyChapterIds().length;
+            const chapterPart = selectedChapterCount > 1 ? ` / 챕터: ${selectedChapterCount}개` : '';
+            state.ui.tocSummary.textContent = `선택된 목차: ${state.selectedTocs.size}개${chapterPart} / 총 단어: ${totalWords}개`;
         }
         const questionLimit = getQuestionSelectionLimit();
         const maxQuestions = Math.min(totalWords, questionLimit);
@@ -1297,7 +1468,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setNumQuestionsHint(state.ui.numQuestions.value);
 
         if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
-            const tocTitle = buildExamTitleFromSelectedTocs(checkedTocs);
+            const tocTitle = buildExamTitleFromSelectedTocs(getSelectedTocLabels(state.selectedTocs), {
+                bookKey: state.selectedBook,
+                chapterId: state.selectedChapter,
+                chapterIds: getSelectedEtymologyChapterIds(),
+            });
             if (state.ui.examTitle) {
                 state.ui.examTitle.value = tocTitle;
             }
@@ -1368,7 +1543,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.selectedBook && state.selectedBook !== 'etymology') {
             const dayOnlyPattern = /^day(?:\s*\/\s*day)*$/i;
             if (dayOnlyPattern.test(examTitle) && state.selectedTocs.size > 0) {
-                examTitle = buildExamTitleFromSelectedTocs([...state.selectedTocs]);
+                examTitle = buildExamTitleFromSelectedTocs([...state.selectedTocs], {
+                    bookKey: state.selectedBook,
+                    chapterId: state.selectedChapter,
+                });
                 if (!state.isExamTitleCustomized && state.ui.examTitle) {
                     state.ui.examTitle.value = examTitle;
                 }
@@ -1476,7 +1654,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     numQuestions: settings.numQuestions,
                     shouldShuffle: settings.shouldShuffle,
                     selectedChapter: state.selectedChapter || '',
-                    selectedTocs: [...state.selectedTocs].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
+                    selectedTocs: getSelectedTocLabels(state.selectedTocs)
+                        .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
+                    selectedTocScopes: state.selectedBook === 'etymology'
+                        ? getSelectedEtymologyScopes().map((scope) => ({
+                            chapter: scope.chapterId,
+                            toc: scope.toc,
+                        }))
+                        : [],
                     includeDerivatives: Boolean(state.includeDerivatives),
                 },
                 files: generatedFiles.map((file) => file.name),
@@ -1518,23 +1703,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (bookKey === 'etymology') {
-            const chapterId = normalizeSpacingText(config.selectedChapter);
-            if (chapterId) {
-                selectSubChapter(chapterId);
+            const scopedSelections = getRestoreEtymologySelections(config);
+            const initialChapterId = normalizeSpacingText(config.selectedChapter) || scopedSelections[0]?.chapterId || '';
+            if (initialChapterId) {
+                selectSubChapter(initialChapterId);
             }
-        }
-
-        const selectedTocs = Array.isArray(config.selectedTocs)
-            ? config.selectedTocs.map((toc) => normalizeRestoreToc(toc, bookKey)).filter(Boolean)
-            : [];
-        if (selectedTocs.length > 0) {
-            const tocSet = new Set(selectedTocs);
-            state.ui.tocChecklist
-                .querySelectorAll('input[type="checkbox"][data-toc]')
-                .forEach((checkbox) => {
-                    checkbox.checked = tocSet.has(normalizeSpacingText(checkbox.dataset.toc));
-                });
-            updateUiState();
+            if (scopedSelections.length > 0) {
+                state.selectedTocs = new Set(
+                    scopedSelections
+                        .map((scope) => makeEtymologyTocKey(scope.chapterId, scope.toc))
+                        .filter(Boolean),
+                );
+                if (state.selectedChapter) {
+                    renderTocChecklist(state.selectedChapter);
+                }
+                updateUiState();
+            }
+        } else {
+            const selectedTocs = Array.isArray(config.selectedTocs)
+                ? config.selectedTocs.map((toc) => normalizeRestoreToc(toc, bookKey)).filter(Boolean)
+                : [];
+            if (selectedTocs.length > 0) {
+                const tocSet = new Set(selectedTocs);
+                state.ui.tocChecklist
+                    .querySelectorAll('input[type="checkbox"][data-toc]')
+                    .forEach((checkbox) => {
+                        checkbox.checked = tocSet.has(normalizeSpacingText(checkbox.dataset.toc));
+                    });
+                updateUiState();
+            }
         }
 
         if (state.ui.includeDerivatives && bookKey !== 'etymology' && isBookPurchaseVerified()) {

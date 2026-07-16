@@ -91,6 +91,66 @@ const inferBookKey = (...values) => {
     return '';
 };
 
+const ETYMOLOGY_CHAPTER_LABELS = {
+    CH1: '접두사',
+    CH2: '접미사',
+    CH3: '어근',
+};
+
+const getEtymologyChapterLabel = (chapterId = '') => {
+    const normalized = normalizeSpacingText(chapterId).toUpperCase();
+    return ETYMOLOGY_CHAPTER_LABELS[normalized] || '';
+};
+
+const extractEtymologyTocTitle = (tocLabel = '') => {
+    const trimmed = normalizeSpacingText(tocLabel);
+    if (!trimmed) return '';
+    const beforeParen = trimmed.split(/[([]/)[0].trim();
+    const firstSegment = beforeParen.split('/')[0].trim();
+    return firstSegment.replace(/[()\[\],;:]+/g, '').trim();
+};
+
+const uniqueNonEmpty = (items) => {
+    return items
+        .map((item) => normalizeSpacingText(item))
+        .filter(Boolean)
+        .filter((value, index, array) => array.indexOf(value) === index);
+};
+
+const buildCompactEtymologyTitle = (config, examTitle) => {
+    const selectedTocs = Array.isArray(config?.selectedTocs) ? config.selectedTocs : [];
+    let titles = uniqueNonEmpty(selectedTocs.map((toc) => extractEtymologyTocTitle(toc)));
+
+    if (titles.length === 0 && examTitle.includes('/')) {
+        titles = uniqueNonEmpty(examTitle.split('/').map((part) => extractEtymologyTocTitle(part)));
+    }
+
+    const scopedChapterIds = Array.isArray(config?.selectedTocScopes)
+        ? config.selectedTocScopes
+            .map((scope) => normalizeSpacingText(scope?.chapter || scope?.chapterId))
+            .filter(Boolean)
+        : [];
+    const chapterLabels = uniqueNonEmpty(
+        (scopedChapterIds.length > 0 ? scopedChapterIds : [config?.selectedChapter])
+            .map((chapterId) => getEtymologyChapterLabel(chapterId)),
+    );
+    const prefix = chapterLabels.length > 1
+        ? '어원편 통합'
+        : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편');
+
+    if (titles.length >= 2) return `${prefix} ${titles[0]} 외 ${titles.length - 1}개`;
+    if (titles.length === 1) return `${prefix} ${titles[0]}`;
+    return examTitle.length > 42 ? `${prefix} 시험지` : examTitle;
+};
+
+const buildGeneratorHistoryDisplayTitle = (config, examTitle) => {
+    const bookKey = inferBookKey(config?.bookKey, config?.bookName, examTitle);
+    if (bookKey === 'etymology') {
+        return buildCompactEtymologyTitle(config, examTitle);
+    }
+    return examTitle;
+};
+
 const buildGeneratorRestoreRequest = (historyEntry) => {
     const config = historyEntry?.config || {};
     const fileNames = Array.isArray(historyEntry?.files) ? historyEntry.files : [];
@@ -103,6 +163,14 @@ const buildGeneratorRestoreRequest = (historyEntry) => {
         ? config.selectedTocs
             .map((toc) => normalizeSpacingText(toc))
             .filter(Boolean)
+        : [];
+    const selectedTocScopes = Array.isArray(config.selectedTocScopes)
+        ? config.selectedTocScopes
+            .map((scope) => ({
+                chapter: normalizeSpacingText(scope?.chapter || scope?.chapterId),
+                toc: normalizeSpacingText(scope?.toc),
+            }))
+            .filter((scope) => scope.chapter && scope.toc)
         : [];
     const numQuestionsRaw = Number.parseInt(config.numQuestions, 10);
     const numQuestions = Number.isInteger(numQuestionsRaw)
@@ -119,6 +187,7 @@ const buildGeneratorRestoreRequest = (historyEntry) => {
             shouldShuffle: Boolean(config.shouldShuffle),
             selectedChapter: normalizeSpacingText(config.selectedChapter),
             selectedTocs,
+            selectedTocScopes,
             includeDerivatives: Boolean(config.includeDerivatives),
         },
     };
@@ -346,6 +415,7 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         const generatedAt = formatLocalDatetime(entry?.generatedAt);
         const questionCount = Number.isInteger(config.numQuestions) ? config.numQuestions : 0;
         const examTitle = normalizeSpacingText(config.examTitle) || '어휘 시험지';
+        const displayTitle = buildGeneratorHistoryDisplayTitle(config, examTitle);
         const outputFormat = normalizeSpacingText(config.outputFormat) || '-';
         const testType = normalizeSpacingText(config.testType) || '-';
         const hasArchive = Boolean(normalizeSpacingText(entry?.archiveId));
@@ -355,7 +425,7 @@ const renderGeneratorHistory = (container, summaryEl, history) => {
         return `
             <article class="test-history-item mypage-history-item">
                 <div class="mypage-history-head">
-                    <strong class="mypage-history-title">${index + 1}. ${escapeHtml(examTitle)}</strong>
+                    <strong class="mypage-history-title" title="${escapeHtml(examTitle)}">${index + 1}. ${escapeHtml(displayTitle)}</strong>
                     <div class="mypage-history-actions">
                         ${hasArchive
         ? `<button type="button" class="mypage-button mypage-btn-fit mypage-history-btn" ${redownloadAttr}>다운로드</button>`
@@ -895,7 +965,9 @@ const handleGeneratorHistoryRegenerate = (event, ui) => {
         requestPayload.config.includeDerivatives = false;
     }
     const bookKey = normalizeSpacingText(requestPayload?.config?.bookKey).toLowerCase();
-    if (!bookKey || requestPayload.config.selectedTocs.length === 0) {
+    const hasSelectedTocs = requestPayload.config.selectedTocs.length > 0
+        || (Array.isArray(requestPayload.config.selectedTocScopes) && requestPayload.config.selectedTocScopes.length > 0);
+    if (!bookKey || !hasSelectedTocs) {
         setStatus(ui.generatorStatus, '설정 정보가 부족하여 자동 재생성이 어렵습니다. 생성 페이지에서 다시 선택해 주세요.', 'error');
         return true;
     }
