@@ -2181,6 +2181,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const questionTableRowHeight = 495;
         const questionItemsPerColumn = 25;
         const questionItemsPerPage = questionItemsPerColumn * 2;
+        const questionCellOuterMargin = 120;
+        const questionCellCenterMargin = 240;
         const headerCellMargins = {
             top: 80,
             bottom: 80,
@@ -2198,8 +2200,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ...tableBorderStyleNone,
         };
 
-        const makeListRowCell = (text) => {
+        const makeListRowCell = (text, columnSide = 'left') => {
             const label = text ? `${text} ` : '';
+            const isRightColumn = columnSide === 'right';
             return new TableCell({
                 width: { size: 4918, type: WidthType.DXA },
                 children: [
@@ -2216,6 +2219,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                     }),
                 ],
+                margins: {
+                    top: 0,
+                    bottom: 0,
+                    left: isRightColumn ? questionCellCenterMargin : questionCellOuterMargin,
+                    right: isRightColumn ? questionCellOuterMargin : questionCellCenterMargin,
+                },
                 verticalAlign: 'center',
             });
         };
@@ -2328,8 +2337,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     rows.push(new TableRow({
                         children: [
-                            makeListRowCell(leftLabel),
-                            makeListRowCell(rightLabel),
+                            makeListRowCell(leftLabel, 'left'),
+                            makeListRowCell(rightLabel, 'right'),
                         ],
                         height: { value: questionTableRowHeight, rule: 'exact' },
                     }));
