@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="시험지 만들기 | 평가원기출VOCA">
     <meta name="twitter:description" content="교재와 범위를 선택해 수능 영어 단어 시험지를 WORD/PDF 형식으로 생성하세요.">
     <meta name="twitter:image" content="https://voca.plus/assets/images/베이직.jpg">
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css?v=20260728a">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -160,6 +160,7 @@
                     <div class="toc-title-row">
                         <h2>목차 선택</h2>
                         <div class="toc-title-meta">
+                            <button type="button" id="deselect-all-toc" class="toc-clear-button" disabled>전체 해제</button>
                             <div id="selected-total-badge" class="toc-total-badge" aria-live="polite">총 0개</div>
                             <div id="include-derivatives-group" class="toc-derivatives hidden">
                             <span class="toc-derivatives-label">파생어 포함</span>
@@ -180,6 +181,14 @@
         </main>
     </div>
 
+    <div id="generator-loading-overlay" class="generator-loading-overlay" role="status" aria-live="assertive" aria-atomic="true" hidden>
+        <div class="generator-loading-content">
+            <span class="generator-loading-spinner" aria-hidden="true"></span>
+            <strong id="generator-loading-title">단어 데이터를 불러오는 중입니다</strong>
+            <span id="generator-loading-description">완료되면 자동으로 시험지 설정 화면으로 이동합니다.</span>
+        </div>
+    </div>
+
     <div id="toast-container" aria-live="polite" aria-atomic="true" class="toast-container" role="status"></div>
 
     <!-- Libraries -->
@@ -190,7 +199,7 @@
 
     <!-- Main Script -->
     <script type="module" src="/src/app.js"></script>
-    <script src="/main.js?v=20260319h"></script>
+    <script src="/main.js?v=20260728a"></script>
 
     <script>
       window.Userback = window.Userback || {};

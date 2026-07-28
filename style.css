@@ -495,6 +495,38 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     justify-content: flex-end;
 }
 
+.toc-clear-button {
+    min-height: 2rem;
+    padding: 0.42rem 0.72rem;
+    border: 1px solid #cbd7ea;
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.toc-clear-button:hover:not(:disabled) {
+    border-color: #94a9ca;
+    background: #f4f7fc;
+    color: #1e3a8a;
+}
+
+.toc-clear-button:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.2);
+    outline-offset: 2px;
+}
+
+.toc-clear-button:disabled {
+    cursor: default;
+    opacity: 0.42;
+}
+
 .toc-total-badge {
     display: inline-flex;
     align-items: center;
@@ -509,6 +541,60 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
+}
+
+body.generator-is-loading {
+    overflow: hidden;
+}
+
+.generator-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    background: rgba(244, 247, 252, 0.94);
+    backdrop-filter: blur(8px);
+}
+
+.generator-loading-overlay[hidden] {
+    display: none;
+}
+
+.generator-loading-content {
+    display: grid;
+    justify-items: center;
+    gap: 0.68rem;
+    max-width: 30rem;
+    text-align: center;
+    color: #526079;
+}
+
+.generator-loading-content strong {
+    margin-top: 0.3rem;
+    color: #111827;
+    font-size: clamp(1.05rem, 2vw, 1.28rem);
+}
+
+.generator-loading-content span:last-child {
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.generator-loading-spinner {
+    width: 2.8rem;
+    height: 2.8rem;
+    border: 3px solid #d8e2f2;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: generatorLoadingSpin 760ms linear infinite;
+}
+
+@keyframes generatorLoadingSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .toc-derivatives {

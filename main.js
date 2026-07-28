@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         includeDerivatives: false,
         emptyWordWarningShown: false,
         isExamTitleCustomized: false,
+        isBookSelectionLoading: false,
         purchasePolicyNoticeShown: false,
         purchaseAccess: {
             userId: '',
@@ -87,8 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
             examTitle: document.getElementById('exam-title'),
             includeDerivatives: document.getElementById('include-derivatives'),
             includeDerivativesGroup: document.getElementById('include-derivatives-group'),
+            generatorLoadingOverlay: document.getElementById('generator-loading-overlay'),
+            generatorLoadingTitle: document.getElementById('generator-loading-title'),
+            generatorLoadingDescription: document.getElementById('generator-loading-description'),
         }
     };
+    let initialDataLoadTask = null;
     const bookLibraryCard = state.ui.bookLibrary.closest('.card');
     const leftColumn = document.querySelector('.left-column');
     const rightColumn = document.querySelector('.right-column');
@@ -887,6 +892,23 @@ document.addEventListener('DOMContentLoaded', () => {
             window.setTimeout(() => toast.remove(), 190);
         }, Math.max(900, duration));
     };
+    const setGeneratorLoading = (isLoading, bookLabel = '') => {
+        const overlay = state.ui.generatorLoadingOverlay;
+        if (!overlay) return;
+
+        const normalizedBookLabel = normalizeSpacingText(bookLabel);
+        if (state.ui.generatorLoadingTitle) {
+            state.ui.generatorLoadingTitle.textContent = normalizedBookLabel
+                ? `${normalizedBookLabel} 데이터를 불러오는 중입니다`
+                : '단어 데이터를 불러오는 중입니다';
+        }
+        if (state.ui.generatorLoadingDescription) {
+            state.ui.generatorLoadingDescription.textContent = '완료되면 자동으로 시험지 설정 화면으로 이동합니다.';
+        }
+        overlay.hidden = !isLoading;
+        document.body.classList.toggle('generator-is-loading', isLoading);
+        state.ui.bookLibrary?.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    };
     const showPurchasePolicyNoticeIfNeeded = () => {
         if (isBookPurchaseVerified() || state.purchasePolicyNoticeShown) return;
         state.purchasePolicyNoticeShown = true;
@@ -1264,84 +1286,100 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(error);
             state.isDataReady = true;
-            showToast('데이터 로드 중 오류가 발생했습니다.', 'error');
+            if (!state.isBookSelectionLoading) {
+                showToast('데이터 로드 중 오류가 발생했습니다.', 'error');
+            }
         }
     };
 
     const selectBook = async (bookName) => {
-        if (!state.isDataReady) {
-            return showToast('단어 데이터를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.', 'error');
-        }
         const normalizedBook = normalizeBookKey(bookName);
         if (!['etymology', 'basic', 'advanced'].includes(normalizedBook)) {
             return showToast('지원되지 않는 교재입니다.', 'error');
         }
+        if (state.isBookSelectionLoading) return;
+
+        const shouldShowLoading = !state.isDataReady || !state.loadedBooks.has(normalizedBook);
+        state.isBookSelectionLoading = true;
+        if (shouldShowLoading) {
+            setGeneratorLoading(true, getBookNameForOutput(normalizedBook));
+        }
+
         try {
+            if (!state.isDataReady && initialDataLoadTask) {
+                await initialDataLoadTask;
+            }
             await ensureBookDataLoaded(normalizedBook);
+            if ((state.bookDataByKey[normalizedBook] || []).length === 0) {
+                showToast('단어 데이터가 없습니다. 데이터를 다시 로드해 주세요.', 'error');
+                return;
+            }
+
+            applyBookData(normalizedBook);
+            state.selectedBook = normalizedBook;
+            state.selectedChapter = null;
+            state.selectedTocs.clear();
+            state.includeDerivatives = false;
+            state.emptyWordWarningShown = false;
+            state.isExamTitleCustomized = false;
+            if (state.ui.includeDerivatives) {
+                state.ui.includeDerivatives.checked = false;
+            }
+            syncDerivativeAccessUi();
+            state.ui.tocSelectionCard?.classList.toggle('day-mode', normalizedBook !== 'etymology');
+
+            const mixedTypeOption = state.ui.testTypeOptions
+                ?.querySelector('.test-type-option[data-type="MIXED"]');
+            if (mixedTypeOption) {
+                mixedTypeOption.classList.remove('hidden');
+            }
+            if (state.ui.testTypeOptions) {
+                state.ui.testTypeOptions.dataset.twoOptions = 'false';
+            }
+
+            state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
+                item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
+            });
+
+            setSectionOpen('toc', false);
+            if (isMobileViewport()) {
+                setSectionOpen('settings', false);
+            }
+            state.ui.subChapterSelectionCard?.classList.remove('compact');
+            const subChapterTitle = state.ui.subChapterSelectionCard?.querySelector('h2');
+            if (subChapterTitle) {
+                subChapterTitle.textContent = '챕터 선택';
+            }
+            const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
+            if (subChapterSubtitle) {
+                const bookLabel = getBookNameForOutput(normalizedBook);
+                subChapterSubtitle.textContent = `${bookLabel}에서 공부할 챕터를 선택하세요.`;
+            }
+
+            if (normalizedBook === 'etymology') {
+                setSectionOpen('toc', true);
+                state.ui.subChapterSelectionCard.classList.remove('hidden');
+                state.ui.tocSelectionCard.classList.add('hidden');
+                if (state.ui.tocSummary) {
+                    state.ui.tocSummary.textContent = '';
+                }
+                syncSelectedTotalBadge(0);
+            } else {
+                setSectionOpen('toc', true);
+                state.ui.subChapterSelectionCard.classList.add('hidden');
+                state.ui.tocSelectionCard.classList.remove('hidden');
+                renderTocChecklist();
+            }
+            updateUiState();
         } catch (error) {
             console.error(error);
-            return showToast('교재 데이터를 불러오지 못했습니다.', 'error');
-        }
-        if ((state.bookDataByKey[normalizedBook] || []).length === 0) {
-            return showToast('단어 데이터가 없습니다. 데이터를 다시 로드해 주세요.', 'error');
-        }
-
-        applyBookData(normalizedBook);
-        state.selectedBook = normalizedBook;
-        state.selectedChapter = null;
-        state.selectedTocs.clear();
-        state.includeDerivatives = false;
-        state.emptyWordWarningShown = false;
-        state.isExamTitleCustomized = false;
-        if (state.ui.includeDerivatives) {
-            state.ui.includeDerivatives.checked = false;
-        }
-        syncDerivativeAccessUi();
-        state.ui.tocSelectionCard?.classList.toggle('day-mode', normalizedBook !== 'etymology');
-
-        const mixedTypeOption = state.ui.testTypeOptions
-            ?.querySelector('.test-type-option[data-type="MIXED"]');
-        if (mixedTypeOption) {
-            mixedTypeOption.classList.remove('hidden');
-        }
-        if (state.ui.testTypeOptions) {
-            state.ui.testTypeOptions.dataset.twoOptions = 'false';
-        }
-
-        state.ui.bookLibrary.querySelectorAll('.book-item').forEach(item => {
-            item.classList.toggle('active', normalizeBookKey(item.dataset.book) === normalizedBook);
-        });
-
-        setSectionOpen('toc', false);
-        if (isMobileViewport()) {
-            setSectionOpen('settings', false);
-        }
-        state.ui.subChapterSelectionCard?.classList.remove('compact');
-        const subChapterTitle = state.ui.subChapterSelectionCard?.querySelector('h2');
-        if (subChapterTitle) {
-            subChapterTitle.textContent = '챕터 선택';
-        }
-        const subChapterSubtitle = state.ui.subChapterSelectionCard?.querySelector('.subtitle');
-        if (subChapterSubtitle) {
-            const bookLabel = getBookNameForOutput(normalizedBook);
-            subChapterSubtitle.textContent = `${bookLabel}에서 공부할 챕터를 선택하세요.`;
-        }
-        
-        if (normalizedBook === 'etymology') {
-            setSectionOpen('toc', true);
-            state.ui.subChapterSelectionCard.classList.remove('hidden');
-            state.ui.tocSelectionCard.classList.add('hidden');
-            if (state.ui.tocSummary) {
-                state.ui.tocSummary.textContent = '';
+            showToast('교재 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+        } finally {
+            state.isBookSelectionLoading = false;
+            if (shouldShowLoading) {
+                setGeneratorLoading(false);
             }
-            syncSelectedTotalBadge(0);
-        } else {
-            setSectionOpen('toc', true);
-            state.ui.subChapterSelectionCard.classList.add('hidden');
-            state.ui.tocSelectionCard.classList.remove('hidden');
-            renderTocChecklist();
         }
-        updateUiState();
     };
 
     const getSubChapterDisplayName = (chapterId) => {
@@ -1508,6 +1546,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const shouldShowSettings = hasSelection;
         setSectionOpen('settings', shouldShowSettings);
         state.ui.generateBtn.disabled = !hasSelection || hasReachedDailyDownloadLimit();
+        if (state.ui.deselectAllToc) {
+            state.ui.deselectAllToc.disabled = state.selectedTocs.size === 0;
+        }
     };
     
     const modifyAllTocs = (shouldSelect) => {
@@ -1516,6 +1557,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const checkboxes = [...state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]')];
         if (!shouldSelect) {
+            state.selectedTocs.clear();
             checkboxes.forEach((checkbox) => {
                 checkbox.checked = false;
             });
@@ -2572,7 +2614,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUiState();
             });
         syncGeneratorBookStageLayout();
-        const loadTask = loadData();
+        initialDataLoadTask = loadData();
+        const loadTask = initialDataLoadTask;
         ensureMobileSettingsAtBottom();
         window.addEventListener('resize', () => {
             ensureMobileSettingsAtBottom();
