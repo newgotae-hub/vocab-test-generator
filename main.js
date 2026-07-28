@@ -470,10 +470,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const buildEtymologyExamTitle = (tocLabels = [], chapterInput = '') => {
-        const titles = tocLabels
+        const normalizedTocLabels = tocLabels
+            .map((toc) => normalizeSpacingText(toc))
+            .filter(Boolean);
+        const titles = normalizedTocLabels
             .map((toc) => extractEtymologyTocTitle(toc))
-            .filter(Boolean)
-            .filter((value, idx, arr) => arr.indexOf(value) === idx);
+            .filter(Boolean);
         const chapterIds = (Array.isArray(chapterInput) ? chapterInput : [chapterInput])
             .map((chapterId) => normalizeSpacingText(chapterId))
             .filter(Boolean)
@@ -488,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (titles.length === 0) return `${prefix} 시험지`;
         if (titles.length === 1) return `${prefix} ${titles[0]}`;
-        return `${prefix} ${titles[0]} 외 ${titles.length - 1}개`;
+        return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]} (총 ${normalizedTocLabels.length}개)`;
     };
 
     const extractExamTitleFromToc = (tocLabel = '') => {
@@ -600,6 +602,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getSelectedEtymologyScopes = (selectedTocs = state.selectedTocs, options = {}) => {
         const seen = new Set();
+        const bookOrder = new Map();
+        (state.allWords || []).forEach((entry) => {
+            const key = makeEtymologyTocKey(entry?.chapter, entry?.toc);
+            if (key && !bookOrder.has(key)) {
+                bookOrder.set(key, bookOrder.size);
+            }
+        });
         return [...(selectedTocs || [])]
             .map((selection) => parseEtymologyTocSelection(selection, options))
             .filter(({ chapterId, toc }) => chapterId && toc)
@@ -609,10 +618,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 seen.add(key);
                 return true;
             })
-            .sort((a, b) => (
-                a.chapterId.localeCompare(b.chapterId, 'ko', { numeric: true })
-                || a.toc.localeCompare(b.toc, 'ko', { numeric: true })
-            ));
+            .sort((a, b) => {
+                const aKey = makeEtymologyTocKey(a.chapterId, a.toc);
+                const bKey = makeEtymologyTocKey(b.chapterId, b.toc);
+                const aOrder = bookOrder.get(aKey);
+                const bOrder = bookOrder.get(bKey);
+                if (Number.isInteger(aOrder) && Number.isInteger(bOrder)) return aOrder - bOrder;
+                if (Number.isInteger(aOrder)) return -1;
+                if (Number.isInteger(bOrder)) return 1;
+                return a.chapterId.localeCompare(b.chapterId, 'ko', { numeric: true })
+                    || a.toc.localeCompare(b.toc, 'ko', { numeric: true });
+            });
     };
 
     const getSelectedEtymologyChapterIds = (selectedTocs = state.selectedTocs, options = {}) => {
@@ -1468,10 +1484,18 @@ document.addEventListener('DOMContentLoaded', () => {
         setNumQuestionsHint(state.ui.numQuestions.value);
 
         if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
-            const tocTitle = buildExamTitleFromSelectedTocs(getSelectedTocLabels(state.selectedTocs), {
+            const selectedEtymologyScopes = state.selectedBook === 'etymology'
+                ? getSelectedEtymologyScopes()
+                : [];
+            const titleTocLabels = selectedEtymologyScopes.length > 0
+                ? selectedEtymologyScopes.map((scope) => scope.toc)
+                : getSelectedTocLabels(state.selectedTocs);
+            const tocTitle = buildExamTitleFromSelectedTocs(titleTocLabels, {
                 bookKey: state.selectedBook,
                 chapterId: state.selectedChapter,
-                chapterIds: getSelectedEtymologyChapterIds(),
+                chapterIds: selectedEtymologyScopes.length > 0
+                    ? [...new Set(selectedEtymologyScopes.map((scope) => scope.chapterId))]
+                    : getSelectedEtymologyChapterIds(),
             });
             if (state.ui.examTitle) {
                 state.ui.examTitle.value = tocTitle;
@@ -1643,6 +1667,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('시험지 파일 보관 실패:', archiveError);
             }
 
+            const selectedEtymologyScopes = state.selectedBook === 'etymology'
+                ? getSelectedEtymologyScopes()
+                : [];
             const historyEntry = {
                 generatedAt: new Date().toISOString(),
                 config: {
@@ -1654,10 +1681,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     numQuestions: settings.numQuestions,
                     shouldShuffle: settings.shouldShuffle,
                     selectedChapter: state.selectedChapter || '',
-                    selectedTocs: getSelectedTocLabels(state.selectedTocs)
-                        .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
-                    selectedTocScopes: state.selectedBook === 'etymology'
-                        ? getSelectedEtymologyScopes().map((scope) => ({
+                    selectedTocs: selectedEtymologyScopes.length > 0
+                        ? selectedEtymologyScopes.map((scope) => scope.toc)
+                        : getSelectedTocLabels(state.selectedTocs)
+                            .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })),
+                    selectedTocScopes: selectedEtymologyScopes.length > 0
+                        ? selectedEtymologyScopes.map((scope) => ({
                             chapter: scope.chapterId,
                             toc: scope.toc,
                         }))

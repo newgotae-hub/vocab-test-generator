@@ -119,17 +119,24 @@ const uniqueNonEmpty = (items) => {
 
 const buildCompactEtymologyTitle = (config, examTitle) => {
     const selectedTocs = Array.isArray(config?.selectedTocs) ? config.selectedTocs : [];
-    let titles = uniqueNonEmpty(selectedTocs.map((toc) => extractEtymologyTocTitle(toc)));
+    const selectedTocScopes = Array.isArray(config?.selectedTocScopes)
+        ? config.selectedTocScopes
+        : [];
+    const scopedTocs = selectedTocScopes
+        .map((scope) => normalizeSpacingText(scope?.toc))
+        .filter(Boolean);
+    const titleSourceTocs = scopedTocs.length > 0 ? scopedTocs : selectedTocs;
+    let titles = titleSourceTocs
+        .map((toc) => extractEtymologyTocTitle(toc))
+        .filter(Boolean);
 
     if (titles.length === 0 && examTitle.includes('/')) {
         titles = uniqueNonEmpty(examTitle.split('/').map((part) => extractEtymologyTocTitle(part)));
     }
 
-    const scopedChapterIds = Array.isArray(config?.selectedTocScopes)
-        ? config.selectedTocScopes
-            .map((scope) => normalizeSpacingText(scope?.chapter || scope?.chapterId))
-            .filter(Boolean)
-        : [];
+    const scopedChapterIds = selectedTocScopes
+        .map((scope) => normalizeSpacingText(scope?.chapter || scope?.chapterId))
+        .filter(Boolean);
     const chapterLabels = uniqueNonEmpty(
         (scopedChapterIds.length > 0 ? scopedChapterIds : [config?.selectedChapter])
             .map((chapterId) => getEtymologyChapterLabel(chapterId)),
@@ -138,7 +145,7 @@ const buildCompactEtymologyTitle = (config, examTitle) => {
         ? '어원편 통합'
         : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편');
 
-    if (titles.length >= 2) return `${prefix} ${titles[0]} 외 ${titles.length - 1}개`;
+    if (titles.length >= 2) return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]} (총 ${titleSourceTocs.length}개)`;
     if (titles.length === 1) return `${prefix} ${titles[0]}`;
     return examTitle.length > 42 ? `${prefix} 시험지` : examTitle;
 };
