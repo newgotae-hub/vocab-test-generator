@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         includeDerivatives: false,
         emptyWordWarningShown: false,
         isExamTitleCustomized: false,
+        isQuestionCountCustomized: false,
+        requestedQuestionCount: null,
         isBookSelectionLoading: false,
         purchasePolicyNoticeShown: false,
         purchaseAccess: {
@@ -461,9 +463,89 @@ document.addEventListener('DOMContentLoaded', () => {
         CH3: '어근',
     };
 
+    // TOC order and printed page ranges from VOCA_어원편 내지(낱장).pdf.
+    const ETYMOLOGY_PAGE_RANGES_BY_TOC_INDEX = Object.freeze({
+        CH1: [
+            [8, 9], [10, 11], [12, 13], [14, 14], [15, 16], [17, 18], [19, 20], [21, 21],
+            [22, 22], [23, 23], [24, 24], [24, 24], [25, 25], [26, 27], [28, 29], [30, 31],
+            [32, 32], [32, 32], [33, 33], [34, 35], [36, 37], [37, 37], [38, 39], [40, 40],
+            [41, 41], [42, 42], [43, 43], [44, 44], [45, 45], [46, 46], [47, 47], [48, 48],
+            [49, 49], [49, 49], [50, 50], [51, 51], [52, 52], [52, 52], [53, 53], [53, 53],
+            [54, 54], [54, 54], [55, 55], [55, 55], [56, 56], [57, 57], [57, 59], [60, 61],
+        ],
+        CH2: [
+            [64, 64], [64, 64], [65, 65], [65, 65], [66, 66], [66, 66], [67, 67], [68, 68],
+            [68, 68], [69, 69], [69, 69], [70, 70], [70, 70], [71, 71], [71, 71], [72, 72],
+            [72, 72], [73, 73], [74, 76], [76, 76], [77, 77], [77, 77], [78, 78], [78, 78],
+            [79, 79], [79, 79], [80, 80], [80, 80], [81, 81], [81, 82], [82, 82], [83, 83],
+            [84, 84], [85, 85], [85, 85], [86, 86], [87, 87], [88, 88], [89, 89], [90, 90],
+            [90, 90], [91, 91], [91, 91],
+        ],
+        CH3: [
+            [94, 95], [95, 95], [96, 96], [96, 96], [97, 97], [97, 97], [98, 98], [98, 98],
+            [99, 99], [99, 99], [100, 100], [100, 100], [101, 101], [102, 102], [102, 102],
+            [103, 103], [104, 104], [104, 104], [105, 105], [105, 105], [106, 106], [106, 107],
+            [107, 107], [108, 108], [108, 108], [109, 109], [109, 109], [110, 110], [110, 110],
+            [111, 111], [111, 111], [112, 112], [112, 112], [113, 113], [113, 113], [114, 114],
+            [114, 114], [115, 115], [115, 115], [116, 116], [116, 116], [117, 117], [117, 117],
+            [118, 118], [118, 119], [120, 120], [121, 121], [122, 122], [122, 122], [123, 123],
+            [123, 123], [124, 124], [125, 125], [126, 126], [127, 127], [128, 128], [129, 129],
+            [130, 130], [130, 130], [131, 131], [131, 131], [132, 133], [134, 134], [134, 134],
+            [135, 135], [136, 136], [136, 136], [137, 137], [138, 138], [139, 139], [140, 141],
+            [141, 141], [142, 142], [143, 145], [146, 147], [148, 149], [150, 151], [152, 153],
+            [154, 154], [155, 155], [155, 155], [156, 156], [157, 157], [157, 157], [158, 158],
+            [158, 159], [159, 159], [160, 160], [160, 160], [161, 161], [161, 161], [162, 162],
+            [162, 162], [163, 163], [164, 164], [165, 165], [166, 166], [167, 167], [168, 169],
+            [170, 170], [171, 171], [172, 172], [173, 173], [174, 175], [175, 175], [176, 176],
+            [177, 177], [178, 178], [178, 178], [179, 179], [179, 179], [180, 180], [181, 181],
+            [182, 183], [184, 184], [185, 185], [186, 186], [187, 187], [188, 189], [190, 191],
+            [192, 192], [193, 193], [194, 194], [195, 195],
+        ],
+    });
+
     const getEtymologyChapterLabel = (chapterId = '') => {
         const normalized = normalizeSpacingText(chapterId).toUpperCase();
         return ETYMOLOGY_CHAPTER_LABELS[normalized] || '';
+    };
+
+    const getEtymologyTocsForChapter = (chapterId = '') => {
+        const normalizedChapter = normalizeSpacingText(chapterId).toUpperCase();
+        if (!normalizedChapter) return [];
+        return [...new Set(
+            (state.allWords || [])
+                .filter((entry) => normalizeSpacingText(entry?.chapter).toUpperCase() === normalizedChapter)
+                .map((entry) => normalizeSpacingText(entry?.toc))
+                .filter(Boolean),
+        )];
+    };
+
+    const getEtymologyTocPageRange = (chapterId = '', toc = '') => {
+        const normalizedChapter = normalizeSpacingText(chapterId).toUpperCase();
+        const normalizedToc = normalizeSpacingText(toc);
+        const chapterRanges = ETYMOLOGY_PAGE_RANGES_BY_TOC_INDEX[normalizedChapter];
+        if (!normalizedToc || !Array.isArray(chapterRanges)) return null;
+
+        const tocIndex = getEtymologyTocsForChapter(normalizedChapter)
+            .findIndex((candidate) => candidate === normalizedToc);
+        const range = chapterRanges[tocIndex];
+        if (!Array.isArray(range) || range.length !== 2) return null;
+        return { start: range[0], end: range[1] };
+    };
+
+    const formatEtymologyPageRange = (range) => {
+        if (!range || !Number.isInteger(range.start) || !Number.isInteger(range.end)) return '';
+        return range.start === range.end ? `p.${range.start}` : `p.${range.start}~${range.end}`;
+    };
+
+    const getEtymologySelectionPageRange = (scopes = []) => {
+        const ranges = scopes
+            .map((scope) => getEtymologyTocPageRange(scope?.chapterId || scope?.chapter, scope?.toc))
+            .filter(Boolean);
+        if (ranges.length === 0) return null;
+        return {
+            start: Math.min(...ranges.map((range) => range.start)),
+            end: Math.max(...ranges.map((range) => range.end)),
+        };
     };
 
     const extractEtymologyTocTitle = (tocLabel = '') => {
@@ -474,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return firstSegment.replace(/[()\[\],;:]+/g, '').trim() || '어원';
     };
 
-    const buildEtymologyExamTitle = (tocLabels = [], chapterInput = '') => {
+    const buildEtymologyExamTitle = (tocLabels = [], chapterInput = '', pageRange = null) => {
         const normalizedTocLabels = tocLabels
             .map((toc) => normalizeSpacingText(toc))
             .filter(Boolean);
@@ -492,10 +574,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const prefix = chapterLabels.length === 0
             ? '어원편'
             : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편 통합');
+        const formattedPageRange = formatEtymologyPageRange(pageRange);
+        const pageSuffix = formattedPageRange ? ` (${formattedPageRange})` : '';
 
         if (titles.length === 0) return `${prefix} 시험지`;
-        if (titles.length === 1) return `${prefix} ${titles[0]}`;
-        return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]} (총 ${normalizedTocLabels.length}개)`;
+        if (titles.length === 1) return `${prefix} ${titles[0]}${pageSuffix}`;
+        const fallbackSuffix = pageSuffix || ` (총 ${normalizedTocLabels.length}개)`;
+        return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]}${fallbackSuffix}`;
     };
 
     const extractExamTitleFromToc = (tocLabel = '') => {
@@ -510,7 +595,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildExamTitleFromSelectedTocs = (tocLabels = [], options = {}) => {
         const activeBookKey = normalizeBookKey(options.bookKey || state.selectedBook);
         if (activeBookKey === 'etymology') {
-            return buildEtymologyExamTitle(tocLabels, options.chapterIds || options.chapterId || state.selectedChapter);
+            const etymologyScopes = Array.isArray(options.etymologyScopes)
+                ? options.etymologyScopes
+                : getSelectedEtymologyScopes();
+            return buildEtymologyExamTitle(
+                tocLabels,
+                options.chapterIds || options.chapterId || state.selectedChapter,
+                getEtymologySelectionPageRange(etymologyScopes),
+            );
         }
 
         const dayNumbers = tocLabels
@@ -834,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const questionLimit = getQuestionSelectionLimit();
         const selectedTotal = state.selectedWords.length;
         if (selectedTotal > questionLimit) {
-            hint.textContent = `한 번에 최대 ${questionLimit}문항까지 생성할 수 있습니다.`;
+            hint.textContent = `선택한 ${selectedTotal}개 중 최대 ${questionLimit}문항까지 생성할 수 있습니다.`;
             hint.classList.remove('hidden');
             return;
         }
@@ -1197,23 +1289,6 @@ document.addEventListener('DOMContentLoaded', () => {
         checkedTocs.forEach((selection) => nextSelection.add(selection));
         return nextSelection;
     };
-    const enforceTocSelectionLimit = (checkbox, { notify = true } = {}) => {
-        if (!checkbox?.checked) return true;
-
-        const questionLimit = getQuestionSelectionLimit();
-        const selectedTocs = getSelectionSnapshotFromChecklist();
-        const totalWords = getSelectedWordsForTocs(selectedTocs).length;
-        if (totalWords <= questionLimit) return true;
-
-        checkbox.checked = false;
-        if (notify) {
-            const limitMessage = isBookPurchaseVerified()
-                ? `한 번에 최대 ${questionLimit}개 단어까지만 선택할 수 있습니다.`
-                : '구매 인증 전에는 한 번에 최대 50개 단어까지만 선택할 수 있습니다.';
-            showToast(limitMessage, 'error');
-        }
-        return false;
-    };
     const loadScript = (src) => new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
@@ -1322,6 +1397,8 @@ document.addEventListener('DOMContentLoaded', () => {
             state.includeDerivatives = false;
             state.emptyWordWarningShown = false;
             state.isExamTitleCustomized = false;
+            state.isQuestionCountCustomized = false;
+            state.requestedQuestionCount = null;
             if (state.ui.includeDerivatives) {
                 state.ui.includeDerivatives.checked = false;
             }
@@ -1464,10 +1541,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 chapterId,
             });
             const isChecked = state.selectedTocs.has(selectionKey) ? 'checked' : '';
+            const pageText = formatEtymologyPageRange(getEtymologyTocPageRange(chapterId, toc));
             return `
                 <label class="toc-checklist-item ${isChecked ? 'selected-item' : ''}">
                     <input type="checkbox" data-toc="${toc}" data-chapter="${chapterId}" data-toc-key="${selectionKey}" ${isChecked}>
                     <span class="label">${toc}</span>
+                    ${pageText ? `<span class="page">${pageText}</span>` : ''}
                     <span class="badge">${wordCount}</span>
                 </label>
             `;
@@ -1517,7 +1596,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const questionLimit = getQuestionSelectionLimit();
         const maxQuestions = Math.min(totalWords, questionLimit);
-        state.ui.numQuestions.value = String(maxQuestions);
+        const requestedQuestions = Number.parseInt(state.requestedQuestionCount, 10);
+        const nextQuestionCount = state.isQuestionCountCustomized
+            && Number.isInteger(requestedQuestions)
+            && requestedQuestions > 0
+            ? Math.min(requestedQuestions, maxQuestions)
+            : maxQuestions;
+        state.ui.numQuestions.value = String(nextQuestionCount);
         state.ui.numQuestions.max = String(maxQuestions);
         setNumQuestionsHint(state.ui.numQuestions.value);
 
@@ -1534,6 +1619,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 chapterIds: selectedEtymologyScopes.length > 0
                     ? [...new Set(selectedEtymologyScopes.map((scope) => scope.chapterId))]
                     : getSelectedEtymologyChapterIds(),
+                etymologyScopes: selectedEtymologyScopes,
             });
             if (state.ui.examTitle) {
                 state.ui.examTitle.value = tocTitle;
@@ -1553,7 +1639,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const modifyAllTocs = (shouldSelect) => {
         if (state.selectedBook === 'etymology' && !state.selectedChapter) return;
-        const questionLimit = getQuestionSelectionLimit();
 
         const checkboxes = [...state.ui.tocChecklist.querySelectorAll('input[type="checkbox"]')];
         if (!shouldSelect) {
@@ -1565,18 +1650,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let blocked = false;
         checkboxes.forEach((checkbox) => {
-            if (blocked || checkbox.checked) return;
             checkbox.checked = true;
-            if (!enforceTocSelectionLimit(checkbox, { notify: false })) {
-                blocked = true;
-            }
         });
-
-        if (blocked) {
-            showToast(`총 단어 수가 ${questionLimit}개를 넘어서 전체 선택을 중단했습니다.`, 'info');
-        }
         updateUiState();
     };
 
@@ -1841,6 +1917,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const requestedNumQuestions = Number.parseInt(config.numQuestions, 10);
         const maxQuestions = Number.parseInt(state.ui.numQuestions.max, 10) || state.selectedWords.length || 0;
         if (Number.isInteger(requestedNumQuestions) && requestedNumQuestions > 0 && maxQuestions > 0) {
+            state.isQuestionCountCustomized = true;
+            state.requestedQuestionCount = requestedNumQuestions;
             state.ui.numQuestions.value = String(Math.max(1, Math.min(requestedNumQuestions, maxQuestions)));
             setNumQuestionsHint(state.ui.numQuestions.value);
         }
@@ -2516,7 +2594,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.tocChecklist.addEventListener('change', (e) => {
             const checkbox = e.target.closest('input[type="checkbox"][data-toc]');
             if (!checkbox) return;
-            enforceTocSelectionLimit(checkbox);
             updateUiState();
         });
         state.ui.tocChecklist.addEventListener('click', (e) => {
@@ -2530,7 +2607,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             e.stopPropagation();
             checkbox.checked = !checkbox.checked;
-            enforceTocSelectionLimit(checkbox);
             updateUiState();
         });
         if (state.ui.selectAllToc) {
@@ -2556,21 +2632,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('책구매 인증 전에는 파생어 시험지 제작이 제한됩니다.', 'error');
                     return;
                 }
-                const previousIncludeDerivatives = state.includeDerivatives;
                 state.includeDerivatives = nextIncludeDerivatives;
-                const questionLimit = getQuestionSelectionLimit();
-
-                const totalWords = getSelectedWordsForTocs(state.selectedTocs).length;
-                if (totalWords > questionLimit) {
-                    state.includeDerivatives = previousIncludeDerivatives;
-                    state.ui.includeDerivatives.checked = previousIncludeDerivatives;
-                    showToast(`파생어 포함 시 ${questionLimit}개를 초과하여 적용할 수 없습니다.`, 'error');
-                    if (state.selectedBook && state.selectedBook !== 'etymology') {
-                        renderTocChecklist();
-                    }
-                    updateUiState();
-                    return;
-                }
 
                 if (state.selectedBook && state.selectedBook !== 'etymology') {
                     renderTocChecklist();
@@ -2597,10 +2659,18 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (value > max) {
                 state.ui.numQuestions.value = String(max);
             }
+            const normalizedValue = parseInt(state.ui.numQuestions.value, 10);
+            state.isQuestionCountCustomized = true;
+            state.requestedQuestionCount = Number.isInteger(normalizedValue) && normalizedValue > 0
+                ? normalizedValue
+                : null;
             setNumQuestionsHint(state.ui.numQuestions.value);
         });
 
         state.ui.numQuestions.addEventListener('input', () => {
+            const value = parseInt(state.ui.numQuestions.value, 10);
+            state.isQuestionCountCustomized = true;
+            state.requestedQuestionCount = Number.isInteger(value) && value > 0 ? value : null;
             setNumQuestionsHint(state.ui.numQuestions.value);
         });
     };

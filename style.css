@@ -468,6 +468,18 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     touch-action: manipulation;
 }
 
+.toc-checklist-item .label {
+    min-width: 0;
+}
+
+.toc-checklist-item .page {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .toc-checklist-item .badge {
     margin-left: auto;
     border-radius: 999px;
@@ -476,6 +488,10 @@ body[data-page="generator"]:not(.generator-book-stage) .book-option {
     color: #1e3a8a;
     background: #fff;
     border: 1px solid #d6e2ff;
+}
+
+.toc-checklist-item .page + .badge {
+    margin-left: 0;
 }
 
 .toc-title-row {
