@@ -612,6 +612,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return titles.join(' / ');
     };
 
+    const appendQuestionCountToExamTitle = (title = '', questionCount = 0) => {
+        const normalizedTitle = normalizeSpacingText(title);
+        const normalizedCount = Number.parseInt(questionCount, 10);
+        if (!normalizedTitle || !Number.isInteger(normalizedCount) || normalizedCount < 1) {
+            return normalizedTitle;
+        }
+
+        const pageSuffixMatch = normalizedTitle.match(/\((p\.\s*\d+(?:\s*~\s*\d+)?)\)$/i);
+        if (pageSuffixMatch) {
+            const titleWithoutSuffix = normalizedTitle.slice(0, pageSuffixMatch.index).trim();
+            const pageLabel = pageSuffixMatch[1].replace(/\s+/g, '');
+            return `${titleWithoutSuffix} (${pageLabel}, ${normalizedCount}문항)`;
+        }
+
+        return `${normalizedTitle} (${normalizedCount}문항)`;
+    };
+
     const DAY_WORD_KEYS = ['단어', 'word'];
     const DAY_MEANING_KEYS = ['의미', 'meaning', '뜻'];
     const ETY_CHAPTER_KEYS = ['chapter', '챕터', '대분류'];
@@ -1563,6 +1580,33 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
     };
+
+    const syncAutoExamTitle = () => {
+        if (state.isExamTitleCustomized || !state.ui.examTitle) return;
+        if (state.selectedTocs.size === 0) {
+            state.ui.examTitle.value = '어휘 시험지';
+            return;
+        }
+
+        const selectedEtymologyScopes = state.selectedBook === 'etymology'
+            ? getSelectedEtymologyScopes()
+            : [];
+        const titleTocLabels = selectedEtymologyScopes.length > 0
+            ? selectedEtymologyScopes.map((scope) => scope.toc)
+            : getSelectedTocLabels(state.selectedTocs);
+        const baseTitle = buildExamTitleFromSelectedTocs(titleTocLabels, {
+            bookKey: state.selectedBook,
+            chapterId: state.selectedChapter,
+            chapterIds: selectedEtymologyScopes.length > 0
+                ? [...new Set(selectedEtymologyScopes.map((scope) => scope.chapterId))]
+                : getSelectedEtymologyChapterIds(),
+            etymologyScopes: selectedEtymologyScopes,
+        });
+        state.ui.examTitle.value = appendQuestionCountToExamTitle(
+            baseTitle,
+            state.ui.numQuestions?.value,
+        );
+    };
     
     const updateUiState = () => {
         syncGeneratorBookStageLayout();
@@ -1617,27 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ui.numQuestions.max = String(maxQuestions);
         setNumQuestionsHint(state.ui.numQuestions.value);
 
-        if (!state.isExamTitleCustomized && state.selectedTocs.size > 0) {
-            const selectedEtymologyScopes = state.selectedBook === 'etymology'
-                ? getSelectedEtymologyScopes()
-                : [];
-            const titleTocLabels = selectedEtymologyScopes.length > 0
-                ? selectedEtymologyScopes.map((scope) => scope.toc)
-                : getSelectedTocLabels(state.selectedTocs);
-            const tocTitle = buildExamTitleFromSelectedTocs(titleTocLabels, {
-                bookKey: state.selectedBook,
-                chapterId: state.selectedChapter,
-                chapterIds: selectedEtymologyScopes.length > 0
-                    ? [...new Set(selectedEtymologyScopes.map((scope) => scope.chapterId))]
-                    : getSelectedEtymologyChapterIds(),
-                etymologyScopes: selectedEtymologyScopes,
-            });
-            if (state.ui.examTitle) {
-                state.ui.examTitle.value = tocTitle;
-            }
-        } else if (!state.isExamTitleCustomized) {
-            state.ui.examTitle.value = '어휘 시험지';
-        }
+        syncAutoExamTitle();
 
         const hasSelection = totalWords > 0;
         const shouldShowSettings = hasSelection;
@@ -2680,6 +2704,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? normalizedValue
                 : null;
             setNumQuestionsHint(state.ui.numQuestions.value);
+            syncAutoExamTitle();
         });
 
         state.ui.numQuestions.addEventListener('input', () => {
@@ -2687,6 +2712,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.isQuestionCountCustomized = true;
             state.requestedQuestionCount = Number.isInteger(value) && value > 0 ? value : null;
             setNumQuestionsHint(state.ui.numQuestions.value);
+            syncAutoExamTitle();
         });
     };
 

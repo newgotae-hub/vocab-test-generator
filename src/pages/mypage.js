@@ -106,8 +106,8 @@ const uniqueNonEmpty = (items) => {
         .filter((value, index, array) => array.indexOf(value) === index);
 };
 
-const extractPageRangeSuffix = (title = '') => {
-    const match = normalizeSpacingText(title).match(/\(p\.\s*\d+(?:\s*~\s*\d+)?\)$/i);
+const extractPageRangeLabel = (title = '') => {
+    const match = normalizeSpacingText(title).match(/p\.\s*\d+(?:\s*~\s*\d+)?/i);
     return match ? match[0].replace(/\s+/g, '') : '';
 };
 
@@ -128,13 +128,19 @@ const buildCompactEtymologyTitle = (config, examTitle) => {
         titles = uniqueNonEmpty(examTitle.split('/').map((part) => extractEtymologyTocTitle(part)));
     }
 
-    const pageSuffix = extractPageRangeSuffix(examTitle);
+    const pageLabel = extractPageRangeLabel(examTitle);
+    const questionCount = Number.parseInt(config?.numQuestions, 10);
+    const metadata = [
+        pageLabel,
+        Number.isInteger(questionCount) && questionCount > 0 ? `${questionCount}문항` : '',
+    ].filter(Boolean);
+    const metadataSuffix = metadata.length > 0 ? ` (${metadata.join(', ')})` : '';
 
     if (titles.length >= 2) {
-        const suffix = pageSuffix ? ` ${pageSuffix}` : ` (총 ${titleSourceTocs.length}개)`;
+        const suffix = metadataSuffix || ` (총 ${titleSourceTocs.length}개)`;
         return `${titles[0]} ~ ${titles[titles.length - 1]}${suffix}`;
     }
-    if (titles.length === 1) return `${titles[0]}${pageSuffix ? ` ${pageSuffix}` : ''}`;
+    if (titles.length === 1) return `${titles[0]}${metadataSuffix}`;
     const compactExamTitle = examTitle.replace(/^어원편(?:\s+(?:접두사|접미사|어근|통합))?\s*/i, '');
     return compactExamTitle.length > 42 ? '어원 시험지' : (compactExamTitle || '어원 시험지');
 };
