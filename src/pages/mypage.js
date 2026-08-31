@@ -91,17 +91,6 @@ const inferBookKey = (...values) => {
     return '';
 };
 
-const ETYMOLOGY_CHAPTER_LABELS = {
-    CH1: '접두사',
-    CH2: '접미사',
-    CH3: '어근',
-};
-
-const getEtymologyChapterLabel = (chapterId = '') => {
-    const normalized = normalizeSpacingText(chapterId).toUpperCase();
-    return ETYMOLOGY_CHAPTER_LABELS[normalized] || '';
-};
-
 const extractEtymologyTocTitle = (tocLabel = '') => {
     const trimmed = normalizeSpacingText(tocLabel);
     if (!trimmed) return '';
@@ -139,24 +128,15 @@ const buildCompactEtymologyTitle = (config, examTitle) => {
         titles = uniqueNonEmpty(examTitle.split('/').map((part) => extractEtymologyTocTitle(part)));
     }
 
-    const scopedChapterIds = selectedTocScopes
-        .map((scope) => normalizeSpacingText(scope?.chapter || scope?.chapterId))
-        .filter(Boolean);
-    const chapterLabels = uniqueNonEmpty(
-        (scopedChapterIds.length > 0 ? scopedChapterIds : [config?.selectedChapter])
-            .map((chapterId) => getEtymologyChapterLabel(chapterId)),
-    );
-    const prefix = chapterLabels.length > 1
-        ? '어원편 통합'
-        : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편');
     const pageSuffix = extractPageRangeSuffix(examTitle);
 
     if (titles.length >= 2) {
         const suffix = pageSuffix ? ` ${pageSuffix}` : ` (총 ${titleSourceTocs.length}개)`;
-        return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]}${suffix}`;
+        return `${titles[0]} ~ ${titles[titles.length - 1]}${suffix}`;
     }
-    if (titles.length === 1) return `${prefix} ${titles[0]}${pageSuffix ? ` ${pageSuffix}` : ''}`;
-    return examTitle.length > 42 ? `${prefix} 시험지` : examTitle;
+    if (titles.length === 1) return `${titles[0]}${pageSuffix ? ` ${pageSuffix}` : ''}`;
+    const compactExamTitle = examTitle.replace(/^어원편(?:\s+(?:접두사|접미사|어근|통합))?\s*/i, '');
+    return compactExamTitle.length > 42 ? '어원 시험지' : (compactExamTitle || '어원 시험지');
 };
 
 const buildGeneratorHistoryDisplayTitle = (config, examTitle) => {

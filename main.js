@@ -457,12 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return prefixes[normalized] || '';
     };
 
-    const ETYMOLOGY_CHAPTER_LABELS = {
-        CH1: '접두사',
-        CH2: '접미사',
-        CH3: '어근',
-    };
-
     // TOC order and printed page ranges from VOCA_어원편 내지(낱장).pdf.
     const ETYMOLOGY_PAGE_RANGES_BY_TOC_INDEX = Object.freeze({
         CH1: [
@@ -502,11 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
             [192, 192], [193, 193], [194, 194], [195, 195],
         ],
     });
-
-    const getEtymologyChapterLabel = (chapterId = '') => {
-        const normalized = normalizeSpacingText(chapterId).toUpperCase();
-        return ETYMOLOGY_CHAPTER_LABELS[normalized] || '';
-    };
 
     const getEtymologyTocsForChapter = (chapterId = '') => {
         const normalizedChapter = normalizeSpacingText(chapterId).toUpperCase();
@@ -556,31 +545,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return firstSegment.replace(/[()\[\],;:]+/g, '').trim() || '어원';
     };
 
-    const buildEtymologyExamTitle = (tocLabels = [], chapterInput = '', pageRange = null) => {
+    const buildEtymologyExamTitle = (tocLabels = [], pageRange = null) => {
         const normalizedTocLabels = tocLabels
             .map((toc) => normalizeSpacingText(toc))
             .filter(Boolean);
         const titles = normalizedTocLabels
             .map((toc) => extractEtymologyTocTitle(toc))
             .filter(Boolean);
-        const chapterIds = (Array.isArray(chapterInput) ? chapterInput : [chapterInput])
-            .map((chapterId) => normalizeSpacingText(chapterId))
-            .filter(Boolean)
-            .filter((value, idx, arr) => arr.indexOf(value) === idx);
-        const chapterLabels = chapterIds
-            .map((chapterId) => getEtymologyChapterLabel(chapterId))
-            .filter(Boolean)
-            .filter((value, idx, arr) => arr.indexOf(value) === idx);
-        const prefix = chapterLabels.length === 0
-            ? '어원편'
-            : (chapterLabels.length === 1 ? `어원편 ${chapterLabels[0]}` : '어원편 통합');
         const formattedPageRange = formatEtymologyPageRange(pageRange);
         const pageSuffix = formattedPageRange ? ` (${formattedPageRange})` : '';
 
-        if (titles.length === 0) return `${prefix} 시험지`;
-        if (titles.length === 1) return `${prefix} ${titles[0]}${pageSuffix}`;
+        if (titles.length === 0) return '어원 시험지';
+        if (titles.length === 1) return `${titles[0]}${pageSuffix}`;
         const fallbackSuffix = pageSuffix || ` (총 ${normalizedTocLabels.length}개)`;
-        return `${prefix} ${titles[0]} ~ ${titles[titles.length - 1]}${fallbackSuffix}`;
+        return `${titles[0]} ~ ${titles[titles.length - 1]}${fallbackSuffix}`;
     };
 
     const extractExamTitleFromToc = (tocLabel = '') => {
@@ -600,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 : getSelectedEtymologyScopes();
             return buildEtymologyExamTitle(
                 tocLabels,
-                options.chapterIds || options.chapterId || state.selectedChapter,
                 getEtymologySelectionPageRange(etymologyScopes),
             );
         }
@@ -875,6 +852,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return array;
     };
 
+    const pickBalancedEtymologyWords = (sourceWords, count) => {
+        if (count >= sourceWords.length) return [...sourceWords];
+
+        const groups = new Map();
+        sourceWords.forEach((word, index) => {
+            const groupKey = makeEtymologyTocKey(word?.chapter, word?.toc) || `ungrouped-${index}`;
+            if (!groups.has(groupKey)) groups.set(groupKey, []);
+            groups.get(groupKey).push({ word, index });
+        });
+
+        let activeGroups = [...groups.values()].map((group) => shuffleArray([...group]));
+        shuffleArray(activeGroups);
+        const selected = [];
+
+        while (selected.length < count && activeGroups.length > 0) {
+            const nextGroups = [];
+            activeGroups.forEach((group) => {
+                if (selected.length >= count) return;
+                const candidate = group.pop();
+                if (candidate) selected.push(candidate);
+                if (group.length > 0) nextGroups.push(group);
+            });
+            activeGroups = shuffleArray(nextGroups);
+        }
+
+        return selected
+            .sort((a, b) => a.index - b.index)
+            .map((entry) => entry.word);
+    };
+
     const isSupportedFontBuffer = (buffer) => {
         if (!buffer || buffer.byteLength < 4) return false;
         const bytes = new Uint8Array(buffer);
@@ -925,18 +932,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionLimit = getQuestionSelectionLimit();
         const selectedTotal = state.selectedWords.length;
+        const maxWords = parseInt(state.ui.numQuestions.max, 10);
+        const requested = parseInt(requestValue, 10);
+        const isReducing = Number.isInteger(maxWords) && Number.isInteger(requested) && maxWords > 0 && requested < selectedTotal;
+        const balancedMessage = state.selectedBook === 'etymology' && isReducing
+            ? ' 선택한 각 어원에서 골고루 자동 선정됩니다.'
+            : '';
         if (selectedTotal > questionLimit) {
-            hint.textContent = `선택한 ${selectedTotal}개 중 최대 ${questionLimit}문항까지 생성할 수 있습니다.`;
+            hint.textContent = `선택한 ${selectedTotal}개 중 최대 ${questionLimit}문항까지 생성할 수 있습니다.${balancedMessage}`;
             hint.classList.remove('hidden');
             return;
         }
 
-        const maxWords = parseInt(state.ui.numQuestions.max, 10);
-        const requested = parseInt(requestValue, 10);
-        const isReducing = Number.isInteger(maxWords) && Number.isInteger(requested) && maxWords > 0 && requested < maxWords;
-
         if (isReducing) {
-            hint.textContent = '문항 수에 맞게 단어가 자동 선정됩니다.';
+            hint.textContent = state.selectedBook === 'etymology'
+                ? '선택한 각 어원에서 골고루 자동 선정됩니다.'
+                : '문항 수에 맞게 단어가 무작위로 자동 선정됩니다.';
             hint.classList.remove('hidden');
         } else {
             hint.textContent = '';
@@ -1714,10 +1725,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let testItems = sourceWords;
 
         if (settings.numQuestions < sourceWords.length) {
-            const candidateIndexes = [...Array(sourceWords.length).keys()];
-            shuffleArray(candidateIndexes);
-            const pickedIndexes = candidateIndexes.slice(0, settings.numQuestions).sort((a, b) => a - b);
-            testItems = pickedIndexes.map((idx) => sourceWords[idx]);
+            if (normalizeBookKey(state.selectedBook) === 'etymology') {
+                testItems = pickBalancedEtymologyWords(sourceWords, settings.numQuestions);
+            } else {
+                const candidateIndexes = [...Array(sourceWords.length).keys()];
+                shuffleArray(candidateIndexes);
+                const pickedIndexes = candidateIndexes.slice(0, settings.numQuestions).sort((a, b) => a - b);
+                testItems = pickedIndexes.map((idx) => sourceWords[idx]);
+            }
         } else {
             testItems = sourceWords;
         }
